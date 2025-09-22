@@ -140,9 +140,9 @@ def salvar():
         "Atendimento Tutor": "",
         "Atendimento Coordenação": "",
         "Atendimento Gestão": "",
-        "FlagTutor": "Não",
-        "FlagCoord": "Não",
-        "FlagGestao": "Não",
+        "FlagTutor": "Sim" if request.form.get("flag_tutor") else "Não",
+        "FlagCoord": "Sim" if request.form.get("flag_coord") else "Não",
+        "FlagGestao": "Sim" if request.form.get("flag_gestao") else "Não",
         "Data Atendimento Tutor": "",
         "Data Atendimento Coord": "",
         "Data Atendimento Gestao": "",
@@ -216,12 +216,9 @@ def editar(oid):
     return render_template("editar.html", ocorrencia=registro, permissoes=permissoes)
 
 
-# -------------------- APIs --------------------
+# -------------------- API de alunos --------------------
 @app.route("/api/alunos_sala/<sala>")
 def api_alunos_sala(sala):
-    """
-    Retorna todos os alunos e seus tutores da sala informada.
-    """
     try:
         df_alunos = pd.read_excel(MODELO_EXCEL, sheet_name="Alunos", header=None)
         df_alunos.columns = ["Sala", "Aluno", "Tutor"]
@@ -237,108 +234,6 @@ def api_alunos_sala(sala):
     except Exception as e:
         print("Erro ao ler alunos/tutores:", e)
         return jsonify([])
-
-
-# -------------------- Relatórios --------------------
-@app.route("/relatorio_inicial")
-def relatorio_inicial():
-    return render_template("relatorio_inicial.html")
-
-
-@app.route("/relatorio_aluno", methods=["GET"])
-def relatorio_aluno():
-    df = carregar_dados()
-    salas = sorted(df["Sala"].dropna().unique().tolist()) if not df.empty else []
-
-    sala_sel = request.args.get("sala", "").strip()
-    aluno_sel = request.args.get("aluno", "").strip()
-
-    alunos = []
-    ocorrencias = []
-    if sala_sel and not df.empty:
-        alunos = sorted(df.loc[df["Sala"] == sala_sel, "Aluno"].dropna().unique().tolist())
-    if sala_sel and aluno_sel and not df.empty:
-        ocorrencias = df[
-            (df["Sala"] == sala_sel) & (df["Aluno"] == aluno_sel)
-        ].sort_values("Nº Ocorrência").to_dict(orient="records")
-
-    return render_template(
-        "relatorio_aluno.html",
-        salas=salas,
-        alunos=alunos,
-        sala_sel=sala_sel,
-        aluno_sel=aluno_sel,
-        ocorrencias=ocorrencias
-    )
-
-
-@app.route("/relatorio_geral")
-def relatorio_geral():
-    return render_template("relatorio_geral.html")
-
-
-@app.route("/relatorio_tutor")
-def relatorio_tutor():
-    return render_template("relatorio_tutor.html")
-
-
-@app.route("/relatorio_tutoraluno")
-def relatorio_tutoraluno():
-    return render_template("relatorio_tutoraluno.html")
-
-
-@app.route("/tutoria")
-def tutoria():
-    return render_template("tutoria.html")
-
-
-# -------------------- Gerar PDF --------------------
-@app.route("/gerar_pdf_aluno", methods=["POST"])
-def gerar_pdf_aluno():
-    selecionadas = request.form.getlist("ocorrencias") or request.form.getlist("selecionadas") or []
-    aluno = request.form.get("aluno", "").strip()
-
-    if not selecionadas:
-        return "<h3 style='text-align:center;margin-top:30px'>Nenhuma ocorrência selecionada.</h3>", 400
-
-    df = carregar_dados()
-    selecionadas_str = set([str(x) for x in selecionadas])
-    df["__NUM__"] = df["Nº Ocorrência"].astype(str)
-    df_sel = df[df["__NUM__"].isin(selecionadas_str)].sort_values("Nº Ocorrência")
-    if df_sel.empty:
-        return "<h3 style='text-align:center;margin-top:30px'>Ocorrências não encontradas.</h3>", 404
-
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=40, rightMargin=40, topMargin=40, bottomMargin=40)
-    styles = getSampleStyleSheet()
-    story = []
-
-    story.append(Paragraph("<b>RELATÓRIO DE REGISTRO DE OCORRÊNCIAS - IDR</b>", styles["Title"]))
-    story.append(Spacer(1, 12))
-
-    for _, r in df_sel.iterrows():
-        story.append(Paragraph(f"<b>Nº Ocorrência:</b> {r['Nº Ocorrência']}", styles["Heading3"]))
-        story.append(Paragraph(f"<b>Data/Hora:</b> {r['Data Criação']} {r.get('Hora Criação','')}", styles["Normal"]))
-        story.append(Paragraph(f"<b>Professor:</b> {r.get('Professor','')}  |  <b>Sala:</b> {r.get('Sala','')}", styles["Normal"]))
-        story.append(Paragraph(f"<b>Aluno:</b> {r.get('Aluno','')}  |  <b>Tutor:</b> {r.get('Tutor','')}", styles["Normal"]))
-        story.append(Spacer(1, 6))
-        story.append(Paragraph(f"<b>Descrição:</b> {r.get('Descrição da Ocorrência','')}", styles["Normal"]))
-        story.append(Spacer(1, 6))
-        story.append(Paragraph(f"<b>Atendimento Professor:</b> {r.get('Atendimento Professor','')}", styles["Normal"]))
-        story.append(Paragraph(f"<b>Atendimento Tutor:</b> {r.get('Atendimento Tutor','')}", styles["Normal"]))
-        story.append(Paragraph(f"<b>Atendimento Coordenação:</b> {r.get('Atendimento Coord','') or r.get('Atendimento Coordenação','')}", styles["Normal"]))
-        story.append(Paragraph(f"<b>Atendimento Gestão:</b> {r.get('Atendimento Gestão','')}", styles["Normal"]))
-        story.append(Spacer(1, 12))
-
-    story.append(Spacer(1, 20))
-    story.append(Paragraph("Data: ________________________________", styles["Normal"]))
-    story.append(Spacer(1, 12))
-    story.append(Paragraph("Assinatura: ___________________________", styles["Normal"]))
-
-    doc.build(story)
-    buffer.seek(0)
-    nome_pdf = f"Relatorio_{(aluno.replace(' ', '_') if aluno else 'ocorrencias')}.pdf"
-    return send_file(buffer, as_attachment=True, download_name=nome_pdf, mimetype="application/pdf")
 
 
 # -------------------- Main --------------------
