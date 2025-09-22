@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Relatório de Ocorrências</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 p-6">
+<div class="max-w-xl mx-auto bg-white rounded p-6 shadow">
+  <h1 class="text-xl font-bold mb-6">Relatório de Ocorrências</h1>
+
+  <form method="post" class="space-y-4">
+    <div>
+      <label class="block font-semibold mb-1">Sala</label>
+      <select id="sala" name="sala" class="w-full border p-2 rounded">
+        <option value="">Todas</option>
+        {% for s in salas %}
+          <option value="{{ s }}">{{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label class="block font-semibold mb-1">Aluno</label>
+      <select id="aluno" name="aluno" class="w-full border p-2 rounded">
+        <option value="">Selecione a sala primeiro</option>
+      </select>
+    </div>
+
+    <div class="flex gap-4">
+      <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded">Gerar PDF</button>
+      <a href="{{ url_for('home') }}" class="bg-gray-300 px-4 py-2 rounded">Voltar</a>
+    </div>
+  </form>
+</div>
+
+<script>
+document.getElementById('sala').addEventListener('change', function(){
+  const sala = this.value;
+  const alunoSel = document.getElementById('aluno');
+  alunoSel.innerHTML = '<option>Carregando...</option>';
+  if (sala) {
+    fetch(`/api/alunos/${encodeURIComponent(sala)}`)
+      .then(r => r.json())
+      .then(lista => {
+        alunoSel.innerHTML = '<option value="">Todos</option>';
+        lista.forEach(a => {
+          const op = document.createElement('option');
+          op.value = a;
+          op.textContent = a;
+          alunoSel.appendChild(op);
+        });
+      })
+      .catch(() => {
+        alunoSel.innerHTML = '<option value="">Erro ao carregar alunos</option>';
+      });
+  } else {
+    alunoSel.innerHTML = '<option value="">Selecione a sala primeiro</option>';
+  }
+});
+</script>
+</body>
+</html>

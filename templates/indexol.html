@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Sistema de Gestão de Convivência - IDR</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <style>
+    body { background: #f4f4f4; }
+    .container { margin-top: 30px; }
+    table td, table th { text-align: center; vertical-align: middle; }
+    .btn-sm { padding: 2px 6px; font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h2 class="mb-4 text-center">Sistema de Gestão de Convivência - IDR</h2>
+
+  <form method="get" class="row mb-3">
+    <div class="col-md-4">
+      <label for="tutor" class="form-label">Tutor</label>
+      <select name="tutor" id="tutor" class="form-select">
+        <option value="">Todos</option>
+        {% for t in tutores %}
+          <option value="{{ t }}" {% if request.args.get('tutor') == t %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label for="status" class="form-label">Status</label>
+      <select name="status" id="status" class="form-select">
+        <option value="">Todos</option>
+        <option value="Em Atendimento" {% if request.args.get('status')=='Em Atendimento' %}selected{% endif %}>Em Atendimento</option>
+        <option value="Finalizada" {% if request.args.get('status')=='Finalizada' %}selected{% endif %}>Finalizada</option>
+      </select>
+    </div>
+    <div class="col-md-4 d-flex align-items-end">
+      <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+    </div>
+  </form>
+
+  <table class="table table-bordered table-striped">
+    <thead class="table-dark">
+      <tr>
+        <th>Nº</th>
+        <th>Data</th>
+        <th>Hora</th>
+        <th>Professor</th>
+        <th>Sala</th>
+        <th>Aluno</th>
+        <th>Tutor</th>
+        <th>Status</th>
+        <th>Pend. Tutor</th>
+        <th>Pend. Coord</th>
+        <th>Pend. Gestão</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for reg in registros %}
+      <tr>
+        <td>{{ reg["Nº Ocorrência"] }}</td>
+        <td>{{ reg["Data Criação"] }}</td>
+        <td>{{ reg["Hora Criação"] }}</td>
+        <td>{{ reg["Professor"] }}</td>
+        <td>{{ reg["Sala"] }}</td>
+        <td>{{ reg["Aluno"] }}</td>
+        <td>{{ reg["Tutor"] }}</td>
+        <td>{{ reg["Status"] }}</td>
+
+        <td>
+          {% if reg["FlagTutor"] == "Sim" %}
+            <button class="btn btn-outline-primary btn-sm"
+                    onclick="window.location.href='{{ url_for('abrir_pendencia', oid=reg['Nº Ocorrência'], papel='tutor') }}'">
+              Sim
+            </button>
+          {% else %}Não{% endif %}
+        </td>
+
+        <td>
+          {% if reg["FlagCoord"] == "Sim" %}
+            <button class="btn btn-outline-warning btn-sm"
+                    onclick="window.location.href='{{ url_for('abrir_pendencia', oid=reg['Nº Ocorrência'], papel='coord') }}'">
+              Sim
+            </button>
+          {% else %}Não{% endif %}
+        </td>
+
+        <td>
+          {% if reg["FlagGestao"] == "Sim" %}
+            <button class="btn btn-outline-danger btn-sm"
+                    onclick="window.location.href='{{ url_for('abrir_pendencia', oid=reg['Nº Ocorrência'], papel='gestao') }}'">
+              Sim
+            </button>
+          {% else %}Não{% endif %}
+        </td>
+
+        <td>
+          <button class="btn btn-secondary btn-sm"
+                  onclick="window.location.href='{{ url_for('editar', oid=reg['Nº Ocorrência'], campo='view') }}'">🔍</button>
+
+          <button class="btn btn-primary btn-sm"
+                  onclick="
+                      const p = prompt('Digite a senha para editar:');
+                      if(p==='Gest@0IDR'){
+                        window.location.href='{{ url_for('editar', oid=reg['Nº Ocorrência'], campo='edit') }}';
+                      } else if(p!==null){ alert('Senha incorreta!'); }
+                  ">✏️</button>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="12" class="text-center">Nenhuma ocorrência encontrada.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

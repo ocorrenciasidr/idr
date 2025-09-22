@@ -1,0 +1,37 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Relatório Tutor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="p-4">
+  <div class="container">
+    <h4>Relatório por Tutor</h4>
+    <form method="get" class="row g-2">
+      <div class="col-md-4">
+        <select name="tutor" class="form-select">
+          <option value="">-- selecione tutor --</option>
+          {% for t in tutores %}
+            <option value="{{ t }}" {% if tutor_sel==t %}selected{% endif %}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2"><button class="btn btn-primary" type="submit">Carregar</button></div>
+    </form>
+    <hr>
+    {% if tabela %}
+      <table class="table table-sm">
+        <thead><tr><th>Nº</th><th>Data Criação</th><th>Data Atendimento</th></tr></thead>
+        <tbody>
+          {% for r in tabela %}
+          <tr><td>{{ r['Nº Ocorrência'] }}</td><td>{{ r['Data Criação'] }}</td><td>{{ r['Data Atendimento'] }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p>Totais - Criadas: {{ totais.criadas }} | Atendidas: {{ totais.atendidas }} | Fora do prazo: {{ totais.fora_prazo }}</p>
+      <form method="post"><input type="hidden" name="acao" value="gerar_pdf"><button class="btn btn-success">Gerar PDF</button></form>
+    {% endif %}
+  </div>
+</body>
+</html>
