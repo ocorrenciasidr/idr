@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
 from io import BytesIO
+import re
 
 import pandas as pd
 from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file
@@ -15,7 +16,6 @@ MODELO_EXCEL = os.path.join(BASE_DIR, "ControleOcorrencias.xlsx")
 DADOS_EXCEL = os.path.join(BASE_DIR, "dados_ocorrencias.xlsx")
 
 app = Flask(__name__)
-
 
 # -------------------- Funções auxiliares --------------------
 def carregar_dados():
@@ -66,7 +66,6 @@ def proximo_numero():
     except Exception:
         return len(df) + 1
 
-
 # -------------------- Rotas principais --------------------
 @app.route("/")
 def home():
@@ -106,6 +105,11 @@ def index():
         tutores=tutores_ref,
         salas=sorted(df["Sala"].dropna().unique().tolist() if not df.empty else [])
     )
+
+
+@app.route("/tutoria")
+def tutoria():
+    return render_template("tutoria.html")
 
 
 @app.route("/nova")
@@ -216,24 +220,53 @@ def editar(oid):
     return render_template("editar.html", ocorrencia=registro, permissoes=permissoes)
 
 
-# -------------------- API de alunos --------------------
+# -------------------- API de alunos (ATUALIZADA) --------------------
 @app.route("/api/alunos_sala/<sala>")
 def api_alunos_sala(sala):
     try:
         df_alunos = pd.read_excel(MODELO_EXCEL, sheet_name="Alunos", header=None)
         df_alunos.columns = ["Sala", "Aluno", "Tutor"]
 
-        sala = sala.strip()
-        dados = (
-            df_alunos[df_alunos["Sala"].astype(str).str.strip() == sala]
-            [["Aluno", "Tutor"]]
-            .dropna(subset=["Aluno"])
-            .to_dict(orient="records")
-        )
+        # Normalizar dados
+        df_alunos["Sala"] = df_alunos["Sala"].astype(str).str.strip()
+        df_alunos["Aluno"] = df_alunos["Aluno"].astype(str).str.strip()
+        df_alunos["Tutor"] = df_alunos["Tutor"].astype(str).str.strip()
+        df_alunos = df_alunos.dropna(subset=["Sala", "Aluno"])
+
+        # Escapa caracteres especiais e ignora maiúsculas/minúsculas
+        sala = str(sala).strip()
+        pattern = re.escape(sala)
+
+        # Filtra usando contains para evitar problemas com caracteres especiais
+        dados = df_alunos[df_alunos["Sala"].str.contains(pattern, case=False, na=False)][["Aluno", "Tutor"]].to_dict(orient="records")
+
         return jsonify(dados)
+
     except Exception as e:
-        print("Erro ao ler alunos/tutores:", e)
+        print(f"Erro ao ler alunos/tutores para a sala '{sala}':", e)
         return jsonify([])
+
+
+# -------------------- Relatórios --------------------
+@app.route("/relatorio_inicial")
+def relatorio_inicial():
+    return render_template("relatorio_inicial.html")
+
+@app.route("/relatorio_aluno")
+def relatorio_aluno():
+    return render_template("relatorio_aluno.html")
+
+@app.route("/relatorio_geral")
+def relatorio_geral():
+    return render_template("relatorio_geral.html")
+
+@app.route("/relatorio_tutor")
+def relatorio_tutor():
+    return render_template("relatorio_tutor.html")
+
+@app.route("/relatorio_tutoraluno")
+def relatorio_tutoraluno():
+    return render_template("relatorio_tutoraluno.html")
 
 
 # -------------------- Main --------------------
