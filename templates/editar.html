@@ -49,76 +49,66 @@
     .btn-secondary:hover {
       background-color: #757575;
     }
-    .toast {
-      background-color: #2e7d32 !important;
-      color: #fff;
-    }
   </style>
 </head>
 <body class="p-4">
   <div class="container">
-    <h2 class="mb-4">Editar Ocorrência #{{ ocorrencia['Nº Ocorrência'] }}</h2>
+    <h2 class="mb-4">Ocorrência #{{ ocorrencia['Nº Ocorrência'] }}</h2>
 
     <form method="post">
-      <!-- Atendimento Professor -->
-      {% if permissoes.professor %}
+      <!-- Sempre mostrar todos os campos -->
+      <div class="mb-3">
+        <label class="form-label">Professor</label>
+        <input type="text" class="form-control" value="{{ ocorrencia['Professor'] }}" readonly>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Sala</label>
+        <input type="text" class="form-control" value="{{ ocorrencia['Sala'] }}" readonly>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Aluno</label>
+        <input type="text" class="form-control" value="{{ ocorrencia['Aluno'] }}" readonly>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Tutor</label>
+        <input type="text" class="form-control" value="{{ ocorrencia['Tutor'] }}" readonly>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Descrição da Ocorrência</label>
+        <textarea class="form-control" readonly>{{ ocorrencia['Descrição da Ocorrência'] }}</textarea>
+      </div>
+
+      <!-- Campos de Atendimento (editáveis conforme permissões) -->
       <div class="mb-3">
         <label class="form-label">Atendimento Professor</label>
         <textarea name="at_professor" class="form-control"
-                  {% if campo != 'edit' %}readonly{% endif %}>{{ ocorrencia['Atendimento Professor'] }}</textarea>
+                  {% if not permissoes.professor %}readonly{% endif %}>{{ ocorrencia['Atendimento Professor'] }}</textarea>
       </div>
-      {% endif %}
 
-      <!-- Atendimento Tutor -->
-      {% if permissoes.tutor %}
       <div class="mb-3">
         <label class="form-label">Atendimento Tutor</label>
         <textarea name="at_tutor" class="form-control"
-                  {% if campo != 'edit' %}readonly{% endif %}>{{ ocorrencia['Atendimento Tutor'] }}</textarea>
+                  {% if not permissoes.tutor %}readonly{% endif %}>{{ ocorrencia['Atendimento Tutor'] }}</textarea>
       </div>
-      {% endif %}
 
-      <!-- Atendimento Coordenação -->
-      {% if permissoes.coord %}
       <div class="mb-3">
         <label class="form-label">Atendimento Coordenação</label>
         <textarea name="at_coord" class="form-control"
-                  {% if campo != 'edit' %}readonly{% endif %}>{{ ocorrencia['Atendimento Coordenação'] }}</textarea>
+                  {% if not permissoes.coord %}readonly{% endif %}>{{ ocorrencia['Atendimento Coordenação'] }}</textarea>
       </div>
-      {% endif %}
 
-      <!-- Atendimento Gestão -->
-      {% if permissoes.gestao %}
       <div class="mb-3">
         <label class="form-label">Atendimento Gestão</label>
         <textarea name="at_gestao" class="form-control"
-                  {% if campo != 'edit' %}readonly{% endif %}>{{ ocorrencia['Atendimento Gestão'] }}</textarea>
+                  {% if not permissoes.gestao %}readonly{% endif %}>{{ ocorrencia['Atendimento Gestão'] }}</textarea>
       </div>
-      {% endif %}
 
       <button type="submit" class="btn btn-success"
-              {% if campo == 'view' %}disabled{% endif %}>Salvar Resposta</button>
+              {% if not (permissoes.professor or permissoes.tutor or permissoes.coord or permissoes.gestao) %}disabled{% endif %}>
+        Salvar Resposta
+      </button>
       <a href="{{ url_for('index') }}" class="btn btn-secondary">Voltar</a>
     </form>
   </div>
-
-  <!-- Toast -->
-  {% if mensagem %}
-  <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
-    <div class="toast align-items-center border-0 show" role="alert" aria-live="assertive" aria-atomic="true">
-      <div class="d-flex">
-        <div class="toast-body">{{ mensagem }}</div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-      </div>
-    </div>
-  </div>
-  <script>
-    setTimeout(() => {
-      const toastEl = document.querySelector('.toast');
-      const toast = bootstrap.Toast.getOrCreateInstance(toastEl);
-      toast.hide();
-    }, 3000);
-  </script>
-  {% endif %}
 </body>
 </html>

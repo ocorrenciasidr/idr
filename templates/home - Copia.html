@@ -7,6 +7,7 @@
 </head>
 <body class="bg-light">
     <div class="container text-center mt-5">
+        <img src="{{ url_for('static', filename='brasao.png') }}" alt="Brasão da Escola" width="120" class="mb-3">
         <h1 class="mb-4">Sistema de Ocorrências - E.E. PEI Profª Irene Dias Ribeiro</h1>
 
         <div class="d-grid gap-2 col-6 mx-auto">
@@ -15,10 +16,5 @@
             <a href="{{ url_for('tutoria') }}" class="btn btn-warning btn-lg">Tutoria</a>
         </div>
     </div>
-
-    <!-- Rodapé -->
-    <footer class="text-center mt-5 mb-3">
-        <small>Desenvolvido pelo Prof. Marcelo, sem fins lucrativos, para a EE PEI Profª Irene Dias Ribeiro</small>
-    </footer>
 </body>
 </html>

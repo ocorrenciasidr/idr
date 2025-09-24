@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Relatório do Aluno</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Atualiza alunos quando a sala é alterada
+    function atualizarAlunos() {
+      const sala = document.getElementById('sala').value;
+      const alunoSelect = document.getElementById('aluno');
+      alunoSelect.innerHTML = ''; // limpa os alunos
+      fetch(`/api/alunos_sala/${sala}`)
+        .then(response => response.json())
+        .then(data => {
+          data.forEach(aluno => {
+            const opt = document.createElement('option');
+            opt.value = aluno;
+            opt.text = aluno;
+            alunoSelect.appendChild(opt);
+          });
+        });
+    }
+
+    // Atualiza ocorrências quando o aluno é alterado
+    function atualizarOcorrencias() {
+      const sala = document.getElementById('sala').value;
+      const aluno = document.getElementById('aluno').value;
+      fetch(`/api/ocorrencias_aluno?sala=${sala}&aluno=${aluno}`)
+        .then(response => response.json())
+        .then(data => {
+          const tbody = document.getElementById('ocorrencias-body');
+          tbody.innerHTML = '';
+          data.forEach(oc => {
+            const tr = document.createElement('tr');
+
+            const tdCheckbox = document.createElement('td');
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.name = 'ocorrencia';
+            checkbox.value = oc['Nº Ocorrência'];
+            if (oc['Status'] === 'Assinada') checkbox.disabled = true;
+            tdCheckbox.appendChild(checkbox);
+            tr.appendChild(tdCheckbox);
+
+            ['Nº Ocorrência','Data Criação','Hora Criação','Professor','Descrição da Ocorrência','Status']
+              .forEach(field => {
+                const td = document.createElement('td');
+                td.textContent = oc[field];
+                tr.appendChild(td);
+              });
+
+            tbody.appendChild(tr);
+          });
+        });
+    }
+  </script>
+  <style>
+    body { background-color: #121212; color: #e0e0e0; }
+    .container { background-color: #1e1e1e; padding: 25px; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.6); }
+    h2 { color: #ffb74d; }
+    table { color: #e0e0e0; }
+    th, td { text-align: center; vertical-align: middle; }
+    .btn-success { background-color: #43a047; border: none; }
+    .btn-success:hover { background-color: #388e3c; }
+    .btn-secondary { background-color: #616161; border: none; }
+    .btn-secondary:hover { background-color: #757575; }
+  </style>
+</head>
+<body class="p-4">
+  <div class="container">
+    <h2 class="mb-4">Relatório do Aluno</h2>
+
+    <form method="post" action="{{ url_for('gerar_pdf_aluno') }}">
+      <div class="mb-3 row">
+        <div class="col">
+          <label for="sala" class="form-label">Sala</label>
+          <select name="sala" id="sala" class="form-select" onchange="atualizarAlunos()">
+            {% for s in salas %}
+              <option value="{{ s }}" {% if s == sala_sel %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col">
+          <label for="aluno" class="form-label">Aluno</label>
+          <select name="aluno" id="aluno" class="form-select" onchange="atualizarOcorrencias()">
+            {% for a in alunos %}
+              <option value="{{ a }}" {% if a == aluno_sel %}selected{% endif %}>{{ a }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col d-flex align-items-end">
+          <button type="submit" class="btn btn-success w-100">Gerar PDF</button>
+        </div>
+      </div>
+
+      <table class="table table-dark table-striped table-hover">
+        <thead>
+          <tr>
+            <th>Selecionar</th>
+            <th>Nº Ocorrência</th>
+            <th>Data</th>
+            <th>Hora</th>
+            <th>Professor</th>
+            <th>Descrição</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="ocorrencias-body">
+          {% for ocorrencia in ocorrencias %}
+          <tr>
+            <td>
+              <input type="checkbox" name="ocorrencia" value="{{ ocorrencia['Nº Ocorrência'] }}"
+                     {% if ocorrencia['Status'] == 'Assinada' %}disabled{% endif %}>
+            </td>
+            <td>{{ ocorrencia['Nº Ocorrência'] }}</td>
+            <td>{{ ocorrencia['Data Criação'] }}</td>
+            <td>{{ ocorrencia['Hora Criação'] }}</td>
+            <td>{{ ocorrencia['Professor'] }}</td>
+            <td>{{ ocorrencia['Descrição da Ocorrência'] }}</td>
+            <td>{{ ocorrencia['Status'] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </form>
+
+    <a href="{{ url_for('relatorio_inicial') }}" class="btn btn-secondary mt-3">Voltar</a>
+  </div>
+</body>
+</html>
