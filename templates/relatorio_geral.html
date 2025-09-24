@@ -1,33 +1,60 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="pt-br">
 <head>
-  <meta charset="utf-8">
-  <title>Relatório Geral</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta charset="UTF-8">
+    <title>Relatório Geral</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
 </head>
-<body class="p-4">
-  <div class="container">
-    <h4>Relatório Geral por Tutor</h4>
-    <form method="get" class="row g-2">
-      <div class="col-md-3"><input class="form-control" type="date" name="dt_ini" value="{{ dt_ini }}"></div>
-      <div class="col-md-3"><input class="form-control" type="date" name="dt_fim" value="{{ dt_fim }}"></div>
-      <div class="col-md-3"><button class="btn btn-primary" type="submit">Aplicar filtro</button></div>
+<body class="bg-light">
+<div class="container mt-5">
+    <h1 class="mb-4">Relatório Geral</h1>
+
+    <form method="get" action="{{ url_for('relatorio_geral') }}" class="row g-3 mb-3">
+        <div class="col-md-3">
+            <label for="data_inicio" class="form-label">Data Início:</label>
+            <input type="date" name="data_inicio" id="data_inicio" class="form-control" value="{{ data_inicio }}">
+        </div>
+        <div class="col-md-3">
+            <label for="data_fim" class="form-label">Data Fim:</label>
+            <input type="date" name="data_fim" id="data_fim" class="form-control" value="{{ data_fim }}">
+        </div>
+        <div class="col-md-6 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary me-2">Filtrar</button>
+            <form method="post" action="{{ url_for('gerar_pdf_geral') }}">
+                <button type="submit" class="btn btn-success me-2">Gerar PDF</button>
+            </form>
+            <a href="{{ url_for('relatorio_inicial') }}" class="btn btn-secondary">Voltar</a>
+        </div>
     </form>
-    <hr>
-    <table class="table table-striped">
-      <thead><tr><th>Tutor</th><th>Geradas</th><th>Atendidas</th><th>Atrasadas</th></tr></thead>
-      <tbody>
-        {% for row in tabela %}
-        <tr>
-          <td>{{ row.Tutor }}</td>
-          <td>{{ row.Geradas }}</td>
-          <td>{{ row.Atendidas }}</td>
-          <td>{{ row.Atrasadas }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <form method="post"><input type="hidden" name="acao" value="gerar_pdf"><button class="btn btn-success">Gerar PDF</button></form>
-  </div>
+
+    <!-- Aqui entram tabelas, gráficos e porcentagens conforme sua lógica -->
+    {% if ocorrencias %}
+        <div class="mt-4">
+            <img src="data:image/png;base64,{{ grafico_base64 }}" class="img-fluid mb-3">
+            <table class="table table-striped table-bordered">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Nº Ocorrência</th>
+                        <th>Aluno</th>
+                        <th>Sala</th>
+                        <th>Status</th>
+                        <th>Prazo 7 dias</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for o in ocorrencias %}
+                        <tr>
+                            <td>{{ o["Nº Ocorrência"] }}</td>
+                            <td>{{ o["Aluno"] }}</td>
+                            <td>{{ o["Sala"] }}</td>
+                            <td>{{ o["Status"] }}</td>
+                            <td>{{ o["Prazo"] }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+</div>
 </body>
 </html>

@@ -3,79 +3,122 @@
 <head>
   <meta charset="UTF-8">
   <title>Editar Ocorrência</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
   <style>
-    body { background: #f8f9fa; }
-    .container { max-width: 800px; margin-top: 30px; }
-    textarea { resize: vertical; }
+    body {
+      background-color: #121212;
+      color: #e0e0e0;
+    }
+    .container {
+      background-color: #1e1e1e;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+    }
+    h2 {
+      color: #ffb74d;
+    }
+    .form-label {
+      font-weight: 600;
+      color: #b0bec5;
+    }
+    .form-control {
+      background-color: #2a2a2a;
+      color: #fff;
+      border: 1px solid #444;
+    }
+    .form-control:focus {
+      background-color: #2a2a2a;
+      color: #fff;
+      border-color: #ffb74d;
+      box-shadow: 0 0 0 .2rem rgba(255,183,77,.25);
+    }
+    .btn-success {
+      background-color: #43a047;
+      border: none;
+    }
+    .btn-success:hover {
+      background-color: #388e3c;
+    }
+    .btn-secondary {
+      background-color: #616161;
+      border: none;
+    }
+    .btn-secondary:hover {
+      background-color: #757575;
+    }
+    .toast {
+      background-color: #2e7d32 !important;
+      color: #fff;
+    }
   </style>
 </head>
-<body>
-<div class="container">
-  <h3 class="mb-4 text-center">Ocorrência Nº {{ ocorrencia["Nº Ocorrência"] }}</h3>
+<body class="p-4">
+  <div class="container">
+    <h2 class="mb-4">Editar Ocorrência #{{ ocorrencia['Nº Ocorrência'] }}</h2>
 
-  <form method="post" class="bg-white p-4 rounded shadow">
-    <!-- Dados básicos (somente visualização) -->
-    <div class="mb-3">
-      <label class="form-label">Professor</label>
-      <input type="text" class="form-control" value="{{ ocorrencia['Professor'] }}" disabled>
+    <form method="post">
+      <!-- Atendimento Professor -->
+      {% if permissoes.professor %}
+      <div class="mb-3">
+        <label class="form-label">Atendimento Professor</label>
+        <textarea name="at_professor" class="form-control"
+                  {% if campo != 'edit' %}readonly{% endif %}>{{ ocorrencia['Atendimento Professor'] }}</textarea>
+      </div>
+      {% endif %}
+
+      <!-- Atendimento Tutor -->
+      {% if permissoes.tutor %}
+      <div class="mb-3">
+        <label class="form-label">Atendimento Tutor</label>
+        <textarea name="at_tutor" class="form-control"
+                  {% if campo != 'edit' %}readonly{% endif %}>{{ ocorrencia['Atendimento Tutor'] }}</textarea>
+      </div>
+      {% endif %}
+
+      <!-- Atendimento Coordenação -->
+      {% if permissoes.coord %}
+      <div class="mb-3">
+        <label class="form-label">Atendimento Coordenação</label>
+        <textarea name="at_coord" class="form-control"
+                  {% if campo != 'edit' %}readonly{% endif %}>{{ ocorrencia['Atendimento Coordenação'] }}</textarea>
+      </div>
+      {% endif %}
+
+      <!-- Atendimento Gestão -->
+      {% if permissoes.gestao %}
+      <div class="mb-3">
+        <label class="form-label">Atendimento Gestão</label>
+        <textarea name="at_gestao" class="form-control"
+                  {% if campo != 'edit' %}readonly{% endif %}>{{ ocorrencia['Atendimento Gestão'] }}</textarea>
+      </div>
+      {% endif %}
+
+      <button type="submit" class="btn btn-success"
+              {% if campo == 'view' %}disabled{% endif %}>Salvar Resposta</button>
+      <a href="{{ url_for('index') }}" class="btn btn-secondary">Voltar</a>
+    </form>
+  </div>
+
+  <!-- Toast -->
+  {% if mensagem %}
+  <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div class="toast align-items-center border-0 show" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body">{{ mensagem }}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
     </div>
-
-    <div class="mb-3">
-      <label class="form-label">Sala</label>
-      <input type="text" class="form-control" value="{{ ocorrencia['Sala'] }}" disabled>
-    </div>
-
-    <div class="mb-3">
-      <label class="form-label">Aluno</label>
-      <input type="text" class="form-control" value="{{ ocorrencia['Aluno'] }}" disabled>
-    </div>
-
-    <div class="mb-3">
-      <label class="form-label">Tutor</label>
-      <input type="text" class="form-control" value="{{ ocorrencia['Tutor'] }}" disabled>
-    </div>
-
-    <div class="mb-3">
-      <label class="form-label">Descrição da Ocorrência</label>
-      <textarea class="form-control" rows="3" disabled>{{ ocorrencia['Descrição da Ocorrência'] }}</textarea>
-    </div>
-
-    <hr>
-
-    <!-- Atendimento Professor -->
-    <div class="mb-3">
-      <label class="form-label">Atendimento Professor</label>
-      <textarea name="at_professor" class="form-control" rows="2"
-        {% if not permissoes.professor %}disabled{% endif %}>{{ ocorrencia["Atendimento Professor"] }}</textarea>
-    </div>
-
-    <!-- Atendimento Tutor -->
-    <div class="mb-3">
-      <label class="form-label">Atendimento Tutor</label>
-      <textarea name="at_tutor" class="form-control" rows="2"
-        {% if not permissoes.tutor %}disabled{% endif %}>{{ ocorrencia["Atendimento Tutor"] }}</textarea>
-    </div>
-
-    <!-- Atendimento Coordenação -->
-    <div class="mb-3">
-      <label class="form-label">Atendimento Coordenação</label>
-      <textarea name="at_coord" class="form-control" rows="2"
-        {% if not permissoes.coord %}disabled{% endif %}>{{ ocorrencia["Atendimento Coordenação"] }}</textarea>
-    </div>
-
-    <!-- Atendimento Gestão -->
-    <div class="mb-3">
-      <label class="form-label">Atendimento Gestão</label>
-      <textarea name="at_gestao" class="form-control" rows="2"
-        {% if not permissoes.gestao %}disabled{% endif %}>{{ ocorrencia["Atendimento Gestão"] }}</textarea>
-    </div>
-
-    <div class="text-center mt-4">
-      <button type="submit" class="btn btn-success px-4">Salvar</button>
-      <a href="{{ url_for('index') }}" class="btn btn-secondary px-4">Voltar</a>
-    </div>
-  </form>
-</div>
+  </div>
+  <script>
+    setTimeout(() => {
+      const toastEl = document.querySelector('.toast');
+      const toast = bootstrap.Toast.getOrCreateInstance(toastEl);
+      toast.hide();
+    }, 3000);
+  </script>
+  {% endif %}
 </body>
 </html>
