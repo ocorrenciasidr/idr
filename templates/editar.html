@@ -68,9 +68,11 @@
         <label class="form-label">Tutor</label>
         <input type="text" class="form-control" value="{{ ocorrencia['Tutor'] }}" readonly>
       </div>
+      
       <div class="col-12">
         <label class="form-label">Status</label>
-        <select name="status" class="form-select" {% if not permissoes.gestao %}readonly{% endif %}>
+        <select name="status" class="form-select" 
+                {% if not permissoes.gestao %}disabled{% endif %}>
           <option value="Aberto" {% if ocorrencia['Status'] == 'Aberto' %}selected{% endif %}>Aberto</option>
           <option value="Em Andamento" {% if ocorrencia['Status'] == 'Em Andamento' %}selected{% endif %}>Em Andamento</option>
           <option value="Fechado" {% if ocorrencia['Status'] == 'Fechado' %}selected{% endif %}>Fechado</option>
@@ -80,25 +82,26 @@
 
     <div class="mb-3 mt-3">
       <label class="form-label">Descrição da Ocorrência</label>
-      <textarea class="form-control" rows="3" readonly>{{ ocorrencia['Descrição da Ocorrência'] }}</textarea>
+      <textarea name="descricao" class="form-control" rows="3" 
+                {% if not permissoes.descricao %}readonly{% endif %}>{{ ocorrencia['Descrição da Ocorrência'] }}</textarea>
     </div>
 
     <div class="mb-3">
       <label class="form-label">Atendimento Professor</label>
       <textarea name="at_professor" class="form-control"
-                {% if not permissoes.professor %}readonly{% endif %}>{{ ocorrencia['Atendimento Professor'] }}</textarea>
+                {% if not permissoes.professor and not permissoes.gestao %}readonly{% endif %}>{{ ocorrencia['Atendimento Professor'] }}</textarea>
     </div>
 
     <div class="mb-3">
       <label class="form-label">ATT (Atendimento Tutor)</label>
       <textarea name="at_tutor" class="form-control"
-                {% if not permissoes.tutor %}readonly{% endif %}>{{ ocorrencia['ATT'] }}</textarea>
+                {% if not permissoes.tutor and not permissoes.gestao %}readonly{% endif %}>{{ ocorrencia['ATT'] }}</textarea>
     </div>
 
     <div class="mb-3">
       <label class="form-label">ATC (Atendimento Coordenação)</label>
       <textarea name="at_coord" class="form-control"
-                {% if not permissoes.coord %}readonly{% endif %}>{{ ocorrencia['ATC'] }}</textarea>
+                {% if not permissoes.coord and not permissoes.gestao %}readonly{% endif %}>{{ ocorrencia['ATC'] }}</textarea>
     </div>
 
     <div class="mb-3">
