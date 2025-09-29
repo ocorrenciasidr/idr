@@ -1,12 +1,17 @@
 import os
+import json # NOVO: Para carregar o JSON das credenciais
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
 import re
-import shutil
+# import shutil # REMOVIDO: Não é mais necessário para backup
 import base64
 
 import pandas as pd
 from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file, flash
+
+# NOVO: Imports para gspread
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 # ReportLab (gera o PDF)
 from reportlab.lib.pagesizes import A4
@@ -23,39 +28,48 @@ try:
 except Exception:
     TZ_SAO = timezone(timedelta(hours=-3))
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODELO_EXCEL = os.path.join(BASE_DIR, "ControleOcorrencias.xlsx")
-DADOS_EXCEL = os.path.join(BASE_DIR, "dados_ocorrencias.xlsx")
-BACKUP_DIR = os.path.join(BASE_DIR, "backups")
-os.makedirs(BACKUP_DIR, exist_ok=True)
+# --- REMOÇÃO DE CAMINHOS LOCAIS ---
+# BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# MODELO_EXCEL = os.path.join(BASE_DIR, "ControleOcorrencias.xlsx")
+# DADOS_EXCEL = os.path.join(BASE_DIR, "dados_ocorrencias.xlsx")
+# BACKUP_DIR = os.path.join(BASE_DIR, "backups")
+# os.makedirs(BACKUP_DIR, exist_ok=True)
+
+# -------------------- CONEXÃO GOOGLE SHEETS --------------------
+# *** IMPORTANTE: SUBSTITUA ESTE VALOR PELO ID DA SUA PLANILHA ***
+PLANILHA_ID = "1Jyle_LCRCKQfbDShoIj-9MPNIkVSkYxWaCwQrhmxSoE" 
+
+SCOPE = [
+    "https://spreadsheets.google.com/feeds",
+    "https://www.googleapis.com/auth/drive"
+]
+
+def conectar_sheets():
+    """Tenta autenticar usando a Variável de Ambiente GSPREAD_CREDENTIALS."""
+    creds_json = os.environ.get("GSPREAD_CREDENTIALS")
+    if not creds_json:
+        # Se a variável de ambiente não estiver configurada, levanta um erro claro
+        raise Exception("Variável GSPREAD_CREDENTIALS não configurada no Render. Verifique suas credenciais JSON.")
+
+    creds_dict = json.loads(creds_json)
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, SCOPE)
+    client = gspread.authorize(creds)
+    
+    # Abre a planilha pelo ID
+    return client.open_by_key(PLANILHA_ID)
+# ---------------------------------------------------------------
 
 app = Flask(__name__)
-app.secret_key = "sua_chave_secreta"
+app.secret_key = "idrgestao"
 
 # -------------------- Funções auxiliares --------------------
-def backup_dados():
-    if os.path.exists(DADOS_EXCEL):
-        agora = datetime.now(TZ_SAO)
-        nome_backup = f"dados_ocorrencias_{agora.strftime('%Y%m%d_%H%M%S')}.xlsx"
-        caminho = os.path.join(BACKUP_DIR, nome_backup)
-        try:
-            shutil.copy2(DADOS_EXCEL, caminho)
-            print(f"[BACKUP] Criado: {caminho}")
-        except Exception as e:
-            print("Erro ao criar backup:", e)
+# --- FUNÇÕES DE ARQUIVO REMOVIDAS ---
+# def backup_dados(): # REMOVIDA
+# def restaurar_backup(): # REMOVIDA
+# ------------------------------------
 
-def restaurar_backup():
-    if not os.path.exists(DADOS_EXCEL) and os.path.exists(BACKUP_DIR):
-        backups = sorted(
-            [f for f in os.listdir(BACKUP_DIR) if f.startswith("dados_ocorrencias_")],
-            reverse=True
-        )
-        if backups:
-            ultimo_backup = os.path.join(BACKUP_DIR, backups[0])
-            shutil.copy2(ultimo_backup, DADOS_EXCEL)
-            print(f"[RESTORE] Base recuperada do backup: {ultimo_backup}")
-
-def carregar_dados():
+def carregar_dados(sheet_name="Dados"):
+    """Carrega dados de uma aba do Google Sheets para um DataFrame do Pandas."""
     cols = [
         "Nº Ocorrência", "Data Criação", "Hora Criação",
         "Professor", "Sala", "Aluno", "Tutor",
@@ -66,14 +80,23 @@ def carregar_dados():
         "Data Atendimento Tutor", "Data Atendimento Coord", "Data Atendimento Gestao",
         "Status"
     ]
-
-    restaurar_backup()
-
-    if not os.path.exists(DADOS_EXCEL):
-        return pd.DataFrame(columns=cols)
-
+    
+    # restaurar_backup() REMOVIDA
+    
     try:
-        df = pd.read_excel(DADOS_EXCEL)
+        sh = conectar_sheets()
+        ws = sh.worksheet(sheet_name)
+        
+        # Leitura eficiente de todos os dados (lista de listas)
+        dados_raw = ws.get_all_values()
+        
+        if len(dados_raw) <= 1: # Checa se há apenas o cabeçalho ou está vazia
+            return pd.DataFrame(columns=cols)
+            
+        # Cria o DataFrame usando a primeira linha como cabeçalho
+        df = pd.DataFrame(dados_raw[1:], columns=dados_raw[0])
+
+        # --- Lógica de compatibilidade e tratamento de tipos mantida ---
         for c in cols:
             if c not in df.columns:
                 df[c] = ""
@@ -83,19 +106,39 @@ def carregar_dados():
             df["Nº Ocorrência"] = pd.to_numeric(df["Nº Ocorrência"], errors="coerce").astype("Int64")
         except Exception:
             pass
-        return df[cols]
+        # -----------------------------------------------------------
+        
+        # Retorna o DataFrame, garantindo as colunas principais
+        return df[cols] if sheet_name == "Dados" else df
+        
     except Exception as e:
-        print("Erro ao ler dados:", e)
+        print(f"Erro ao ler dados do Google Sheets na aba '{sheet_name}':", e)
+        # Se falhar, retorna um DF vazio, mantendo a lógica original
         return pd.DataFrame(columns=cols)
 
 def salvar_dados(df):
-    df.to_excel(DADOS_EXCEL, index=False)
-
+    """Salva o DataFrame de volta na aba 'Dados' do Google Sheets."""
+    try:
+        sh = conectar_sheets()
+        # Salva na aba "Dados"
+        ws = sh.worksheet("Dados")
+        
+        # Converte o DataFrame para o formato de lista de listas (incluindo cabeçalho)
+        dados_para_sheets = [df.columns.values.tolist()] + df.values.tolist()
+        
+        # Atualiza a planilha inteira
+        ws.update(dados_para_sheets)
+        
+        # backup_dados() REMOVIDO
+    except Exception as e:
+        print("Erro ao salvar dados no Google Sheets:", e)
+        # Em produção, você pode querer flashear uma mensagem de erro para o usuário
+        
 def calc_status(ft, fc, fg):
     return "Finalizada" if str(ft).strip().lower() == "não" and str(fc).strip().lower() == "não" and str(fg).strip().lower() == "não" else "Em Atendimento"
 
 def proximo_numero():
-    df = carregar_dados()
+    df = carregar_dados() # Chama a nova função de leitura
     if df.empty:
         return 1
     try:
@@ -116,7 +159,7 @@ def index():
     sala = request.args.get("sala", "").strip()
     aluno = request.args.get("aluno", "").strip()
 
-    df = carregar_dados()
+    df = carregar_dados() # LÊ DA ABA "Dados" do Sheets
     if not df.empty:
         df["Status"] = df.apply(lambda r: calc_status(r["FlagTutor"], r["FlagCoord"], r["FlagGestao"]), axis=1)
         if tutor:
@@ -129,12 +172,15 @@ def index():
             df = df[df["Aluno"].str.strip().str.lower() == aluno.strip().lower()]
         df = df.sort_values(by="Nº Ocorrência", ascending=False)
 
+    # --- NOVO: Lendo Tutores da Aba "Alunos" ---
     try:
-        tutores_ref = pd.read_excel(MODELO_EXCEL, sheet_name="Alunos", header=None)
-        tutores_ref.columns = ["Sala", "Aluno", "Tutor"]
-        tutores_ref = tutores_ref["Tutor"].dropna().unique().tolist()
-    except Exception:
+        tutores_df = carregar_dados(sheet_name="Alunos")
+        # Mantendo sua lógica para extrair tutores
+        tutores_ref = tutores_df["Tutor"].dropna().unique().tolist()
+    except Exception as e:
+        print("Erro ao carregar lista de tutores:", e)
         tutores_ref = []
+    # --------------------------------------------
 
     registros = [] if df.empty else df.to_dict(orient="records")
     return render_template(
@@ -150,19 +196,28 @@ def tutoria():
 
 @app.route("/nova")
 def nova():
+    # --- NOVO: Lendo Professores da Aba "Professores" ---
     try:
-        professores = pd.read_excel(MODELO_EXCEL, sheet_name="Professores")["Professor"].dropna().tolist()
-    except Exception:
+        df_professores = carregar_dados(sheet_name="Professores")
+        professores = df_professores["Professor"].dropna().tolist()
+    except Exception as e:
+        print("Erro ao carregar lista de professores:", e)
         professores = []
+    
+    # --- NOVO: Lendo Salas da Aba "Salas" ---
     try:
-        salas = pd.read_excel(MODELO_EXCEL, sheet_name="Salas")["Sala"].dropna().tolist()
-    except Exception:
+        df_salas = carregar_dados(sheet_name="Salas")
+        salas = df_salas["Sala"].dropna().tolist()
+    except Exception as e:
+        print("Erro ao carregar lista de salas:", e)
         salas = []
+    # ----------------------------------------
+    
     return render_template("nova.html", professores=professores, salas=salas)
 
 @app.route("/salvar", methods=["POST"])
 def salvar():
-    df = carregar_dados()
+    df = carregar_dados() # LÊ DO SHEETS
     numero = proximo_numero()
     agora = datetime.now(TZ_SAO)
 
@@ -189,15 +244,15 @@ def salvar():
     }
 
     df = pd.concat([df, pd.DataFrame([nova])], ignore_index=True)
-    backup_dados()
-    salvar_dados(df)
+    # backup_dados() REMOVIDO
+    salvar_dados(df) # SALVA NO SHEETS
     return redirect(url_for("index"))
 
 # -------------------- Editar / Visualizar --------------------
 @app.route("/editar/<int:oid>", methods=["GET", "POST"])
 def editar(oid):
     campo = request.args.get("campo", "").strip()
-    df = carregar_dados()
+    df = carregar_dados() # LÊ DO SHEETS
     linha = df[df["Nº Ocorrência"] == oid]
     if linha.empty:
         return "Ocorrência não encontrada", 404
@@ -225,8 +280,8 @@ def editar(oid):
         df.loc[df["Nº Ocorrência"] == oid, "Status"] = calc_status(
             linha_atual["FlagTutor"], linha_atual["FlagCoord"], linha_atual["FlagGestao"]
         )
-        backup_dados()
-        salvar_dados(df)
+        # backup_dados() REMOVIDO
+        salvar_dados(df) # SALVA NO SHEETS
         return redirect(url_for("index"))
 
     permissoes = {
@@ -239,7 +294,7 @@ def editar(oid):
 
 @app.route("/visualizar/<int:oid>")
 def visualizar(oid):
-    df = carregar_dados()
+    df = carregar_dados() # LÊ DO SHEETS
     linha = df[df["Nº Ocorrência"] == oid]
     if linha.empty:
         return "Ocorrência não encontrada", 404
@@ -251,12 +306,18 @@ def visualizar(oid):
 @app.route("/api/alunos_sala/<sala>")
 def api_alunos_sala(sala):
     try:
-        df_alunos = pd.read_excel(MODELO_EXCEL, sheet_name="Alunos", header=None)
-        df_alunos.columns = ["Sala", "Aluno", "Tutor"]
+        # --- NOVO: Lendo Alunos da Aba "Alunos" ---
+        df_alunos = carregar_dados(sheet_name="Alunos")
+        
+        # Mantendo sua lógica de tratamento e filtro:
+        if df_alunos.empty:
+             return jsonify([])
+
         df_alunos["Sala"] = df_alunos["Sala"].astype(str).str.strip()
         df_alunos["Aluno"] = df_alunos["Aluno"].astype(str).str.strip()
         df_alunos["Tutor"] = df_alunos["Tutor"].astype(str).str.strip()
         df_alunos = df_alunos.dropna(subset=["Sala", "Aluno"])
+        
         sala = str(sala).strip()
         pattern = re.escape(sala)
         dados = df_alunos[df_alunos["Sala"].str.contains(pattern, case=False, na=False)][["Aluno", "Tutor"]].to_dict(orient="records")
@@ -274,7 +335,7 @@ def relatorio_inicial():
 def relatorio_aluno():
     sala = request.args.get("sala")
     aluno = request.args.get("aluno")
-    df = carregar_dados()
+    df = carregar_dados() # LÊ DO SHEETS
     salas = df["Sala"].dropna().unique().tolist()
     alunos = []
     if sala:
@@ -298,11 +359,12 @@ def relatorio_tutor():
 @app.route("/relatorio_tutoraluno")
 def relatorio_tutoraluno():
     return render_template("relatorio_tutoraluno.html")
+    
 @app.route("/gerar_pdf_aluno", methods=["POST"])
 def gerar_pdf_aluno():
     sala = request.form.get("sala")
     aluno = request.form.get("aluno")
-    df = carregar_dados()
+    df = carregar_dados() # LÊ DO SHEETS
     if sala and aluno:
         ocorrencias = df[
             (df["Sala"].str.strip().str.lower() == sala.strip().lower()) &
@@ -323,9 +385,10 @@ def gerar_pdf_aluno():
     pdf.output(output)
     output.seek(0)
     return send_file(output, download_name=f"relatorio_{aluno}.pdf", as_attachment=True)
+    
 @app.route("/abrir_pendencia/<oid>/<papel>")
 def abrir_pendencia(oid, papel):
-    df = carregar_dados()
+    df = carregar_dados() # LÊ DO SHEETS
     ocorrencia = df[df["Nº Ocorrência"] == int(oid)].iloc[0]
     
     if papel == "tutor":

@@ -1,5 +1,7 @@
-flask
+Flask
 pandas
-openpyxl
+gunicorn  # Essencial para rodar no Render
+gspread
+oauth2client
+fpdf
 reportlab
-gunicorn
