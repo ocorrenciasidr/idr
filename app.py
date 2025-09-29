@@ -71,13 +71,11 @@ app.secret_key = "idrgestao"
 def carregar_dados(sheet_name="Dados"):
     """Carrega dados de uma aba do Google Sheets para um DataFrame do Pandas."""
     cols = [
-        "Nº Ocorrência", "Data Criação", "Hora Criação",
+        "ID", "DCO", "HCO",
         "Professor", "Sala", "Aluno", "Tutor",
         "Descrição da Ocorrência",
-        "Atendimento Professor", "Atendimento Tutor",
-        "Atendimento Coordenação", "Atendimento Gestão",
-        "FlagTutor", "FlagCoord", "FlagGestao",
-        "Data Atendimento Tutor", "Data Atendimento Coord", "Data Atendimento Gestao",
+        "Atendimento Professor", "ATT",
+        "ATC", "ATG", "FT", "FC", "FG", "DT", "DC", "DG",
         "Status"
     ]
     
@@ -103,7 +101,7 @@ def carregar_dados(sheet_name="Dados"):
         df["Aluno"] = df["Aluno"].astype(str).str.strip()
         df["Sala"] = df["Sala"].astype(str).str.strip()
         try:
-            df["Nº Ocorrência"] = pd.to_numeric(df["Nº Ocorrência"], errors="coerce").astype("Int64")
+            df["ID"] = pd.to_numeric(df["ID"], errors="coerce").astype("Int64")
         except Exception:
             pass
         # -----------------------------------------------------------
@@ -142,7 +140,7 @@ def proximo_numero():
     if df.empty:
         return 1
     try:
-        maxv = pd.to_numeric(df["Nº Ocorrência"], errors="coerce").max()
+        maxv = pd.to_numeric(df["ID"], errors="coerce").max()
         return 1 if pd.isna(maxv) else int(maxv) + 1
     except Exception:
         return len(df) + 1
@@ -161,7 +159,7 @@ def index():
 
     df = carregar_dados() # LÊ DA ABA "Dados" do Sheets
     if not df.empty:
-        df["Status"] = df.apply(lambda r: calc_status(r["FlagTutor"], r["FlagCoord"], r["FlagGestao"]), axis=1)
+        df["Status"] = df.apply(lambda r: calc_status(r["FT"], r["FC"], r["FG"]), axis=1)
         if tutor:
             df = df[df["Tutor"].str.strip().str.lower() == tutor.strip().lower()]
         if status:
@@ -170,7 +168,7 @@ def index():
             df = df[df["Sala"].str.strip().str.lower() == sala.strip().lower()]
         if aluno:
             df = df[df["Aluno"].str.strip().str.lower() == aluno.strip().lower()]
-        df = df.sort_values(by="Nº Ocorrência", ascending=False)
+        df = df.sort_values(by="ID", ascending=False)
 
     # --- NOVO: Lendo Tutores da Aba "Alunos" ---
     try:
@@ -222,24 +220,24 @@ def salvar():
     agora = datetime.now(TZ_SAO)
 
     nova = {
-        "Nº Ocorrência": numero,
-        "Data Criação": agora.strftime("%Y-%m-%d"),
-        "Hora Criação": agora.strftime("%H:%M:%S"),
+        "ID": numero,
+        "DCO": agora.strftime("%Y-%m-%d"),
+        "HCO": agora.strftime("%H:%M:%S"),
         "Professor": request.form.get("professor", ""),
         "Sala": request.form.get("sala", ""),
         "Aluno": request.form.get("aluno", ""),
         "Tutor": request.form.get("tutor", ""),
         "Descrição da Ocorrência": request.form.get("descricao", ""),
         "Atendimento Professor": request.form.get("at_professor", ""),
-        "Atendimento Tutor": "",
-        "Atendimento Coordenação": "",
-        "Atendimento Gestão": "",
-        "FlagTutor": "Sim" if request.form.get("flag_tutor") else "Não",
-        "FlagCoord": "Sim" if request.form.get("flag_coord") else "Não",
-        "FlagGestao": "Sim" if request.form.get("flag_gestao") else "Não",
-        "Data Atendimento Tutor": "",
-        "Data Atendimento Coord": "",
-        "Data Atendimento Gestao": "",
+        "ATT Tutor": "",
+        "ATC": "",
+        "ATG": "",
+        "FT": "Sim" if request.form.get("FT") else "Não",
+        "FC": "Sim" if request.form.get("FC") else "Não",
+        "FG": "Sim" if request.form.get("FG") else "Não",
+        "DT": agora.strftime("%Y-%m-%d"),
+        "DC": agora.strftime("%Y-%m-%d"),
+        "DG": agora.strftime("%Y-%m-%d"),
         "Status": "Em Atendimento",
     }
 
@@ -253,7 +251,7 @@ def salvar():
 def editar(oid):
     campo = request.args.get("campo", "").strip()
     df = carregar_dados() # LÊ DO SHEETS
-    linha = df[df["Nº Ocorrência"] == oid]
+    linha = df[df["ID"] == oid]
     if linha.empty:
         return "Ocorrência não encontrada", 404
 
@@ -262,23 +260,23 @@ def editar(oid):
     if request.method == "POST":
         if campo in ["lupa", "lapis", "edit", "tutor", "coord", "gestao"]:
             if campo in ["lapis", "edit", "tutor"]:
-                df.loc[df["Nº Ocorrência"] == oid, "Atendimento Tutor"] = request.form.get("at_tutor", "")
+                df.loc[df["ID"] == oid, "ATT"] = request.form.get("at_tutor", "")
                 if campo == "tutor":
-                    df.loc[df["Nº Ocorrência"] == oid, "FlagTutor"] = "Não"
+                    df.loc[df["ID"] == oid, "FT"] = "Não"
             if campo in ["lapis", "edit", "coord"]:
-                df.loc[df["Nº Ocorrência"] == oid, "Atendimento Coordenação"] = request.form.get("at_coord", "")
+                df.loc[df["ID"] == oid, "ATC"] = request.form.get("at_coord", "")
                 if campo == "coord":
-                    df.loc[df["Nº Ocorrência"] == oid, "FlagCoord"] = "Não"
+                    df.loc[df["ID"] == oid, "FC"] = "Não"
             if campo in ["lapis", "edit", "gestao"]:
-                df.loc[df["Nº Ocorrência"] == oid, "Atendimento Gestão"] = request.form.get("at_gestao", "")
+                df.loc[df["ID"] == oid, "ATG"] = request.form.get("at_gestao", "")
                 if campo == "gestao":
-                    df.loc[df["Nº Ocorrência"] == oid, "FlagGestao"] = "Não"
+                    df.loc[df["ID"] == oid, "FG"] = "Não"
             if campo in ["lapis", "edit"]:
-                df.loc[df["Nº Ocorrência"] == oid, "Atendimento Professor"] = request.form.get("at_professor", "")
+                df.loc[df["ID"] == oid, "Atendimento Professor"] = request.form.get("at_professor", "")
 
-        linha_atual = df[df["Nº Ocorrência"] == oid].iloc[0]
-        df.loc[df["Nº Ocorrência"] == oid, "Status"] = calc_status(
-            linha_atual["FlagTutor"], linha_atual["FlagCoord"], linha_atual["FlagGestao"]
+        linha_atual = df[df["ID"] == oid].iloc[0]
+        df.loc[df["ID"] == oid, "Status"] = calc_status(
+            linha_atual["FT"], linha_atual["FC"], linha_atual["FG"]
         )
         # backup_dados() REMOVIDO
         salvar_dados(df) # SALVA NO SHEETS
@@ -295,7 +293,7 @@ def editar(oid):
 @app.route("/visualizar/<int:oid>")
 def visualizar(oid):
     df = carregar_dados() # LÊ DO SHEETS
-    linha = df[df["Nº Ocorrência"] == oid]
+    linha = df[df["ID"] == oid]
     if linha.empty:
         return "Ocorrência não encontrada", 404
     registro = linha.iloc[0].to_dict()
@@ -380,7 +378,7 @@ def gerar_pdf_aluno():
     pdf.set_font("Arial", size=12)
     pdf.cell(200, 10, txt=f"Relatório de {aluno} - Sala {sala}", ln=True)
     for i, row in ocorrencias.iterrows():
-        pdf.multi_cell(0, 10, txt=f"{row['Nº Ocorrência']} - {row['Descrição da Ocorrência']}")
+        pdf.multi_cell(0, 10, txt=f"{row['ID']} - {row['Descrição da Ocorrência']}")
     output = BytesIO()
     pdf.output(output)
     output.seek(0)
@@ -389,7 +387,7 @@ def gerar_pdf_aluno():
 @app.route("/abrir_pendencia/<oid>/<papel>")
 def abrir_pendencia(oid, papel):
     df = carregar_dados() # LÊ DO SHEETS
-    ocorrencia = df[df["Nº Ocorrência"] == int(oid)].iloc[0]
+    ocorrencia = df[df["ID"] == int(oid)].iloc[0]
     
     if papel == "tutor":
         return render_template("pendencia_tutor.html", ocorrencia=ocorrencia)
