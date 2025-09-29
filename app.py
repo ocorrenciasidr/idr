@@ -73,17 +73,16 @@ def carregar_dados(sheet_name="Dados"):
         flash(f"Erro ao carregar dados da aba '{sheet_name}'. Verifique as configurações.", "danger")
         return pd.DataFrame()
 
-# -------------------- NOVAS FUNÇÕES DE CARREGAMENTO PARA CONTROLES --------------------
+# -------------------- FUNÇÕES DE CARREGAMENTO PARA CONTROLES --------------------
 
 def carregar_lista_controle(sheet_name, column_name):
     """Carrega uma lista única de valores de uma coluna específica de uma aba."""
-    # Reutiliza a função base para ler a aba
     df = carregar_dados(sheet_name=sheet_name)
     
+    # Assumimos que o nome da coluna é o nome do header
     if df.empty or column_name not in df.columns:
         return []
     
-    # Retorna uma lista ordenada, única e sem valores nulos
     return sorted(df[column_name].astype(str).str.strip().dropna().unique().tolist())
 
 def carregar_professores():
@@ -98,9 +97,8 @@ def carregar_alunos_tutor_df():
     # Busca dados na Aba Alunos: Coluna A (Sala), Coluna B (Aluno), Coluna C (Tutor)
     df = carregar_dados(sheet_name="Alunos")
     
-    # Normaliza e valida colunas
+    # Normaliza e valida colunas (Certifique-se que os cabeçalhos são EXATAMENTE estes)
     if 'Sala' in df.columns and 'Aluno' in df.columns and 'Tutor' in df.columns:
-        # Pega apenas as colunas relevantes, limpa espaços e remove linhas sem Sala/Aluno
         df = df[['Sala', 'Aluno', 'Tutor']].astype(str).apply(lambda x: x.str.strip())
         return df.dropna(subset=['Aluno', 'Sala'])
     else:
@@ -117,18 +115,17 @@ def home():
 def index():
     df = carregar_dados() # Carrega a aba 'Dados'
     
-    # Se o DataFrame estiver vazio, retorna a página vazia
     if df.empty:
         return render_template("Index.html", registros=[], tutores=[], status_list=[], salas=[])
 
-    # Filtros
+    # Filtros (assumindo que as colunas existem)
     tutor_filtro = request.args.get("tutor")
     status_filtro = request.args.get("status")
     
-    if tutor_filtro:
+    if tutor_filtro and 'Tutor' in df.columns:
         df = df[df["Tutor"].str.strip() == tutor_filtro.strip()]
     
-    if status_filtro:
+    if status_filtro and 'Status' in df.columns:
         df = df[df["Status"].str.strip() == status_filtro.strip()]
         
     # CORREÇÃO CRÍTICA DO CÁLCULO DE PRAZO (Tratamento de formatos de data)
@@ -136,34 +133,30 @@ def index():
         if not data_str or data_str.strip() == '':
             return None
         
-        # 1. Limpa a string (remove a hora se existir, ex: "2025-09-29 16:23:11")
         data_pura = data_str.split(' ')[0]
         
         try:
-            # 2. Tenta o formato ISO (Y-M-D)
             data_criacao = datetime.strptime(data_pura, "%Y-%m-%d").replace(tzinfo=TZ_SAO)
         except ValueError:
             try:
-                # 3. Tenta o formato brasileiro (D/M/Y)
                 data_criacao = datetime.strptime(data_pura, "%d/%m/%Y").replace(tzinfo=TZ_SAO)
             except ValueError:
-                # 4. Tenta o parser robusto (dayfirst=True para tratar D/M/Y sem ser estrito)
                 try:
                     data_criacao = parse(data_pura, dayfirst=True).replace(tzinfo=TZ_SAO)
                 except Exception:
-                    # Se tudo falhar, retorna um valor nulo
                     return None 
         
         return (datetime.now(TZ_SAO) - data_criacao).days
 
-    df["Prazo"] = df["DCO"].apply(calcular_prazo)
+    if 'DCO' in df.columns:
+        df["Prazo"] = df["DCO"].apply(calcular_prazo)
     # Fim da correção do Prazo
     
     registros = df.to_dict("records")
     
     # Listas para filtros
     tutores = carregar_lista_controle("Tutores", "Tutor") # Assume que existe uma aba 'Tutores'
-    status_list = sorted(df["Status"].dropna().unique().tolist() if not df.empty else [])
+    status_list = sorted(df["Status"].dropna().unique().tolist() if 'Status' in df.columns and not df.empty else [])
     salas = carregar_salas()
 
     return render_template(
@@ -174,14 +167,12 @@ def index():
         salas=salas
     )
 
-# --- ROTA NOVA (CORRIGIDA) ---
+# --- ROTA NOVA (CORRIGIDA: Carrega Professores e Salas) ---
 @app.route("/nova")
 def nova():
-    # Carrega listas das abas de controle
     professores = carregar_professores()
     salas = carregar_salas()
     
-    # A lista de alunos será carregada via AJAX no nova.html
     return render_template("nova.html", professores=professores, salas=salas)
 
 # --- ROTA API ALUNOS (CORRIGIDA) ---
@@ -192,12 +183,12 @@ def api_alunos_sala(sala):
     if df_alunos.empty:
         return jsonify([])
 
-    # 1. Filtra o DataFrame pela sala (comparação sem case-sensitive e sem espaços extras)
+    # Filtra o DataFrame pela sala (comparação sem case-sensitive e sem espaços extras)
     df_filtrado = df_alunos[
         df_alunos["Sala"].str.lower() == sala.strip().lower()
     ]
     
-    # 2. Seleciona as colunas 'Aluno' e 'Tutor' e converte para JSON
+    # Seleciona as colunas 'Aluno' e 'Tutor' e converte para JSON
     lista_alunos_tutor = df_filtrado[['Aluno', 'Tutor']].to_dict('records')
     
     return jsonify(lista_alunos_tutor)
@@ -212,11 +203,12 @@ def salvar_ocorrencia():
         # 1. Encontrar o próximo ID
         all_ids = ws.col_values(1)[1:] # Assume que ID está na primeira coluna (A)
         try:
+            # Filtra IDs válidos (numéricos)
             next_id = max([int(i) for i in all_ids if i.isdigit()]) + 1
         except:
             next_id = 1 # Primeiro registro
         
-        # 2. Preparar os dados para inserção (adaptar aos seus cabeçalhos)
+        # 2. Preparar os dados para inserção
         data_criacao = datetime.now(TZ_SAO).strftime("%Y-%m-%d %H:%M:%S")
 
         # Sequência das colunas da sua planilha "Dados"
@@ -230,10 +222,9 @@ def salvar_ocorrencia():
             data.get('descricao'),
             data.get('status', 'Aberto'), # Define 'Aberto' como padrão
             '', # Atendimento Professor
-            '', # Atendimento Tutor
-            '', # Atendimento Coordenação
-            ''  # Atendimento Gestão
-            # Adicionar outras colunas conforme sua planilha
+            '', # ATT (Atendimento Tutor)
+            '', # ATC (Atendimento Coordenação)
+            ''  # ATG (Atendimento Gestão)
         ]
 
         # 3. Inserir na planilha
@@ -245,18 +236,42 @@ def salvar_ocorrencia():
 
     return redirect(url_for("index"))
 
-# --- ROTAS DE EDIÇÃO/RELATÓRIOS (Simplificadas) ---
-
+# --- ROTA DE EDIÇÃO (CORRIGIDA: Lógica de Permissões) ---
 @app.route("/editar/<oid>")
 def editar(oid):
-    # Lógica de edição (recuperar dados, verificar permissões, renderizar 'editar.html')
     df = carregar_dados()
-    ocorrencia = df[df["Nº Ocorrência"] == int(oid)].to_dict('records')[0] if not df.empty else {}
     
-    # Assumindo que você tem alguma lógica para definir 'permissoes'
-    permissoes = {'professor': True, 'tutor': True, 'coord': False, 'gestao': False}
+    # Busca a ocorrência
+    try:
+        # A coluna de ID é a 'Nº Ocorrência' ou 'ID', verificamos a que existe
+        id_col = 'Nº Ocorrência' if 'Nº Ocorrência' in df.columns else 'ID'
+        ocorrencia = df[df[id_col] == int(oid)].iloc[0].to_dict()
+    except (IndexError, KeyError):
+        flash(f"Ocorrência Nº {oid} não encontrada ou coluna de ID incorreta.", "danger")
+        return redirect(url_for("index"))
+
+    # 1. Obter o papel/ação (campo) da query string. Padrão é 'lupa' (view-only)
+    campo = request.args.get('campo', 'lupa').lower() 
     
+    # 2. Lógica de Permissões:
+    if campo == 'lapis':
+        # Acesso total de Edição (após senha de Gestão no Index.html)
+        permissoes = {'professor': True, 'tutor': True, 'coord': True, 'gestao': True}
+    elif campo == 'lupa':
+        # Acesso View-Only (padrão da lupa)
+        permissoes = {'professor': False, 'tutor': False, 'coord': False, 'gestao': False}
+    else:
+        permissoes = {'professor': False, 'tutor': False, 'coord': False, 'gestao': False}
+        
     return render_template("editar.html", ocorrencia=ocorrencia, permissoes=permissoes)
+
+@app.route("/atualizar_ocorrencia/<oid>", methods=["POST"])
+def atualizar_ocorrencia(oid):
+    # Rota para salvar as alterações do editar.html (Você precisa criar esta rota)
+    # Aqui vai a lógica para conectar ao sheets, localizar a linha e atualizar as colunas.
+    flash(f"Ocorrência Nº {oid} atualizada com sucesso (Lógica de atualização pendente).", "success")
+    return redirect(url_for("index"))
+
 
 @app.route("/relatorio_inicial")
 def relatorio_inicial():
@@ -266,7 +281,7 @@ def relatorio_inicial():
 def tutoria():
     return render_template("tutoria.html")
 
-# Adicione aqui outras rotas como /relatorio_aluno, /gerar_pdf_aluno, etc.
+# (Outras rotas de relatório e PDF devem ser mantidas aqui)
 # ...
 
 if __name__ == "__main__":
