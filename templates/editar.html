@@ -45,37 +45,46 @@
 </head>
 <body>
 <div class="container mt-5">
-  <h2>Editar Ocorrência Nº {{ ocorrencia['Nº Ocorrência'] }}</h2>
+  <h2>Editar Ocorrência Nº {{ ocorrencia['ID'] }}</h2>
   <hr>
 
-  <form method="post" action="{{ url_for('atualizar_ocorrencia', oid=ocorrencia['Nº Ocorrência']) }}">
-    <input type="hidden" name="oid" value="{{ ocorrencia['Nº Ocorrência'] }}">
+  <form method="post" action="{{ url_for('atualizar_ocorrencia', oid=ocorrencia['ID']) }}">
+    <input type="hidden" name="oid" value="{{ ocorrencia['ID'] }}">
 
     <div class="row g-3">
-      <div class="col-md-6">
-        <label class="form-label">Data Criação</label>
-        <input type="text" class="form-control" value="{{ ocorrencia['DCO'].split(' ')[0] if ocorrencia['DCO'] }}" readonly>
+      <div class="col-md-3">
+        <label class="form-label">Data Criação (DCO)</label>
+        <input type="text" class="form-control" value="{{ ocorrencia['DCO'] | default('') }}" readonly>
       </div>
-      <div class="col-md-6">
+      <div class="col-md-3">
+        <label class="form-label">Hora Criação (HCO)</label>
+        <input type="text" class="form-control" value="{{ ocorrencia['HCO'] | default('') }}" readonly>
+      </div>
+      
+      <div class="col-md-3">
         <label class="form-label">Sala</label>
         <input type="text" class="form-control" value="{{ ocorrencia['Sala'] }}" readonly>
       </div>
-      <div class="col-md-6">
+      <div class="col-md-3">
         <label class="form-label">Aluno</label>
         <input type="text" class="form-control" value="{{ ocorrencia['Aluno'] }}" readonly>
       </div>
-      <div class="col-md-6">
+      <div class="col-md-3">
         <label class="form-label">Tutor</label>
         <input type="text" class="form-control" value="{{ ocorrencia['Tutor'] }}" readonly>
       </div>
+      <div class="col-md-3">
+        <label class="form-label">Professor</label>
+        <input type="text" class="form-control" value="{{ ocorrencia['Professor'] }}" readonly>
+      </div>
       
-      <div class="col-12">
+      <div class="col-md-6">
         <label class="form-label">Status</label>
         <select name="status" class="form-select" 
                 {% if not permissoes.gestao %}disabled{% endif %}>
           <option value="Aberto" {% if ocorrencia['Status'] == 'Aberto' %}selected{% endif %}>Aberto</option>
-          <option value="Em Andamento" {% if ocorrencia['Status'] == 'Em Andamento' %}selected{% endif %}>Em Andamento</option>
-          <option value="Fechado" {% if ocorrencia['Status'] == 'Fechado' %}selected{% endif %}>Fechado</option>
+          <option value="ATENDIMENTO" {% if ocorrencia['Status'] == 'ATENDIMENTO' %}selected{% endif %}>ATENDIMENTO</option>
+          <option value="FINALIZADA" {% if ocorrencia['Status'] == 'FINALIZADA' %}selected{% endif %}>FINALIZADA</option>
         </select>
       </div>
     </div>
@@ -83,35 +92,65 @@
     <div class="mb-3 mt-3">
       <label class="form-label">Descrição da Ocorrência</label>
       <textarea name="descricao" class="form-control" rows="3" 
-                {% if not permissoes.descricao %}readonly{% endif %}>{{ ocorrencia['Descrição da Ocorrência'] }}</textarea>
+                {% if not permissoes.descricao %}readonly{% endif %}>{{ ocorrencia['Descricao'] }}</textarea>
     </div>
 
-    <div class="mb-3">
-      <label class="form-label">Atendimento Professor</label>
+    <div class="mb-3 border p-3 rounded" style="border-color: #4CAF50 !important;">
+      <label class="form-label text-success">Atendimento Professor</label>
       <textarea name="at_professor" class="form-control"
                 {% if not permissoes.professor and not permissoes.gestao %}readonly{% endif %}>{{ ocorrencia['Atendimento Professor'] }}</textarea>
     </div>
 
-    <div class="mb-3">
-      <label class="form-label">ATT (Atendimento Tutor)</label>
-      <textarea name="at_tutor" class="form-control"
+    <div class="mb-3 border p-3 rounded" style="border-color: #2196F3 !important;">
+      <label class="form-label text-info">ATT (Atendimento Tutor)</label>
+      <div class="row g-3 mb-2">
+        <div class="col-md-6">
+            <label class="form-label small">Solicitado (FT)</label>
+            <input type="text" class="form-control" value="{{ ocorrencia['FT'] | default('NÃO') }}" readonly>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label small">Data Resposta (DT)</label>
+            <input type="text" class="form-control" value="{{ ocorrencia['DT'] | default('') }}" readonly>
+        </div>
+      </div>
+      <textarea name="at_tutor" class="form-control" rows="3"
                 {% if not permissoes.tutor and not permissoes.gestao %}readonly{% endif %}>{{ ocorrencia['ATT'] }}</textarea>
     </div>
 
-    <div class="mb-3">
-      <label class="form-label">ATC (Atendimento Coordenação)</label>
-      <textarea name="at_coord" class="form-control"
+    <div class="mb-3 border p-3 rounded" style="border-color: #FF9800 !important;">
+      <label class="form-label text-warning">ATC (Atendimento Coordenação)</label>
+      <div class="row g-3 mb-2">
+        <div class="col-md-6">
+            <label class="form-label small">Solicitado (FC)</label>
+            <input type="text" class="form-control" value="{{ ocorrencia['FC'] | default('NÃO') }}" readonly>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label small">Data Resposta (DC)</label>
+            <input type="text" class="form-control" value="{{ ocorrencia['DC'] | default('') }}" readonly>
+        </div>
+      </div>
+      <textarea name="at_coord" class="form-control" rows="3"
                 {% if not permissoes.coord and not permissoes.gestao %}readonly{% endif %}>{{ ocorrencia['ATC'] }}</textarea>
     </div>
 
-    <div class="mb-3">
-      <label class="form-label">ATG (Atendimento Gestão)</label>
-      <textarea name="at_gestao" class="form-control"
+    <div class="mb-3 border p-3 rounded" style="border-color: #9C27B0 !important;">
+      <label class="form-label text-danger">ATG (Atendimento Gestão)</label>
+       <div class="row g-3 mb-2">
+        <div class="col-md-6">
+            <label class="form-label small">Solicitado (FG)</label>
+            <input type="text" class="form-control" value="{{ ocorrencia['FG'] | default('NÃO') }}" readonly>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label small">Data Resposta (DG)</label>
+            <input type="text" class="form-control" value="{{ ocorrencia['DG'] | default('') }}" readonly>
+        </div>
+      </div>
+      <textarea name="at_gestao" class="form-control" rows="3"
                 {% if not permissoes.gestao %}readonly{% endif %}>{{ ocorrencia['ATG'] }}</textarea>
     </div>
 
     <button type="submit" class="btn btn-success"
-            {% if not (permissoes.professor or permissoes.tutor or permissoes.coord or permissoes.gestao) %}disabled{% endif %}>
+            {% if not (permissoes.professor or permissoes.tutor or permissoes.coord or permissoes.gestao or permissoes.descricao) %}disabled{% endif %}>
       Salvar Resposta
     </button>
     <a href="{{ url_for('index') }}" class="btn btn-secondary">Voltar</a>

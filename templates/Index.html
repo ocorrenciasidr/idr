@@ -48,69 +48,65 @@
         <tr>
           <th>Nº</th>
           <th>Data</th>
-          <th>Sala</th>
+          <th>Hora</th> <th>Sala</th>
           <th>Aluno</th>
           <th>Tutor</th>
           <th>Prof.</th>
           <th>Status</th>
-          <th>ATT</th>
-          <th>ATC</th>
-          <th>ATG</th>
-          <th>Ações</th>
+          <th>ATT (FT)</th> <th>ATC (FC)</th> <th>ATG (FG)</th> <th>Ações</th>
         </tr>
       </thead>
       <tbody>
         {% for registro in registros %}
         <tr>
-          <td>{{ registro['Nº Ocorrência'] }}</td>
-          <td>{{ registro['DCO'].split(' ')[0] if registro['DCO'] }}</td>
-          <td>{{ registro['Sala'] }}</td>
+          <td>{{ registro['ID'] }}</td>
+          <td>{{ registro['DCO'] | default('') }}</td> <td>{{ registro['HCO'] | default('') }}</td> <td>{{ registro['Sala'] }}</td>
           <td style="text-align: left;">{{ registro['Aluno'] }}</td>
           <td>{{ registro['Tutor'] }}</td>
           <td>{{ registro['Professor'] }}</td>
           <td>
-            <span class="badge bg-{{ 'success' if registro['Status'] == 'Fechado' else 'warning' }}">{{ registro['Status'] }}</span>
+            <span class="badge bg-{{ 'success' if registro['Status'] == 'FINALIZADA' else ('danger' if registro['Status'] == 'ATENDIMENTO' else 'warning') }}">{{ registro['Status'] }}</span>
           </td>
           
           <td class="text-center">
-            {% set att_content = registro['ATT'] | default('') | trim %}
-            {% if att_content %}
+            {% set ft_content = registro['FT'] | default('') | upper | trim %}
+            {% if ft_content == 'SIM' %}
               {% set papel = 'tutor' %}
-              <a href="{{ url_for('editar', oid=registro['Nº Ocorrência'], papel=papel) }}" class="badge bg-success text-decoration-none">
+              <a href="{{ url_for('editar', oid=registro['ID'], papel=papel) }}" class="badge bg-danger text-decoration-none">
                 SIM
               </a>
             {% else %}
-              <span class="badge bg-danger">NÃO</span>
+              <span class="badge bg-success">NÃO</span>
             {% endif %}
           </td>
           
           <td class="text-center">
-            {% set atc_content = registro['ATC'] | default('') | trim %}
-            {% if atc_content %}
+            {% set fc_content = registro['FC'] | default('') | upper | trim %}
+            {% if fc_content == 'SIM' %}
               {% set papel = 'coord' %}
-              <a href="{{ url_for('editar', oid=registro['Nº Ocorrência'], papel=papel) }}" class="badge bg-success text-decoration-none">
+              <a href="{{ url_for('editar', oid=registro['ID'], papel=papel) }}" class="badge bg-danger text-decoration-none">
                 SIM
               </a>
             {% else %}
-              <span class="badge bg-danger">NÃO</span>
+              <span class="badge bg-success">NÃO</span>
             {% endif %}
           </td>
           
           <td class="text-center">
-            {% set atg_content = registro['ATG'] | default('') | trim %}
-            {% if atg_content %}
+            {% set fg_content = registro['FG'] | default('') | upper | trim %}
+            {% if fg_content == 'SIM' %}
               {% set papel = 'gestao' %}
-              <a href="{{ url_for('editar', oid=registro['Nº Ocorrência'], papel=papel) }}" class="badge bg-success text-decoration-none">
+              <a href="{{ url_for('editar', oid=registro['ID'], papel=papel) }}" class="badge bg-danger text-decoration-none">
                 SIM
               </a>
             {% else %}
-              <span class="badge bg-danger">NÃO</span>
+              <span class="badge bg-success">NÃO</span>
             {% endif %}
           </td>
           
           <td>
-            <a href="#" class="btn btn-sm btn-info" onclick="abrirSenha('{{ registro['Nº Ocorrência'] }}', 'lapis')">✏️</a>
-            <a href="{{ url_for('editar', oid=registro['Nº Ocorrência'], papel='lupa') }}" class="btn btn-sm btn-secondary">🔍</a> 
+            <a href="#" class="btn btn-sm btn-info" onclick="abrirSenha('{{ registro['ID'] }}', 'lapis')">✏️</a>
+            <a href="{{ url_for('editar', oid=registro['ID'], papel='lupa') }}" class="btn btn-sm btn-secondary">🔍</a> 
           </td>
         </tr>
         {% endfor %}
