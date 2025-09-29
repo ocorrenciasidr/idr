@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Nova Ocorrência - Sistema de Gestão de Convivência</title>
+  <title>SGCE - CADASTRAR OCORRÊNCIA</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
   <style>
@@ -55,7 +55,7 @@
 </head>
 <body>
 <div class="container mt-4">
-  <h3 class="text-center mb-4">Cadastrar Nova Ocorrência</h3>
+  <h3 class="text-center mb-4">SISTEMA DE GESTÃO DE CONVIVÊNCIA ESCOLAR <br> CADASTRAR NOVA OCORRÊNCIA</h3>
 
   <form method="post" action="{{ url_for('salvar') }}">
     <!-- Professor -->
@@ -110,20 +110,20 @@
     <div class="row mb-3">
       <div class="col-md-4">
         <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="flag_tutor" id="flagTutor">
-          <label class="form-check-label" for="flagTutor">Pendência Tutor</label>
+          <input class="form-check-input" type="checkbox" name="flag_tutor" id="FT">
+          <label class="form-check-label" for="FT">Pendência Tutor</label>
         </div>
       </div>
       <div class="col-md-4">
         <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="flag_coord" id="flagCoord">
-          <label class="form-check-label" for="flagCoord">Pendência Coordenação</label>
+          <input class="form-check-input" type="checkbox" name="flag_coord" id="FC">
+          <label class="form-check-label" for="FC">Pendência Coordenação</label>
         </div>
       </div>
       <div class="col-md-4">
         <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="flag_gestao" id="flagGestao">
-          <label class="form-check-label" for="flagGestao">Pendência Gestão</label>
+          <input class="form-check-input" type="checkbox" name="flag_gestao" id="FG">
+          <label class="form-check-label" for="FG">Pendência Gestão</label>
         </div>
       </div>
     </div>
@@ -176,5 +176,9 @@ document.getElementById('aluno').addEventListener('change', function(){
   document.getElementById('tutor').value = tutor;
 });
 </script>
+<!-- Rodapé -->
+    <footer class="text-center mt-5 mb-3">
+        <small>Desenvolvido: Marcelo André Nogueira Cardes <br> Licenciado: EE PEI Profª Irene Dias Ribeiro</small>
+    </footer>
 </body>
 </html>
