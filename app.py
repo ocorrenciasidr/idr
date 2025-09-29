@@ -37,6 +37,7 @@ def conectar_sheets():
     # Carrega credenciais do JSON armazenado na variável de ambiente
     creds_json = os.environ.get('GOOGLE_SHEETS_CREDENTIALS')
     if not creds_json:
+        # Se a variável de ambiente não estiver configurada, levanta um erro claro
         raise Exception("GOOGLE_SHEETS_CREDENTIALS environment variable not set.")
         
     creds_dict = json.loads(creds_json)
@@ -79,14 +80,15 @@ def calc_status(tutor_flag, coord_flag, gestao_flag):
 
 def carregar_dados(sheet_name="Dados"):
     """Carrega dados de uma aba do Google Sheets para um DataFrame do Pandas."""
+    # NOVO: Lista de colunas abreviadas
     cols = [
-        "ID", "Data Criação", "Hora Criação", # <--- CORRIGIDO: Agora é "ID"
+        "ID", "DCO", "HCO", 
         "Professor", "Sala", "Aluno", "Tutor",
         "Descrição da Ocorrência",
-        "Atendimento Professor", "Atendimento Tutor",
-        "Atendimento Coordenação", "Atendimento Gestão",
-        "FlagTutor", "FlagCoord", "FlagGestao",
-        "Data Atendimento Tutor", "Data Atendimento Coord", "Data Atendimento Gestao",
+        "Atendimento Professor", "ATT",
+        "ATC", "ATG",
+        "FT", "FC", "FG",
+        "DT", "DC", "DG",
         "Status"
     ]
     
@@ -111,7 +113,7 @@ def carregar_dados(sheet_name="Dados"):
         df["Sala"] = df["Sala"].astype(str).str.strip()
         
         try:
-            df["ID"] = pd.to_numeric(df["ID"], errors="coerce").astype("Int64") # <--- CORRIGIDO: Agora é "ID"
+            df["ID"] = pd.to_numeric(df["ID"], errors="coerce").astype("Int64")
         except Exception:
             pass
         
@@ -126,7 +128,7 @@ def proximo_numero():
     if df.empty:
         return 1
     try:
-        maxv = pd.to_numeric(df["ID"], errors="coerce").max() # <--- CORRIGIDO: Agora é "ID"
+        maxv = pd.to_numeric(df["ID"], errors="coerce").max()
         return 1 if pd.isna(maxv) else int(maxv) + 1
     except Exception:
         return len(df) + 1
@@ -151,8 +153,8 @@ def index():
     if status_filtro:
         df = df[df["Status"] == status_filtro]
         
-    # Adicionar coluna "Prazo"
-    df["Prazo"] = df.apply(lambda row: (datetime.now(TZ_SAO) - datetime.strptime(row["Data Criação"], "%Y-%m-%d").replace(tzinfo=TZ_SAO)).days, axis=1)
+    # Adicionar coluna "Prazo" - CORRIGIDO: usa DCO
+    df["Prazo"] = df.apply(lambda row: (datetime.now(TZ_SAO) - datetime.strptime(row["DCO"], "%Y-%m-%d").replace(tzinfo=TZ_SAO)).days, axis=1)
     
     registros = df.to_dict("records")
     
@@ -206,25 +208,26 @@ def salvar():
     # Calcula o status
     status = calc_status(flag_tutor, flag_coord, flag_gestao)
 
+    # CORRIGIDO: Uso das novas chaves abreviadas
     nova = {
-        "ID": numero, # <--- CORRIGIDO: Agora é "ID"
-        "Data Criação": agora.strftime("%Y-%m-%d"),
-        "Hora Criação": agora.strftime("%H:%M:%S"),
+        "ID": numero,
+        "DCO": agora.strftime("%Y-%m-%d"),
+        "HCO": agora.strftime("%H:%M:%S"),
         "Professor": request.form.get("professor", ""),
         "Sala": request.form.get("sala", ""),
         "Aluno": request.form.get("aluno", ""),
         "Tutor": request.form.get("tutor", ""),
         "Descrição da Ocorrência": request.form.get("descricao", ""),
         "Atendimento Professor": "",
-        "Atendimento Tutor": "",
-        "Atendimento Coordenação": "",
-        "Atendimento Gestão": "",
-        "FlagTutor": flag_tutor,
-        "FlagCoord": flag_coord,
-        "FlagGestao": flag_gestao,
-        "Data Atendimento Tutor": "",
-        "Data Atendimento Coord": "",
-        "Data Atendimento Gestao": "",
+        "ATT": "",
+        "ATC": "",
+        "ATG": "",
+        "FT": flag_tutor,
+        "FC": flag_coord,
+        "FG": flag_gestao,
+        "DT": "",
+        "DC": "",
+        "DG": "",
         "Status": status
     }
     
@@ -243,7 +246,7 @@ def salvar():
 def editar(oid):
     campo = request.args.get("campo", "").strip()
     df = carregar_dados()
-    linha = df[df["ID"] == oid] # <--- CORRIGIDO: filtro usa "ID"
+    linha = df[df["ID"] == oid]
 
     if linha.empty:
         return "Ocorrência não encontrada", 404
@@ -260,30 +263,30 @@ def editar(oid):
     if request.method == "POST":
         agora = datetime.now(TZ_SAO).strftime("%Y-%m-%d")
         
-        # Atualização dos campos de atendimento e Flags
+        # Atualização dos campos de atendimento e Flags - CORRIGIDO: usa as novas chaves
         if campo in ["lapis", "edit", "tutor", "coord", "gestao"]:
             if campo in ["lapis", "edit", "tutor"]:
-                df.loc[df["ID"] == oid, "Atendimento Tutor"] = request.form.get("at_tutor", "")
+                df.loc[df["ID"] == oid, "ATT"] = request.form.get("at_tutor", "")
                 if campo == "tutor":
-                    df.loc[df["ID"] == oid, "FlagTutor"] = "Não"
-                    df.loc[df["ID"] == oid, "Data Atendimento Tutor"] = agora
+                    df.loc[df["ID"] == oid, "FT"] = "Não"
+                    df.loc[df["ID"] == oid, "DT"] = agora
             if campo in ["lapis", "edit", "coord"]:
-                df.loc[df["ID"] == oid, "Atendimento Coordenação"] = request.form.get("at_coord", "")
+                df.loc[df["ID"] == oid, "ATC"] = request.form.get("at_coord", "")
                 if campo == "coord":
-                    df.loc[df["ID"] == oid, "FlagCoord"] = "Não"
-                    df.loc[df["ID"] == oid, "Data Atendimento Coord"] = agora
+                    df.loc[df["ID"] == oid, "FC"] = "Não"
+                    df.loc[df["ID"] == oid, "DC"] = agora
             if campo in ["lapis", "edit", "gestao"]:
-                df.loc[df["ID"] == oid, "Atendimento Gestão"] = request.form.get("at_gestao", "")
+                df.loc[df["ID"] == oid, "ATG"] = request.form.get("at_gestao", "")
                 if campo == "gestao":
-                    df.loc[df["ID"] == oid, "FlagGestao"] = "Não"
-                    df.loc[df["ID"] == oid, "Data Atendimento Gestao"] = agora
+                    df.loc[df["ID"] == oid, "FG"] = "Não"
+                    df.loc[df["ID"] == oid, "DG"] = agora
             if campo in ["lapis", "edit"]:
                 df.loc[df["ID"] == oid, "Atendimento Professor"] = request.form.get("at_professor", "")
 
-        # Recalcula o Status
+        # Recalcula o Status - CORRIGIDO: usa as novas chaves
         linha_atual = df[df["ID"] == oid].iloc[0]
         df.loc[df["ID"] == oid, "Status"] = calc_status(
-            linha_atual["FlagTutor"], linha_atual["FlagCoord"], linha_atual["FlagGestao"]
+            linha_atual["FT"], linha_atual["FC"], linha_atual["FG"]
         )
         
         if salvar_dados(df):
@@ -298,7 +301,7 @@ def editar(oid):
 @app.route("/visualizar/<int:oid>")
 def visualizar(oid):
     df = carregar_dados()
-    linha = df[df["ID"] == oid] # <--- CORRIGIDO: filtro usa "ID"
+    linha = df[df["ID"] == oid]
     
     if linha.empty:
         return "Ocorrência não encontrada", 404
@@ -376,8 +379,8 @@ def gerar_pdf_aluno():
     pdf.cell(200, 10, txt="Ocorrências Selecionadas:", ln=True)
 
     for i, row in ocorrencias.iterrows():
-        # <--- CORRIGIDO: usa "ID"
-        pdf.multi_cell(0, 10, txt=f"ID: {row['ID']} - Data: {row['Data Criação']}")
+        # CORRIGIDO: usa DCO para a data
+        pdf.multi_cell(0, 10, txt=f"ID: {row['ID']} - Data: {row['DCO']}")
         pdf.multi_cell(0, 5, txt=f"Descrição: {row['Descrição da Ocorrência']}")
         pdf.multi_cell(0, 5, txt=f"Status: {row['Status']}", ln=True)
         # Adicionar mais detalhes se necessário (Atendimentos, etc.)
@@ -392,7 +395,7 @@ def gerar_pdf_aluno():
 @app.route("/abrir_pendencia/<oid>/<papel>")
 def abrir_pendencia(oid, papel):
     df = carregar_dados()
-    ocorrencia = df[df["ID"] == int(oid)].iloc[0] # <--- CORRIGIDO: filtro usa "ID"
+    ocorrencia = df[df["ID"] == int(oid)].iloc[0]
     
     permissoes = {"professor": False, "tutor": False, "coord": False, "gestao": False}
     if papel == 'tutor':
