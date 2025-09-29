@@ -138,7 +138,7 @@
 let oidAtual = null;
 
 function abrirSenha(oid) {
-    oidAtual = oid;
+    oidAtual = oid; // Guarda o OID quando o botão é clicado
     document.getElementById('senhaInput').value = '';
     document.getElementById('senhaErro').style.display = 'none';
     var modal = new bootstrap.Modal(document.getElementById('senhaModal'));
@@ -148,7 +148,13 @@ function abrirSenha(oid) {
 function verificarSenha() {
     const senha = document.getElementById('senhaInput').value;
     if (senha === 'IDR@2025') {
-        window.location.href = '/editar/' + oidAtual + '?campo=edit';
+        // CORREÇÃO: Usamos o OID guardado para construir a URL completa.
+        // O Flask deve resolver o template 'editar' com um OID temporário (ex: 0)
+        // e o JS substitui por: /editar/OID_REAL?campo=lapis
+        const url_base = "{{ url_for('editar', oid=0, campo='lapis') }}";
+        const url_final = url_base.replace('/0?', '/' + oidAtual); // Substitui o OID
+        
+        window.location.href = url_final;
     } else {
         document.getElementById('senhaErro').style.display = 'block';
     }
