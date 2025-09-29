@@ -47,8 +47,7 @@
     <thead class="table-dark">
       <tr>
         <th>ID</th>
-        <th>Data Criação</th>
-        <th>Professor</th>
+        <th>DCO</th> <th>Professor</th>
         <th>Sala</th>
         <th>Aluno</th>
         <th>Tutor</th>
@@ -61,8 +60,7 @@
       {% for reg in registros %}
         <tr>
           <td>{{ reg['ID'] }}</td>
-          <td>{{ reg['Data Criação'] }}</td>
-          <td>{{ reg['Professor'] }}</td>
+          <td>{{ reg['DCO'] }}</td> <td>{{ reg['Professor'] }}</td>
           <td>{{ reg['Sala'] }}</td>
           <td>{{ reg['Aluno'] }}</td>
           <td>{{ reg['Tutor'] }}</td>
@@ -72,12 +70,9 @@
             <button class="btn btn-info btn-sm"
                     onclick="window.location.href='{{ url_for('editar', oid=reg['ID']) }}?campo=view'">🔍</button>
             <button class="btn btn-primary btn-sm" onclick="abrirSenha({{ reg['ID'] }})">✏️</button>
-            {% if reg['Status'] == 'Em Aberto' and reg['FlagTutor'] == 'Sim' %}
-                <a href="{{ url_for('abrir_pendencia', oid=reg['ID'], papel='tutor') }}" class="btn btn-warning btn-sm">❗ Tutor</a>
-            {% elif reg['Status'] == 'Em Aberto' and reg['FlagCoord'] == 'Sim' %}
-                <a href="{{ url_for('abrir_pendencia', oid=reg['ID'], papel='coord') }}" class="btn btn-danger btn-sm">❗ Coord</a>
-            {% elif reg['Status'] == 'Em Aberto' and reg['FlagGestao'] == 'Sim' %}
-                <a href="{{ url_for('abrir_pendencia', oid=reg['ID'], papel='gestao') }}" class="btn btn-dark btn-sm">❗ Gestão</a>
+            {% if reg['Status'] == 'Em Aberto' and reg['FT'] == 'Sim' %} <a href="{{ url_for('abrir_pendencia', oid=reg['ID'], papel='tutor') }}" class="btn btn-warning btn-sm">❗ Tutor</a>
+            {% elif reg['Status'] == 'Em Aberto' and reg['FC'] == 'Sim' %} <a href="{{ url_for('abrir_pendencia', oid=reg['ID'], papel='coord') }}" class="btn btn-danger btn-sm">❗ Coord</a>
+            {% elif reg['Status'] == 'Em Aberto' and reg['FG'] == 'Sim' %} <a href="{{ url_for('abrir_pendencia', oid=reg['ID'], papel='gestao') }}" class="btn btn-dark btn-sm">❗ Gestão</a>
             {% endif %}
           </td>
         </tr>
@@ -107,14 +102,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-// Variável para guardar o ID da ocorrência quando o botão é clicado
 let oidAtual = null;
 
 function abrirSenha(oid) {
-    // 1. Guarda o OID do botão para uso posterior
     oidAtual = oid; 
-    
-    // 2. Limpa e exibe o modal
     document.getElementById('senhaInput').value = '';
     document.getElementById('senhaErro').style.display = 'none';
     var modal = new bootstrap.Modal(document.getElementById('senhaModal'));
@@ -123,9 +114,8 @@ function abrirSenha(oid) {
 
 function verificarSenha() {
     const senha = document.getElementById('senhaInput').value;
-    if (senha === 'idrgestao') {
-        
-        // CONSTRUÇÃO DA URL: usa 'oidAtual' capturado, que é o 'ID'
+    // Utilize a senha que você configurou no app.py
+    if (senha === 'idrgestao') { 
         const url_base = "{{ url_for('editar', oid=0, campo='lapis') }}";
         const url_final = url_base.replace('/0?', '/' + oidAtual); 
         

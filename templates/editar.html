@@ -52,8 +52,8 @@
   <form method="POST">
     <div class="row">
       <div class="col-md-4 mb-3">
-        <label class="form-label">Data Criação</label>
-        <input type="text" class="form-control" value="{{ ocorrencia['Data Criação'] }}" readonly>
+        <label class="form-label">DCO (Data Criação)</label>
+        <input type="text" class="form-control" value="{{ ocorrencia['DCO'] }}" readonly>
       </div>
       <div class="col-md-4 mb-3">
         <label class="form-label">Professor</label>
@@ -88,21 +88,21 @@
     </div>
 
     <div class="mb-3">
-      <label class="form-label">Atendimento Tutor</label>
+      <label class="form-label">ATT (Atendimento Tutor)</label>
       <textarea name="at_tutor" class="form-control"
-                {% if not permissoes.tutor %}readonly{% endif %}>{{ ocorrencia['Atendimento Tutor'] }}</textarea>
+                {% if not permissoes.tutor %}readonly{% endif %}>{{ ocorrencia['ATT'] }}</textarea>
     </div>
 
     <div class="mb-3">
-      <label class="form-label">Atendimento Coordenação</label>
+      <label class="form-label">ATC (Atendimento Coordenação)</label>
       <textarea name="at_coord" class="form-control"
-                {% if not permissoes.coord %}readonly{% endif %}>{{ ocorrencia['Atendimento Coordenação'] }}</textarea>
+                {% if not permissoes.coord %}readonly{% endif %}>{{ ocorrencia['ATC'] }}</textarea>
     </div>
 
     <div class="mb-3">
-      <label class="form-label">Atendimento Gestão</label>
+      <label class="form-label">ATG (Atendimento Gestão)</label>
       <textarea name="at_gestao" class="form-control"
-                {% if not permissoes.gestao %}readonly{% endif %}>{{ ocorrencia['Atendimento Gestão'] }}</textarea>
+                {% if not permissoes.gestao %}readonly{% endif %}>{{ ocorrencia['ATG'] }}</textarea>
     </div>
 
     <button type="submit" class="btn btn-success"
