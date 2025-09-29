@@ -128,8 +128,6 @@ def index():
     if status_filtro and 'Status' in df.columns:
         df = df[df["Status"].str.strip() == status_filtro.strip()]
         
-    # A coluna "Prazo" foi removida da tela Index, então não precisamos mais calcular o prazo aqui.
-    
     registros = df.to_dict("records")
     
     # Listas para filtros
@@ -188,41 +186,56 @@ def salvar_ocorrencia():
             next_id = 1 # Primeiro registro
         
         # 2. Preparar os dados para inserção
-        data_criacao = datetime.now(TZ_SAO).strftime("%Y-%m-%d %H:%M:%S")
+        now = datetime.now(TZ_SAO)
+        dco_value = now.strftime("%Y/%m/%d") # DCO (Data)
+        hco_value = now.strftime("%H:%M:%S") # HCO (Hora)
 
         # Captura o campo de Atendimento Professor inicial
         atendimento_professor = data.get('at_professor', '')
         
-        # Captura e define o valor para ATT/ATC/ATG: "SIM" se marcado, "" se não marcado
-        req_att = data.get('req_att') # Checkbox para ATT
-        req_atc = data.get('req_atc') # Checkbox para ATC
-        req_atg = data.get('req_atg') # Checkbox para ATG
+        # Captura e define o valor para as SOLICITAÇÕES (FT, FC, FG): "SIM" se marcado, "NÃO" se não marcado
+        req_ft = data.get('req_ft') # Checkbox para ATT
+        req_fc = data.get('req_fc') # Checkbox para ATC
+        req_fg = data.get('req_fg') # Checkbox para ATG
 
-        att_value = "SIM" if req_att == 'on' else ""
-        atc_value = "SIM" if req_atc == 'on' else ""
-        atg_value = "SIM" if req_atg == 'on' else ""
+        ft_value = "SIM" if req_ft == 'on' else "NÃO"
+        fc_value = "SIM" if req_fc == 'on' else "NÃO"
+        # O usuário solicitou Atendimento Gestão (ATG) em ATC, mas corrigi para ser no FG/ATG
+        fg_value = "SIM" if req_fg == 'on' else "NÃO" 
+        
+        # Lógica de Status
+        if ft_value == "SIM" or fc_value == "SIM" or fg_value == "SIM":
+            status_value = "ATENDIMENTO"
+        else:
+            status_value = "FINALIZADA"
 
-
-        # Sequência das colunas da sua planilha "Dados" (Ajustar se necessário)
-        # Assumindo a ordem: ID, DCO, Sala, Aluno, Tutor, Professor, Descricao, Status, Atendimento Professor, ATT, ATC, ATG
+        # Sequência das colunas da sua planilha "Dados" (Ajustar esta sequência na sua planilha!)
+        # ID, DCO, HCO, Sala, Aluno, Tutor, Professor, Descricao, Atendimento Professor, ATT, DT, ATC, DC, ATG, DG, FT, FC, FG, Status
         nova_linha = [
             next_id,
-            data_criacao,
+            dco_value,       # DCO (Data)
+            hco_value,       # HCO (Hora)
             data.get('sala'),
             data.get('aluno'),
             data.get('tutor'),
             data.get('professor'),
             data.get('descricao'),
-            data.get('status', 'Aberto'), # Define 'Aberto' como padrão
-            atendimento_professor, # Atendimento Professor (Texto inicial da nova.html)
-            att_value, # ATT (Agora recebe "SIM" ou "" do checkbox)
-            atc_value, # ATC (Agora recebe "SIM" ou "" do checkbox)
-            atg_value  # ATG (Agora recebe "SIM" ou "" do checkbox)
+            atendimento_professor, # Atendimento Professor
+            "", # ATT (Texto do Atendimento Tutor)
+            "", # DT (Data do Atendimento Tutor)
+            "", # ATC (Texto do Atendimento Coordenação)
+            "", # DC (Data do Atendimento Coordenação)
+            "", # ATG (Texto do Atendimento Gestão)
+            "", # DG (Data do Atendimento Gestão)
+            ft_value,        # FT (Flag Tutor)
+            fc_value,        # FC (Flag Coordenação)
+            fg_value,        # FG (Flag Gestão)
+            status_value     # Status
         ]
 
         # 3. Inserir na planilha
         ws.append_row(nova_linha)
-        flash(f"Ocorrência Nº {next_id} registrada com sucesso!", "success")
+        flash(f"Ocorrência Nº {next_id} registrada com sucesso! Status: {status_value}", "success")
 
     except Exception as e:
         flash(f"Erro ao salvar: {e}", "danger")
@@ -248,27 +261,32 @@ def editar(oid):
     papel = request.args.get('papel', 'lupa').lower() 
     
     # 2. Lógica de Permissões baseada no papel:
-    # Por padrão, todos são 'readonly'
-    permissoes = {'professor': False, 'tutor': False, 'coord': False, 'gestao': False, 'status': False, 'descricao': False}
+    # Por padrão, todos são 'readonly' (se for 'lupa')
+    permissoes = {'descricao': False, 'professor': False, 'tutor': False, 'coord': False, 'gestao': False, 'status': False}
     
     if papel == 'lapis':
-        # LAPIS: Acesso total de Edição (Gestão)
-        permissoes = {'professor': True, 'tutor': True, 'coord': True, 'gestao': True, 'status': True, 'descricao': True}
-    elif papel == 'professor':
-        # CLIQUE no Atendimento Professor: Edita apenas o campo Atendimento Professor
-        permissoes['professor'] = True
+        # LAPIS (Gestão): Edita Descrição, Atendimento Professor, ATT, ATC, ATG, Status. Resto readonly.
+        permissoes = {'descricao': True, 'professor': True, 'tutor': True, 'coord': True, 'gestao': True, 'status': True}
+    elif papel == 'lupa':
+        # LUPA (View-only): Tudo False (readonly)
+        pass 
     elif papel == 'tutor':
-        # CLIQUE no ATT: Edita apenas o campo ATT
+        # CLIQUE no SIM/FT: Edita apenas ATT e Descrição
         permissoes['tutor'] = True
+        permissoes['descricao'] = True # Permite editar a descrição como tutor
     elif papel == 'coord':
-        # CLIQUE no ATC: Edita apenas o campo ATC
+        # CLIQUE no SIM/FC: Edita apenas ATC e Descrição
         permissoes['coord'] = True
+        permissoes['descricao'] = True # Permite editar a descrição como coord
     elif papel == 'gestao':
-        # CLIQUE no ATG: Edita apenas o campo ATG
+        # CLIQUE no SIM/FG: Edita apenas ATG e Descrição
         permissoes['gestao'] = True
-
-    # Se o papel for 'lupa', permanece tudo False (view-only)
-
+        permissoes['descricao'] = True # Permite editar a descrição como gestao
+    elif papel == 'professor_resp':
+        # Edita apenas Atendimento Professor e Descrição
+        permissoes['professor'] = True
+        permissoes['descricao'] = True # Permite editar a descrição como professor
+    
     return render_template("editar.html", ocorrencia=ocorrencia, permissoes=permissoes)
 
 
@@ -288,38 +306,102 @@ def atualizar_ocorrencia(oid):
         
         row_index = cell_list.row
         
-        # 2. Mapeamento das colunas (Verifique a ordem na sua planilha)
-        # Assumindo a ordem: ... Status(8), Atendimento Professor(9), ATT(10), ATC(11), ATG(12)
-        COL_STATUS = 8
-        COL_AT_PROF = 9
-        COL_ATT = 10
-        COL_ATC = 11
-        COL_ATG = 12
-        COL_DESCRICAO = 7 # Descrição da Ocorrência
+        # Puxa os headers para mapear a posição corretamente
+        all_headers = ws.row_values(1)
+        header_map = {name.strip(): i + 1 for i, name in enumerate(all_headers)}
+        
+        # Mapeamento das colunas (IMPORTANTE: Mantenha sua planilha nesta ordem!)
+        COL_DESCRICAO = header_map.get('Descricao', 8)
+        COL_AT_PROF = header_map.get('Atendimento Professor', 9)
+        COL_ATT_TEXT = header_map.get('ATT', 10)
+        COL_DT_DATE = header_map.get('DT', 11)
+        COL_ATC_TEXT = header_map.get('ATC', 12)
+        COL_DC_DATE = header_map.get('DC', 13)
+        COL_ATG_TEXT = header_map.get('ATG', 14)
+        COL_DG_DATE = header_map.get('DG', 15)
+        COL_FT = header_map.get('FT', 16)
+        COL_FC = header_map.get('FC', 17)
+        COL_FG = header_map.get('FG', 18)
+        COL_STATUS = header_map.get('Status', 19)
 
+        # LER a linha atual
+        current_row = ws.row_values(row_index)
+        
+        # Colunas de flag (FT, FC, FG) para a lógica de status
+        ft_current = current_row[COL_FT - 1] if len(current_row) >= COL_FT else "NÃO"
+        fc_current = current_row[COL_FC - 1] if len(current_row) >= COL_FC else "NÃO"
+        fg_current = current_row[COL_FG - 1] if len(current_row) >= COL_FG else "NÃO"
+        
         # 3. Preparar as atualizações
         updates = []
+        now_date_str = datetime.now(TZ_SAO).strftime("%Y/%m/%d")
 
-        # Atualiza Status
+        # Atualiza Status e Descrição (Permissão Gestão/Lapis)
         if 'status' in data:
              updates.append(gspread.Cell(row_index, COL_STATUS, data['status']))
         
-        # Atualiza Descrição da Ocorrência
         if 'descricao' in data:
              updates.append(gspread.Cell(row_index, COL_DESCRICAO, data['descricao']))
 
-        # Atualiza campos de Atendimento
+        # Atualiza Atendimento Professor (Permissão Professor/Lapis)
         if 'at_professor' in data:
             updates.append(gspread.Cell(row_index, COL_AT_PROF, data['at_professor']))
             
+        # Atualiza ATT (Tutor)
         if 'at_tutor' in data:
-            updates.append(gspread.Cell(row_index, COL_ATT, data['at_tutor']))
-
+            new_text = data['at_tutor']
+            updates.append(gspread.Cell(row_index, COL_ATT_TEXT, new_text))
+            
+            current_att_text = current_row[COL_ATT_TEXT - 1] if len(current_row) >= COL_ATT_TEXT else ""
+            if new_text != current_att_text:
+                 updates.append(gspread.Cell(row_index, COL_DT_DATE, now_date_str)) # Adiciona Data
+                 if ft_current == "SIM":
+                    updates.append(gspread.Cell(row_index, COL_FT, "NÃO")) # Conclui o follow-up
+        
+        # Atualiza ATC (Coordenação)
         if 'at_coord' in data:
-             updates.append(gspread.Cell(row_index, COL_ATC, data['at_coord']))
+            new_text = data['at_coord']
+            updates.append(gspread.Cell(row_index, COL_ATC_TEXT, new_text))
 
+            current_atc_text = current_row[COL_ATC_TEXT - 1] if len(current_row) >= COL_ATC_TEXT else ""
+            if new_text != current_atc_text:
+                 updates.append(gspread.Cell(row_index, COL_DC_DATE, now_date_str)) # Adiciona Data
+                 if fc_current == "SIM":
+                    updates.append(gspread.Cell(row_index, COL_FC, "NÃO")) # Conclui o follow-up
+
+        # Atualiza ATG (Gestão)
         if 'at_gestao' in data:
-             updates.append(gspread.Cell(row_index, COL_ATG, data['at_gestao']))
+            new_text = data['at_gestao']
+            updates.append(gspread.Cell(row_index, COL_ATG_TEXT, new_text))
+
+            current_atg_text = current_row[COL_ATG_TEXT - 1] if len(current_row) >= COL_ATG_TEXT else ""
+            if new_text != current_atg_text:
+                 updates.append(gspread.Cell(row_index, COL_DG_DATE, now_date_str)) # Adiciona Data
+                 if fg_current == "SIM":
+                    updates.append(gspread.Cell(row_index, COL_FG, "NÃO")) # Conclui o follow-up
+                    
+        # Lógica final de Status: Recalcula se o status não foi alterado manualmente pela Gestão
+        if 'status' not in data:
+            ft_final = ft_current
+            fc_final = fc_current
+            fg_final = fg_current
+            
+            # Pega os novos valores das flags de dentro do updates
+            for cell in updates:
+                if cell.col == COL_FT:
+                    ft_final = cell.value
+                elif cell.col == COL_FC:
+                    fc_final = cell.value
+                elif cell.col == COL_FG:
+                    fg_final = cell.value
+            
+            # Recalcula o status
+            if ft_final == "NÃO" and fc_final == "NÃO" and fg_final == "NÃO":
+                updates.append(gspread.Cell(row_index, COL_STATUS, "FINALIZADA"))
+            elif current_row[COL_STATUS - 1] != "ATENDIMENTO":
+                 # Garante que se um novo SIM for adicionado, o status volte para ATENDIMENTO
+                 updates.append(gspread.Cell(row_index, COL_STATUS, "ATENDIMENTO"))
+
 
         # 4. Enviar atualizações em lote
         if updates:
