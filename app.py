@@ -128,29 +128,7 @@ def index():
     if status_filtro and 'Status' in df.columns:
         df = df[df["Status"].str.strip() == status_filtro.strip()]
         
-    # CORREÇÃO CRÍTICA DO CÁLCULO DE PRAZO (Tratamento de formatos de data)
-    def calcular_prazo(data_str):
-        if not data_str or data_str.strip() == '':
-            return None
-        
-        data_pura = data_str.split(' ')[0]
-        
-        try:
-            data_criacao = datetime.strptime(data_pura, "%Y-%m-%d").replace(tzinfo=TZ_SAO)
-        except ValueError:
-            try:
-                data_criacao = datetime.strptime(data_pura, "%d/%m/%Y").replace(tzinfo=TZ_SAO)
-            except ValueError:
-                try:
-                    data_criacao = parse(data_pura, dayfirst=True).replace(tzinfo=TZ_SAO)
-                except Exception:
-                    return None 
-        
-        return (datetime.now(TZ_SAO) - data_criacao).days
-
-    if 'DCO' in df.columns:
-        df["Prazo"] = df["DCO"].apply(calcular_prazo)
-    # Fim da correção do Prazo
+    # A coluna "Prazo" foi removida da tela Index, então não precisamos mais calcular o prazo aqui.
     
     registros = df.to_dict("records")
     
@@ -167,7 +145,7 @@ def index():
         salas=salas
     )
 
-# --- ROTA NOVA (CORRIGIDA: Carrega Professores e Salas) ---
+# --- ROTA NOVA ---
 @app.route("/nova")
 def nova():
     professores = carregar_professores()
@@ -175,7 +153,7 @@ def nova():
     
     return render_template("nova.html", professores=professores, salas=salas)
 
-# --- ROTA API ALUNOS (CORRIGIDA) ---
+# --- ROTA API ALUNOS ---
 @app.route("/api/alunos_sala/<sala>")
 def api_alunos_sala(sala):
     df_alunos = carregar_alunos_tutor_df()
@@ -193,6 +171,7 @@ def api_alunos_sala(sala):
     
     return jsonify(lista_alunos_tutor)
 
+# --- ROTA SALVAR OCORRÊNCIA (ATUALIZADA) ---
 @app.route("/salvar_ocorrencia", methods=["POST"])
 def salvar_ocorrencia():
     data = request.form
@@ -211,7 +190,21 @@ def salvar_ocorrencia():
         # 2. Preparar os dados para inserção
         data_criacao = datetime.now(TZ_SAO).strftime("%Y-%m-%d %H:%M:%S")
 
-        # Sequência das colunas da sua planilha "Dados"
+        # Captura o campo de Atendimento Professor inicial
+        atendimento_professor = data.get('at_professor', '')
+        
+        # Captura e define o valor para ATT/ATC/ATG: "SIM" se marcado, "" se não marcado
+        req_att = data.get('req_att') # Checkbox para ATT
+        req_atc = data.get('req_atc') # Checkbox para ATC
+        req_atg = data.get('req_atg') # Checkbox para ATG
+
+        att_value = "SIM" if req_att == 'on' else ""
+        atc_value = "SIM" if req_atc == 'on' else ""
+        atg_value = "SIM" if req_atg == 'on' else ""
+
+
+        # Sequência das colunas da sua planilha "Dados" (Ajustar se necessário)
+        # Assumindo a ordem: ID, DCO, Sala, Aluno, Tutor, Professor, Descricao, Status, Atendimento Professor, ATT, ATC, ATG
         nova_linha = [
             next_id,
             data_criacao,
@@ -221,10 +214,10 @@ def salvar_ocorrencia():
             data.get('professor'),
             data.get('descricao'),
             data.get('status', 'Aberto'), # Define 'Aberto' como padrão
-            '', # Atendimento Professor
-            '', # ATT (Atendimento Tutor)
-            '', # ATC (Atendimento Coordenação)
-            ''  # ATG (Atendimento Gestão)
+            atendimento_professor, # Atendimento Professor (Texto inicial da nova.html)
+            att_value, # ATT (Agora recebe "SIM" ou "" do checkbox)
+            atc_value, # ATC (Agora recebe "SIM" ou "" do checkbox)
+            atg_value  # ATG (Agora recebe "SIM" ou "" do checkbox)
         ]
 
         # 3. Inserir na planilha
@@ -236,40 +229,108 @@ def salvar_ocorrencia():
 
     return redirect(url_for("index"))
 
-# --- ROTA DE EDIÇÃO (CORRIGIDA: Lógica de Permissões) ---
+# --- ROTA DE EDIÇÃO (ATUALIZADA: Lógica de Permissões com 'papel') ---
 @app.route("/editar/<oid>")
 def editar(oid):
     df = carregar_dados()
     
     # Busca a ocorrência
     try:
-        # A coluna de ID é a 'Nº Ocorrência' ou 'ID', verificamos a que existe
+        # A coluna de ID é a 'Nº Ocorrência' ou 'ID'
         id_col = 'Nº Ocorrência' if 'Nº Ocorrência' in df.columns else 'ID'
-        ocorrencia = df[df[id_col] == int(oid)].iloc[0].to_dict()
+        # Garante que o ID é tratado como string para comparação robusta com a planilha
+        ocorrencia = df[df[id_col].astype(str) == str(oid)].iloc[0].to_dict()
     except (IndexError, KeyError):
         flash(f"Ocorrência Nº {oid} não encontrada ou coluna de ID incorreta.", "danger")
         return redirect(url_for("index"))
 
-    # 1. Obter o papel/ação (campo) da query string. Padrão é 'lupa' (view-only)
-    campo = request.args.get('campo', 'lupa').lower() 
+    # 1. Obter o papel/ação da query string. Padrão é 'lupa' (view-only)
+    papel = request.args.get('papel', 'lupa').lower() 
     
-    # 2. Lógica de Permissões:
-    if campo == 'lapis':
-        # Acesso total de Edição (após senha de Gestão no Index.html)
-        permissoes = {'professor': True, 'tutor': True, 'coord': True, 'gestao': True}
-    elif campo == 'lupa':
-        # Acesso View-Only (padrão da lupa)
-        permissoes = {'professor': False, 'tutor': False, 'coord': False, 'gestao': False}
-    else:
-        permissoes = {'professor': False, 'tutor': False, 'coord': False, 'gestao': False}
-        
+    # 2. Lógica de Permissões baseada no papel:
+    # Por padrão, todos são 'readonly'
+    permissoes = {'professor': False, 'tutor': False, 'coord': False, 'gestao': False, 'status': False, 'descricao': False}
+    
+    if papel == 'lapis':
+        # LAPIS: Acesso total de Edição (Gestão)
+        permissoes = {'professor': True, 'tutor': True, 'coord': True, 'gestao': True, 'status': True, 'descricao': True}
+    elif papel == 'professor':
+        # CLIQUE no Atendimento Professor: Edita apenas o campo Atendimento Professor
+        permissoes['professor'] = True
+    elif papel == 'tutor':
+        # CLIQUE no ATT: Edita apenas o campo ATT
+        permissoes['tutor'] = True
+    elif papel == 'coord':
+        # CLIQUE no ATC: Edita apenas o campo ATC
+        permissoes['coord'] = True
+    elif papel == 'gestao':
+        # CLIQUE no ATG: Edita apenas o campo ATG
+        permissoes['gestao'] = True
+
+    # Se o papel for 'lupa', permanece tudo False (view-only)
+
     return render_template("editar.html", ocorrencia=ocorrencia, permissoes=permissoes)
 
+
+# --- ROTA ATUALIZAR OCORRÊNCIA (ATUALIZADA) ---
 @app.route("/atualizar_ocorrencia/<oid>", methods=["POST"])
 def atualizar_ocorrencia(oid):
-    # Rota para salvar as alterações do editar.html (Você precisa criar esta rota)
-    # Aqui vai a lógica para conectar ao sheets, localizar a linha e atualizar as colunas.
-    flash(f"Ocorrência Nº {oid} atualizada com sucesso (Lógica de atualização pendente).", "success")
+    data = request.form
+    try:
+        sh = conectar_sheets()
+        ws = sh.worksheet("Dados")
+        
+        # 1. Encontrar a linha (busca pelo ID na primeira coluna)
+        cell_list = ws.find(str(oid), in_column=1) 
+        if not cell_list:
+            flash(f"Erro: Ocorrência Nº {oid} não encontrada.", "danger")
+            return redirect(url_for("index"))
+        
+        row_index = cell_list.row
+        
+        # 2. Mapeamento das colunas (Verifique a ordem na sua planilha)
+        # Assumindo a ordem: ... Status(8), Atendimento Professor(9), ATT(10), ATC(11), ATG(12)
+        COL_STATUS = 8
+        COL_AT_PROF = 9
+        COL_ATT = 10
+        COL_ATC = 11
+        COL_ATG = 12
+        COL_DESCRICAO = 7 # Descrição da Ocorrência
+
+        # 3. Preparar as atualizações
+        updates = []
+
+        # Atualiza Status
+        if 'status' in data:
+             updates.append(gspread.Cell(row_index, COL_STATUS, data['status']))
+        
+        # Atualiza Descrição da Ocorrência
+        if 'descricao' in data:
+             updates.append(gspread.Cell(row_index, COL_DESCRICAO, data['descricao']))
+
+        # Atualiza campos de Atendimento
+        if 'at_professor' in data:
+            updates.append(gspread.Cell(row_index, COL_AT_PROF, data['at_professor']))
+            
+        if 'at_tutor' in data:
+            updates.append(gspread.Cell(row_index, COL_ATT, data['at_tutor']))
+
+        if 'at_coord' in data:
+             updates.append(gspread.Cell(row_index, COL_ATC, data['at_coord']))
+
+        if 'at_gestao' in data:
+             updates.append(gspread.Cell(row_index, COL_ATG, data['at_gestao']))
+
+        # 4. Enviar atualizações em lote
+        if updates:
+            ws.update_cells(updates)
+            flash(f"Ocorrência Nº {oid} atualizada com sucesso.", "success")
+        else:
+            flash("Nenhuma alteração para salvar.", "warning")
+
+    except Exception as e:
+        flash(f"Erro ao salvar: {e}", "danger")
+
     return redirect(url_for("index"))
 
 
@@ -280,9 +341,6 @@ def relatorio_inicial():
 @app.route("/tutoria")
 def tutoria():
     return render_template("tutoria.html")
-
-# (Outras rotas de relatório e PDF devem ser mantidas aqui)
-# ...
 
 if __name__ == "__main__":
     app.run(debug=True)
