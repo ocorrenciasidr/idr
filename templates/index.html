@@ -103,7 +103,7 @@
                   onclick="window.location.href='{{ url_for('editar', oid=reg['Nº Ocorrência']) }}?campo=view'">🔍</button>
 
           <!-- Botão Lápis (editar) protegido por modal -->
-          <button class="btn btn-primary btn-sm" onclick="abrirSenha({{ reg['Nº Ocorrência'] }})">✏️</button>
+          <button class="btn btn-primary btn-sm" onclick="abrirSenha('{{ url_for("editar", oid=reg["Nº Ocorrência"], campo="lapis") }}')">✏️</button>
         </td>
       </tr>
     {% else %}
