@@ -61,9 +61,9 @@
     <!-- Professor -->
     <div class="mb-3">
       <label class="form-label">Professor</label>
-      <select name="professor" class="form-select" required>
+      <select name="Professor" class="form-select" required>
         <option value="">Selecione</option>
-        {% for p in professores %}
+        {% for p in Professores %}
           <option value="{{ p }}">{{ p }}</option>
         {% endfor %}
       </select>
@@ -83,7 +83,7 @@
     <!-- Aluno -->
     <div class="mb-3">
       <label class="form-label">Aluno</label>
-      <select id="aluno" name="aluno" class="form-select" required>
+      <select id="aluno" name="Aluno" class="form-select" required>
         <option value="">Selecione uma sala primeiro</option>
       </select>
     </div>
@@ -110,20 +110,20 @@
     <div class="row mb-3">
       <div class="col-md-4">
         <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="flag_tutor" id="FT">
-          <label class="form-check-label" for="FT">Pendência Tutor</label>
+          <input class="form-check-input" type="checkbox" name="FT" id="FT">
+          <label class="form-check-label" for="FT">Atendimento Tutor</label>
         </div>
       </div>
       <div class="col-md-4">
         <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="flag_coord" id="FC">
-          <label class="form-check-label" for="FC">Pendência Coordenação</label>
+          <input class="form-check-input" type="checkbox" name="FC" id="FC">
+          <label class="form-check-label" for="FC">Atendimento Coordenação</label>
         </div>
       </div>
       <div class="col-md-4">
         <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="flag_gestao" id="FG">
-          <label class="form-check-label" for="FG">Pendência Gestão</label>
+          <input class="form-check-input" type="checkbox" name="FG" id="FG">
+          <label class="form-check-label" for="FG">Atendimento Gestão</label>
         </div>
       </div>
     </div>
@@ -137,10 +137,10 @@
 </div>
 
 <script>
-document.getElementById('sala').addEventListener('change', function(){
+document.getElementById('Sala').addEventListener('change', function(){
   const sala = this.value;
-  const alunoSel = document.getElementById('aluno');
-  const tutorInput = document.getElementById('tutor');
+  const alunoSel = document.getElementById('Aluno');
+  const tutorInput = document.getElementById('Tutor');
 
   alunoSel.innerHTML = '<option value="">Carregando...</option>';
   tutorInput.value = '';

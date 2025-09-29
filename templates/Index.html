@@ -51,10 +51,10 @@
         <th>Sala</th>
         <th>Aluno</th>
         <th>Tutor</th>
-        <th>Status</th>
         <th>ATT</th>
 	<th>ATC</th>
 	<th>ATG</th>
+	<th>Status</th>
         <th>Ações</th>
       </tr>
     </thead>
@@ -67,10 +67,9 @@
           <td>{{ reg['Aluno'] }}</td>
           <td>{{ reg['Tutor'] }}</td>
 	  <td>{{ reg['ATT'] }}</td>
-	  <td>{{ reg['Tutor'] }}</td>
-	  <td>{{ reg['Tutor'] }}</td>
+	  <td>{{ reg['ATC'] }}</td>
+	  <td>{{ reg['ATG'] }}</td>
           <td>{{ reg['Status'] }}</td>
-          <td>{{ reg['Prazo'] }}</td>
           <td>
             <button class="btn btn-info btn-sm"
                     onclick="window.location.href='{{ url_for('editar', oid=reg['ID']) }}?campo=view'">🔍</button>
