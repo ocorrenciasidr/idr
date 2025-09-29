@@ -29,92 +29,63 @@
       <label for="status" class="form-label">Status</label>
       <select name="status" id="status" class="form-select">
         <option value="">Todos</option>
-        <option value="ATENDIMENTO" {% if request.args.get('status')=='ATENDIMENTO' %}selected{% endif %}>Em Atendimento</option>
-        <option value="FINALIZADA" {% if request.args.get('status')=='FINALIZADA' %}selected{% endif %}>Finalizada</option>
-	<option value="FINALIZADA" {% if request.args.get('status')=='ASSINADA' %}selected{% endif %}>Finalizada</option>
+        {% for s in status_list %}
+          <option value="{{ s }}" {% if request.args.get('status') == s %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
       </select>
     </div>
-
-    <div class="col-md-4 d-flex align-items-end gap-2">
-      <button type="submit" class="btn btn-primary flex-fill">Filtrar</button>
-      <a href="{{ url_for('nova') }}" class="btn btn-success flex-fill">➕ Nova Ocorrência</a>
-      <a href="{{ url_for('home') }}" class="btn btn-secondary flex-fill">🏠 Tela Inicial</a>
+    <div class="col-md-4 d-flex align-items-end">
+      <button type="submit" class="btn btn-primary w-100">Filtrar</button>
     </div>
   </form>
 
-  <table class="table table-bordered table-striped">
+  <div class="mb-3 text-end">
+    <a href="{{ url_for('nova') }}" class="btn btn-success">➕ Nova Ocorrência</a>
+  </div>
+
+  <table class="table table-striped table-bordered">
     <thead class="table-dark">
       <tr>
-        <th>Nº</th>
-        <th>Data</th>
-        <th>Hora</th>
+        <th>ID</th>
+        <th>Data Criação</th>
         <th>Professor</th>
         <th>Sala</th>
         <th>Aluno</th>
         <th>Tutor</th>
         <th>Status</th>
-        <th>Pend. Tutor</th>
-        <th>Pend. Coord</th>
-        <th>Pend. Gestão</th>
+        <th>Prazo</th>
         <th>Ações</th>
       </tr>
     </thead>
     <tbody>
-    {% for reg in registros %}
-      <tr>
-        <td>{{ reg["ID"] }}</td>
-        <td>{{ reg["DCO"] }}</td>
-        <td>{{ reg["HCO"] }}</td>
-        <td>{{ reg["Professor"] }}</td>
-        <td>{{ reg["Sala"] }}</td>
-        <td>{{ reg["Aluno"] }}</td>
-        <td>{{ reg["Tutor"] }}</td>
-        <td>{{ reg["Status"] }}</td>
-
-        <td>
-          {% if reg["FT"] == "Sim" %}
-            <button class="btn btn-outline-primary btn-sm"
-                    onclick="window.location.href='{{ url_for('abrir_pendencia', oid=reg['ID'], papel='tutor') }}'">
-              Sim
-            </button>
-          {% else %}Não{% endif %}
-        </td>
-
-        <td>
-          {% if reg["FC"] == "Sim" %}
-            <button class="btn btn-outline-warning btn-sm"
-                    onclick="window.location.href='{{ url_for('abrir_pendencia', oid=reg['ID'], papel='coord') }}'">
-              Sim
-            </button>
-          {% else %}Não{% endif %}
-        </td>
-
-        <td>
-          {% if reg["FG"] == "Sim" %}
-            <button class="btn btn-outline-danger btn-sm"
-                    onclick="window.location.href='{{ url_for('abrir_pendencia', oid=reg['ID'], papel='gestao') }}'">
-              Sim
-            </button>
-          {% else %}Não{% endif %}
-        </td>
-
-        <td>
-          <!-- Botão Lupa (visualizar) -->
-          <button class="btn btn-secondary btn-sm"
-                  onclick="window.location.href='{{ url_for('editar', oid=reg['ID']) }}?campo=view'">🔍</button>
-
-          <!-- Botão Lápis (editar) protegido por modal -->
-          <button class="btn btn-primary btn-sm" onclick="abrirSenha('{{ url_for("editar", oid=reg["ID"], campo="lapis") }}')">✏️</button>
-        </td>
-      </tr>
-    {% else %}
-      <tr><td colspan="12" class="text-center">Nenhuma ocorrência encontrada.</td></tr>
-    {% endfor %}
+      {% for reg in registros %}
+        <tr>
+          <td>{{ reg['ID'] }}</td>
+          <td>{{ reg['Data Criação'] }}</td>
+          <td>{{ reg['Professor'] }}</td>
+          <td>{{ reg['Sala'] }}</td>
+          <td>{{ reg['Aluno'] }}</td>
+          <td>{{ reg['Tutor'] }}</td>
+          <td>{{ reg['Status'] }}</td>
+          <td>{{ reg['Prazo'] }}</td>
+          <td>
+            <button class="btn btn-info btn-sm"
+                    onclick="window.location.href='{{ url_for('editar', oid=reg['ID']) }}?campo=view'">🔍</button>
+            <button class="btn btn-primary btn-sm" onclick="abrirSenha({{ reg['ID'] }})">✏️</button>
+            {% if reg['Status'] == 'Em Aberto' and reg['FlagTutor'] == 'Sim' %}
+                <a href="{{ url_for('abrir_pendencia', oid=reg['ID'], papel='tutor') }}" class="btn btn-warning btn-sm">❗ Tutor</a>
+            {% elif reg['Status'] == 'Em Aberto' and reg['FlagCoord'] == 'Sim' %}
+                <a href="{{ url_for('abrir_pendencia', oid=reg['ID'], papel='coord') }}" class="btn btn-danger btn-sm">❗ Coord</a>
+            {% elif reg['Status'] == 'Em Aberto' and reg['FlagGestao'] == 'Sim' %}
+                <a href="{{ url_for('abrir_pendencia', oid=reg['ID'], papel='gestao') }}" class="btn btn-dark btn-sm">❗ Gestão</a>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
     </tbody>
   </table>
 </div>
 
-<!-- Modal de senha -->
 <div class="modal fade" id="senhaModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -128,7 +99,8 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        </div>
+        <button type="button" class="btn btn-primary" onclick="verificarSenha()">OK</button>
+      </div>
     </div>
   </div>
 </div>
@@ -153,13 +125,8 @@ function verificarSenha() {
     const senha = document.getElementById('senhaInput').value;
     if (senha === 'idrgestao') {
         
-        // CORREÇÃO CRÍTICA: Construção da URL via substituição
-        
-        // 1. Cria uma URL base CORRETA com um ID fictício (0) para o Flask resolver:
+        // CONSTRUÇÃO DA URL: usa 'oidAtual' capturado, que é o 'ID'
         const url_base = "{{ url_for('editar', oid=0, campo='lapis') }}";
-        
-        // 2. Substitui o ID fictício pelo ID real (oidAtual) capturado no clique.
-        // Usamos .replace('/0?', '/') para garantir que o Flask crie a URL corretamente com os argumentos.
         const url_final = url_base.replace('/0?', '/' + oidAtual); 
         
         window.location.href = url_final;
@@ -169,8 +136,7 @@ function verificarSenha() {
     }
 }
 </script>
- <!-- Rodapé -->
-    <footer class="text-center mt-5 mb-3">
+ <footer class="text-center mt-5 mb-3">
         <small>Desenvolvido: Marcelo André Nogueira Cardes <br> Licenciado: EE PEI Profª Irene Dias Ribeiro</small>
     </footer>
 </body>
