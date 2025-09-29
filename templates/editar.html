@@ -33,50 +33,52 @@
       background-color: #2a2a2a;
       color: #fff;
       border-color: #ffb74d;
-      box-shadow: 0 0 0 0.25rem rgba(255,183,77, 0.25);
+      box-shadow: 0 0 0 0.25rem rgba(255, 183, 77, 0.25);
     }
-    .btn-success {
-      background-color: #4CAF50;
-      border-color: #4CAF50;
-    }
-    .btn-secondary {
-      background-color: #607d8b;
-      border-color: #607d8b;
+    /* Estilo para campos somente leitura */
+    .form-control[readonly] {
+      background-color: #333;
+      color: #aaa;
+      border-style: dashed;
     }
   </style>
 </head>
 <body>
 <div class="container mt-5">
-  <h2 class="mb-4 text-center">Ocorrência #{{ ocorrencia['ID'] }}</h2>
+  <h2>Editar Ocorrência Nº {{ ocorrencia['Nº Ocorrência'] }}</h2>
+  <hr>
 
-  <form method="POST">
-    <div class="row">
-      <div class="col-md-4 mb-3">
-        <label class="form-label">DCO (Data Criação)</label>
-        <input type="text" class="form-control" value="{{ ocorrencia['DCO'] }}" readonly>
+  <form method="post" action="{{ url_for('atualizar_ocorrencia', oid=ocorrencia['Nº Ocorrência']) }}">
+    <input type="hidden" name="oid" value="{{ ocorrencia['Nº Ocorrência'] }}">
+
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label">Data Criação</label>
+        <input type="text" class="form-control" value="{{ ocorrencia['DCO'].split(' ')[0] if ocorrencia['DCO'] }}" readonly>
       </div>
-      <div class="col-md-4 mb-3">
-        <label class="form-label">Professor</label>
-        <input type="text" class="form-control" value="{{ ocorrencia['Professor'] }}" readonly>
-      </div>
-      <div class="col-md-4 mb-3">
+      <div class="col-md-6">
         <label class="form-label">Sala</label>
         <input type="text" class="form-control" value="{{ ocorrencia['Sala'] }}" readonly>
       </div>
-    </div>
-
-    <div class="row">
-      <div class="col-md-6 mb-3">
+      <div class="col-md-6">
         <label class="form-label">Aluno</label>
         <input type="text" class="form-control" value="{{ ocorrencia['Aluno'] }}" readonly>
       </div>
-      <div class="col-md-6 mb-3">
+      <div class="col-md-6">
         <label class="form-label">Tutor</label>
         <input type="text" class="form-control" value="{{ ocorrencia['Tutor'] }}" readonly>
       </div>
+      <div class="col-12">
+        <label class="form-label">Status</label>
+        <select name="status" class="form-select" {% if not permissoes.gestao %}readonly{% endif %}>
+          <option value="Aberto" {% if ocorrencia['Status'] == 'Aberto' %}selected{% endif %}>Aberto</option>
+          <option value="Em Andamento" {% if ocorrencia['Status'] == 'Em Andamento' %}selected{% endif %}>Em Andamento</option>
+          <option value="Fechado" {% if ocorrencia['Status'] == 'Fechado' %}selected{% endif %}>Fechado</option>
+        </select>
+      </div>
     </div>
 
-    <div class="mb-3">
+    <div class="mb-3 mt-3">
       <label class="form-label">Descrição da Ocorrência</label>
       <textarea class="form-control" rows="3" readonly>{{ ocorrencia['Descrição da Ocorrência'] }}</textarea>
     </div>
@@ -110,7 +112,11 @@
       Salvar Resposta
     </button>
     <a href="{{ url_for('index') }}" class="btn btn-secondary">Voltar</a>
+
   </form>
 </div>
+<footer class="text-center mt-5 mb-3">
+        <small>Desenvolvido: Marcelo André Nogueira Cardes <br> Licenciado: EE PEI Profª Irene Dias Ribeiro</small>
+    </footer>
 </body>
 </html>

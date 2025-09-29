@@ -32,115 +32,71 @@
       background-color: #2a2a2a;
       color: #fff;
       border-color: #4fc3f7;
-      box-shadow: 0 0 0 .2rem rgba(79,195,247,.25);
-    }
-    .form-check-label {
-      color: #ccc;
-    }
-    .btn-success {
-      background-color: #43a047;
-      border: none;
-    }
-    .btn-success:hover {
-      background-color: #388e3c;
+      box-shadow: 0 0 0 0.25rem rgba(79, 195, 247, 0.25);
     }
     .btn-secondary {
-      background-color: #616161;
-      border: none;
-    }
-    .btn-secondary:hover {
-      background-color: #757575;
+      background-color: #6c757d;
+      border-color: #6c757d;
     }
   </style>
 </head>
 <body>
-<div class="container mt-4">
-  <h3 class="text-center mb-4">SISTEMA DE GESTÃO DE CONVIVÊNCIA ESCOLAR <br> CADASTRAR NOVA OCORRÊNCIA</h3>
+<div class="container mt-5">
+  <h3 class="mb-4 text-center">CADASTRO DE NOVA OCORRÊNCIA</h3>
 
   <form method="post" action="{{ url_for('salvar_ocorrencia') }}">
-    <!-- Professor -->
-    <div class="mb-3">
-      <label class="form-label">Professor</label>
-      <select name="Professor" class="form-select" required>
-        <option value="">Selecione</option>
-        {% for p in Professores %}
-          <option value="{{ p }}">{{ p }}</option>
-        {% endfor %}
-      </select>
-    </div>
-
-    <!-- Sala -->
-    <div class="mb-3">
-      <label class="form-label">Sala</label>
-      <select id="sala" name="sala" class="form-select" required>
-        <option value="">Selecione</option>
-        {% for s in salas %}
-          <option value="{{ s }}">{{ s }}</option>
-        {% endfor %}
-      </select>
-    </div>
-
-    <!-- Aluno -->
-    <div class="mb-3">
-      <label class="form-label">Aluno</label>
-      <select id="aluno" name="Aluno" class="form-select" required>
-        <option value="">Selecione uma sala primeiro</option>
-      </select>
-    </div>
-
-    <!-- Tutor -->
-    <div class="mb-3">
-      <label class="form-label">Tutor</label>
-      <input type="text" id="tutor" name="tutor" class="form-control" readonly>
-    </div>
-
-    <!-- Descrição -->
-    <div class="mb-3">
-      <label class="form-label">Descrição da Ocorrência</label>
-      <textarea name="descricao" class="form-control" rows="4" required></textarea>
-    </div>
-
-    <!-- Atendimento Professor -->
-    <div class="mb-3">
-      <label class="form-label">Atendimento Professor</label>
-      <textarea name="at_professor" class="form-control" rows="3"></textarea>
-    </div>
-
-    <!-- Flags -->
-    <div class="row mb-3">
-      <div class="col-md-4">
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="FT" id="FT">
-          <label class="form-check-label" for="FT">Atendimento Tutor</label>
-        </div>
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label for="professor" class="form-label">Professor</label>
+        <select name="professor" id="professor" class="form-select" required>
+          <option value="">Selecione o Professor</option>
+          {% for p in professores %}
+            <option value="{{ p }}">{{ p }}</option>
+          {% endfor %}
+        </select>
       </div>
-      <div class="col-md-4">
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="FC" id="FC">
-          <label class="form-check-label" for="FC">Atendimento Coordenação</label>
-        </div>
+
+      <div class="col-md-6">
+        <label for="sala" class="form-label">Sala</label>
+        <select name="sala" id="sala" class="form-select" required>
+          <option value="">Selecione a Sala</option>
+          {% for s in salas %}
+            <option value="{{ s }}">{{ s }}</option>
+          {% endfor %}
+        </select>
       </div>
-      <div class="col-md-4">
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="FG" id="FG">
-          <label class="form-check-label" for="FG">Atendimento Gestão</label>
-        </div>
+
+      <div class="col-md-6">
+        <label for="aluno" class="form-label">Aluno</label>
+        <select name="aluno" id="aluno" class="form-select" required>
+          <option value="">Selecione uma sala primeiro</option>
+        </select>
+      </div>
+
+      <div class="col-md-6">
+        <label for="tutor" class="form-label">Tutor</label>
+        <input type="text" name="tutor" id="tutor" class="form-control" readonly required>
+      </div>
+
+      <div class="col-12">
+        <label for="descricao" class="form-label">Descrição da Ocorrência</label>
+        <textarea name="descricao" id="descricao" class="form-control" rows="5" required></textarea>
       </div>
     </div>
 
-    <!-- Botões -->
-    <div class="text-end">
-      <button type="submit" class="btn btn-success">Salvar</button>
+    <div class="mt-4 d-flex justify-content-between">
+      <button type="submit" class="btn btn-success">Salvar Ocorrência</button>
       <a href="{{ url_for('index') }}" class="btn btn-secondary">Voltar</a>
     </div>
   </form>
 </div>
 
 <script>
-document.getElementById('Sala').addEventListener('change', function(){
+// Correção: Garantir que os IDs no JS batem com o HTML
+document.getElementById('sala').addEventListener('change', function(){
   const sala = this.value;
-  const alunoSel = document.getElementById('Aluno');
-  const tutorInput = document.getElementById('Tutor');
+  const alunoSel = document.getElementById('aluno');
+  const tutorInput = document.getElementById('tutor');
 
   alunoSel.innerHTML = '<option value="">Carregando...</option>';
   tutorInput.value = '';
@@ -156,7 +112,8 @@ document.getElementById('Sala').addEventListener('change', function(){
           alunoSel.innerHTML = '<option value="">Selecione</option>';
           lista.forEach(item => {
             const op = document.createElement('option');
-            op.value = item.Aluno;
+            // item.Aluno e item.Tutor devem coincidir com as chaves JSON retornadas pelo app.py
+            op.value = item.Aluno; 
             op.textContent = item.Aluno;
             op.dataset.tutor = item.Tutor || '';
             alunoSel.appendChild(op);
@@ -176,8 +133,7 @@ document.getElementById('aluno').addEventListener('change', function(){
   document.getElementById('tutor').value = tutor;
 });
 </script>
-<!-- Rodapé -->
-    <footer class="text-center mt-5 mb-3">
+<footer class="text-center mt-5 mb-3">
         <small>Desenvolvido: Marcelo André Nogueira Cardes <br> Licenciado: EE PEI Profª Irene Dias Ribeiro</small>
     </footer>
 </body>
