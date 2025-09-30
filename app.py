@@ -62,11 +62,20 @@ def index_ocorrencias():
     scope = ["https://spreadsheets.google.com/feeds", 
              "https://www.googleapis.com/auth/drive"]
     
-    creds = ServiceAccountCredentials.from_json_keyfile_name("service_account.json", scope)
+    import os, json
+from oauth2client.service_account import ServiceAccountCredentials
+
+scope = ["https://www.googleapis.com/auth/spreadsheets",
+         "https://www.googleapis.com/auth/drive"]
+
+# Lê credenciais direto da variável de ambiente
+creds_json = json.loads(os.getenv("GOOGLE_CREDENTIALS"))
+creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_json, scope)
+
     client = gspread.authorize(creds)
 
     # Abre a planilha pelo URL ou ID
-    planilha = client.open_by_url("COLE_AQUI_O_LINK_DA_PLANILHA")
+    planilha = client.open_by_url("https://docs.google.com/spreadsheets/d/1Jyle_LCRCKQfbDShoIj-9MPNIkVSkYxWaCwQrhmxSoE/edit?gid=617272844#gid=617272844")
     sheet = planilha.worksheet("Dados")  # nome da aba
 
     # Carrega todos os dados em um DataFrame
@@ -1158,3 +1167,4 @@ if __name__ == '__main__':
         print("AVISO: Usando SHEET_ID de fallback.")
         
     app.run(debug=True)
+
