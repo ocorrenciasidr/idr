@@ -1,7 +1,8 @@
 Flask
 pandas
-gunicorn  # Essencial para rodar no Render
 gspread
 oauth2client
-fpdf
 reportlab
+fpdf
+Pillow
+matplotlib
