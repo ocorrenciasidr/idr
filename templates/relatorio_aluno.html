@@ -57,7 +57,10 @@
           <tbody>
           {% for o in ocorrencias %}
             <tr>
-              <td><input type="checkbox" name="ocorrencias" value="{{ o['ID'] }}"></td>
+              <td>
+  <input type="checkbox" name="ocorrencias" value="{{ o['ID'] }}"
+  {% if o['Status'] == 'ASSINADA' %} disabled {% endif %}>
+</td>
               <td>{{ o['ID'] }}</td>
               <td>{{ o['DCO'] }}</td> <td style="text-align:left">{{ o['Descrição da Ocorrência'] }}</td>
               <td>{{ o['Status'] }}</td>

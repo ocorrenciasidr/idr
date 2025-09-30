@@ -15,32 +15,31 @@
 <div class="container">
   <h2 class="mb-4 text-center">SISTEMA DE GESTÃO DE CONVIVÊNCIA ESCOLAR <br> GESTÃO DE OCORRÊNCIAS</h2>
 
-  <a href="{{ url_for('nova') }}" class="btn btn-primary mb-3">➕ Nova Ocorrência</a>
-
-  <form method="get" class="row mb-3">
-    <div class="col-md-4">
+  <!-- Linha com filtros e botões -->
+  <div class="row mb-3 align-items-end">
+    <div class="col-md-3">
       <label for="tutor" class="form-label">Tutor</label>
-      <select name="tutor" id="tutor" class="form-select">
+      <select id="tutor" class="form-select">
         <option value="">Todos</option>
         {% for t in tutores %}
-          <option value="{{ t }}" {% if request.args.get('tutor') == t %}selected{% endif %}>{{ t }}</option>
+          <option value="{{ t }}">{{ t }}</option>
         {% endfor %}
       </select>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
       <label for="status" class="form-label">Status</label>
-      <select name="status" id="status" class="form-select">
+      <select id="status" class="form-select">
         <option value="">Todos</option>
         {% for s in status_list %}
-          <option value="{{ s }}" {% if request.args.get('status') == s %}selected{% endif %}>{{ s }}</option>
+          <option value="{{ s }}">{{ s }}</option>
         {% endfor %}
       </select>
     </div>
-    <div class="col-md-4 d-flex align-items-end">
-      <button type="submit" class="btn btn-primary me-2">Filtrar</button>
-      <a href="{{ url_for('index') }}" class="btn btn-secondary">Limpar Filtros</a>
+    <div class="col-md-6 d-flex gap-2">
+      <a href="{{ url_for('nova') }}" class="btn btn-primary">➕ Nova Ocorrência</a>
+      <a href="{{ url_for('home') }}" class="btn btn-secondary">🏠 Tela Inicial</a>
     </div>
-  </form>
+  </div>
 
   <div class="table-responsive">
     <table class="table table-striped table-hover table-sm">
@@ -56,54 +55,46 @@
           <th>ATT (FT)</th> <th>ATC (FC)</th> <th>ATG (FG)</th> <th>Ações</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody id="tabela-ocorrencias">
         {% for registro in registros %}
         <tr>
           <td>{{ registro['ID'] }}</td>
-          <td>{{ registro['DCO'] | default('') }}</td> <td>{{ registro['HCO'] | default('') }}</td> <td>{{ registro['Sala'] }}</td>
+          <td>{{ registro['DCO'] | default('') }}</td>
+          <td>{{ registro['HCO'] | default('') }}</td>
+          <td>{{ registro['Sala'] }}</td>
           <td style="text-align: left;">{{ registro['Aluno'] }}</td>
           <td>{{ registro['Tutor'] }}</td>
           <td>{{ registro['Professor'] }}</td>
           <td>
             <span class="badge bg-{{ 'success' if registro['Status'] == 'FINALIZADA' else ('danger' if registro['Status'] == 'ATENDIMENTO' else 'warning') }}">{{ registro['Status'] }}</span>
           </td>
-          
           <td class="text-center">
             {% set ft_content = registro['FT'] | default('') | upper | trim %}
             {% if ft_content == 'SIM' %}
               {% set papel = 'tutor' %}
-              <a href="{{ url_for('editar', oid=registro['ID'], papel=papel) }}" class="badge bg-danger text-decoration-none">
-                SIM
-              </a>
+              <a href="{{ url_for('editar', oid=registro['ID'], papel=papel) }}" class="badge bg-danger text-decoration-none">SIM</a>
             {% else %}
               <span class="badge bg-success">NÃO</span>
             {% endif %}
           </td>
-          
           <td class="text-center">
             {% set fc_content = registro['FC'] | default('') | upper | trim %}
             {% if fc_content == 'SIM' %}
               {% set papel = 'coord' %}
-              <a href="{{ url_for('editar', oid=registro['ID'], papel=papel) }}" class="badge bg-danger text-decoration-none">
-                SIM
-              </a>
+              <a href="{{ url_for('editar', oid=registro['ID'], papel=papel) }}" class="badge bg-danger text-decoration-none">SIM</a>
             {% else %}
               <span class="badge bg-success">NÃO</span>
             {% endif %}
           </td>
-          
           <td class="text-center">
             {% set fg_content = registro['FG'] | default('') | upper | trim %}
             {% if fg_content == 'SIM' %}
               {% set papel = 'gestao' %}
-              <a href="{{ url_for('editar', oid=registro['ID'], papel=papel) }}" class="badge bg-danger text-decoration-none">
-                SIM
-              </a>
+              <a href="{{ url_for('editar', oid=registro['ID'], papel=papel) }}" class="badge bg-danger text-decoration-none">SIM</a>
             {% else %}
               <span class="badge bg-success">NÃO</span>
             {% endif %}
           </td>
-          
           <td>
             <a href="#" class="btn btn-sm btn-info" onclick="abrirSenha('{{ registro['ID'] }}', 'lapis')">✏️</a>
             <a href="{{ url_for('editar', oid=registro['ID'], papel='lupa') }}" class="btn btn-sm btn-secondary">🔍</a> 
@@ -115,6 +106,7 @@
   </div>
 </div>
 
+<!-- Modal Senha -->
 <div class="modal fade" id="senhaModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -137,40 +129,51 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 let oidAtual = null;
-let papelAtual = null; // Armazena o papel/ação
+let papelAtual = null;
 
-// CORREÇÃO: Função agora recebe o papel ('lapis' ou 'lupa')
 function abrirSenha(oid, papel) { 
     oidAtual = oid;
-    papelAtual = papel; // Armazena o papel
+    papelAtual = papel;
     document.getElementById('senhaInput').value = '';
     document.getElementById('senhaErro').style.display = 'none';
     var modal = new bootstrap.Modal(document.getElementById('senhaModal'));
     modal.show();
 }
 
-// CORREÇÃO: Função constrói a URL com o papel correto
 function verificarSenha() {
     const senha = document.getElementById('senhaInput').value;
-    // Use a senha que você configurou no app.py (ex: 'idrgestao')
     if (senha === 'idrgestao') { 
-        
-        // Cria uma URL base CORRETA com um ID fictício (0) e um papel base ('lupa') para o Flask resolver:
         const url_base = "{{ url_for('editar', oid=0, papel='lupa') }}";
-        
-        // Substitui o ID fictício (0) e o papel base ('lupa') pelo ID real e o papel de gestão ('lapis')
-        // Exemplo: /editar/0?papel=lupa -> /editar/123?papel=lapis
         const url_final = url_base.replace('/0?', '/' + oidAtual + '?').replace('papel=lupa', 'papel=' + papelAtual);
-        
         window.location.href = url_final;
-        
     } else {
         document.getElementById('senhaErro').style.display = 'block';
     }
 }
+
+// FILTRO AUTOMÁTICO
+function aplicarFiltros() {
+    const tutor = document.getElementById("tutor").value.toLowerCase();
+    const status = document.getElementById("status").value.toLowerCase();
+
+    document.querySelectorAll("#tabela-ocorrencias tr").forEach(linha => {
+        const tutorCol = linha.querySelectorAll("td")[5]?.innerText.toLowerCase() || "";
+        const statusCol = linha.querySelectorAll("td")[7]?.innerText.toLowerCase() || "";
+
+        let mostrar = true;
+        if (tutor && !tutorCol.includes(tutor)) mostrar = false;
+        if (status && !statusCol.includes(status)) mostrar = false;
+
+        linha.style.display = mostrar ? "" : "none";
+    });
+}
+
+document.getElementById("tutor").addEventListener("change", aplicarFiltros);
+document.getElementById("status").addEventListener("change", aplicarFiltros);
 </script>
- <footer class="text-center mt-5 mb-3">
-        <small>Desenvolvido: Marcelo André Nogueira Cardes <br> Licenciado: EE PEI Profª Irene Dias Ribeiro</small>
-    </footer>
+
+<footer class="text-center mt-5 mb-3">
+  <small>Desenvolvido: Marcelo André Nogueira Cardes <br> Licenciado: EE PEI Profª Irene Dias Ribeiro</small>
+</footer>
 </body>
 </html>

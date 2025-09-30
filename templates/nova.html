@@ -34,66 +34,87 @@
       border-color: #4fc3f7;
       box-shadow: 0 0 0 0.25rem rgba(79, 195, 247, 0.25);
     }
-    .btn-primary {
-      background-color: #4fc3f7;
-      border-color: #4fc3f7;
-    }
-    .btn-primary:hover {
-      background-color: #29b6f6;
-      border-color: #29b6f6;
+    .btn-secondary {
+      background-color: #6c757d;
+      border-color: #6c757d;
     }
   </style>
 </head>
 <body>
-
 <div class="container mt-5">
-  <h3 class="mb-4 text-center">Cadastro de Nova Ocorrência</h3>
-  <form method="post" action="{{ url_for('nova_ocorrencia') }}">
+  <h3 class="mb-4 text-center">CADASTRO DE NOVA OCORRÊNCIA</h3>
 
-    <div class="row">
-      <div class="col-md-6 mb-3">
+  <form method="post" action="{{ url_for('salvar') }}">
+    <div class="row g-3">
+      <div class="col-md-6">
         <label for="professor" class="form-label">Professor</label>
         <select name="professor" id="professor" class="form-select" required>
-          <option value="">Selecione</option>
+          <option value="">Selecione o Professor</option>
           {% for p in professores %}
             <option value="{{ p }}">{{ p }}</option>
           {% endfor %}
         </select>
       </div>
 
-      <div class="col-md-6 mb-3">
+      <div class="col-md-6">
         <label for="sala" class="form-label">Sala</label>
         <select name="sala" id="sala" class="form-select" required>
-          <option value="">Selecione</option>
+          <option value="">Selecione a Sala</option>
           {% for s in salas %}
             <option value="{{ s }}">{{ s }}</option>
           {% endfor %}
         </select>
       </div>
-    </div>
 
-    <div class="row">
-      <div class="col-md-6 mb-3">
+      <div class="col-md-6">
         <label for="aluno" class="form-label">Aluno</label>
         <select name="aluno" id="aluno" class="form-select" required>
           <option value="">Selecione uma sala primeiro</option>
         </select>
       </div>
 
-      <div class="col-md-6 mb-3">
-        <label for="tutor" class="form-label">Tutor (Automático)</label>
-        <input type="text" name="tutor" id="tutor" class="form-control" readonly>
+      <div class="col-md-6">
+        <label for="tutor" class="form-label">Tutor</label>
+        <input type="text" name="tutor" id="tutor" class="form-control" readonly required>
       </div>
+
+      <div class="col-12">
+        <label for="descricao" class="form-label">Descrição da Ocorrência</label>
+        <textarea name="descricao" id="descricao" class="form-control" rows="3" required></textarea>
+      </div>
+
+      <div class="col-12">
+        <label for="at_professor" class="form-label">Atendimento Professor (Registro Inicial)</label>
+        <textarea name="at_professor" id="at_professor" class="form-control" rows="3"></textarea>
+      </div>
+
+      <div class="col-12">
+        <label class="form-label mt-2">Solicitar Atendimento de Follow-up:</label>
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="req_ft" id="req_ft">
+            <label class="form-check-label" for="req_ft">
+                Atendimento Tutor (ATT)
+            </label>
+        </div>
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="req_fc" id="req_fc">
+            <label class="form-check-label" for="req_fc">
+                Atendimento Coordenação (ATC)
+            </label>
+        </div>
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="req_fg" id="req_fg">
+            <label class="form-check-label" for="req_fg">
+                Atendimento Gestão (ATG)
+            </label>
+        </div>
+      </div>
+
     </div>
 
-    <div class="mb-3">
-      <label for="descricao" class="form-label">Descrição da Ocorrência</label>
-      <textarea name="descricao" id="descricao" class="form-control" rows="4" required></textarea>
-    </div>
-
-    <div class="text-center mt-4">
-      <button type="submit" class="btn btn-primary me-2">Cadastrar Ocorrência</button>
-      <a href="{{ url_for('home') }}" class="btn btn-secondary">Voltar para Home</a>
+    <div class="mt-4 d-flex justify-content-between">
+      <button type="submit" class="btn btn-success">Salvar Ocorrência</button>
+      <a href="{{ url_for('index') }}" class="btn btn-secondary">Voltar</a>
     </div>
   </form>
 </div>
@@ -118,7 +139,8 @@ document.getElementById('sala').addEventListener('change', function(){
           alunoSel.innerHTML = '<option value="">Selecione</option>';
           lista.forEach(item => {
             const op = document.createElement('option');
-            op.value = item.Aluno;
+            // item.Aluno e item.Tutor devem coincidir com as chaves JSON retornadas pelo app.py
+            op.value = item.Aluno; 
             op.textContent = item.Aluno;
             op.dataset.tutor = item.Tutor || '';
             alunoSel.appendChild(op);
@@ -138,5 +160,8 @@ document.getElementById('aluno').addEventListener('change', function(){
   document.getElementById('tutor').value = tutor;
 });
 </script>
+ <footer class="text-center mt-5 mb-3">
+        <small>Desenvolvido: Marcelo André Nogueira Cardes <br> Licenciado: EE PEI Profª Irene Dias Ribeiro</small>
+    </footer>
 </body>
 </html>
