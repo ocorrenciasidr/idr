@@ -1,8 +1,8 @@
 Flask
+gunicorn
 pandas
 gspread
 oauth2client
-reportlab
 fpdf
-Pillow
-matplotlib
+matplotlib 
+python-dateutil
