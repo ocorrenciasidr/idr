@@ -97,7 +97,7 @@ def index_ocorrencias():
 
 def conectar_sheets():
     try:
-        creds_json = os.getenv("GOOGLE_CREDS")  # variável no Render
+        creds_json = os.getenv("GOOGLE_CREDS")
         creds_dict = json.loads(creds_json)
 
         # Corrige a formatação da chave privada
@@ -109,14 +109,12 @@ def conectar_sheets():
         )
 
         client = gspread.authorize(creds)
-
-        # 🔹 Troque pelo ID real da sua planilha
         spreadsheet = client.open_by_key("SEU_SPREADSHEET_ID")
 
         return client, spreadsheet
 
     except Exception as e:
-        print("Erro ao conectar com Google Sheets:", e)
+        print("Erro ao conectar com Google Sheets:", repr(e))  # 🔹 usar repr para ver detalhes
         return None, None
   
 # ---------------------------
@@ -1174,6 +1172,7 @@ if __name__ == "__main__":
         print("AVISO: Usando SHEET_ID de fallback.")
         
     app.run(debug=True)
+
 
 
 
