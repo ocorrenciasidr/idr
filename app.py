@@ -9,6 +9,8 @@ from urllib.parse import urlencode
 import pandas as pd
 from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file, flash, abort
 
+from oauth2client.service_account import ServiceAccountCredentials
+
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_name("service_account", scope)
 client = gspread.authorize(creds)
@@ -1158,6 +1160,7 @@ if __name__ == '__main__':
         print("AVISO: Usando SHEET_ID de fallback.")
         
     app.run(debug=True)
+
 
 
 
