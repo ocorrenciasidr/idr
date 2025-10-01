@@ -94,16 +94,20 @@ def index_ocorrencias():
 
 def conectar_sheets():
     try:
-        creds_json = os.getenv("GOOGLE_CREDS")  # JSON salvo como string
+        # Lê o JSON da variável de ambiente
+        creds_json = os.getenv("GOOGLE_CREDS")
         creds_dict = json.loads(creds_json)
 
         # Corrige as quebras de linha da chave privada
         creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
 
+        # Cria as credenciais
         creds = Credentials.from_service_account_info(
             creds_dict,
             scopes=["https://www.googleapis.com/auth/spreadsheets"]
         )
+
+        # Autoriza o gspread
         client = gspread.authorize(creds)
         return client
 
@@ -1154,4 +1158,5 @@ if __name__ == '__main__':
         print("AVISO: Usando SHEET_ID de fallback.")
         
     app.run(debug=True)
+
 
