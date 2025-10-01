@@ -10,8 +10,11 @@ import pandas as pd
 from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file, flash, abort
 
 # Imports para Google Sheets
+import os
+import json
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+import pandas as pd
+from google.oauth2.service_account import Credentials
 
 # Imports para Geração de PDF e Gráficos (necessita de `fpdf` e `matplotlib`)
 from fpdf import FPDF
@@ -94,40 +97,45 @@ def index_ocorrencias():
 
 def conectar_sheets():
     try:
-        # Lê o JSON da variável de ambiente
-        creds_json = os.getenv("GOOGLE_CREDS")
+        creds_json = os.getenv("GOOGLE_CREDS")  # variável no Render
         creds_dict = json.loads(creds_json)
 
-        # Corrige as quebras de linha da chave privada
+        # Corrige formatação da chave privada
         creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
 
-        # Cria as credenciais
         creds = Credentials.from_service_account_info(
             creds_dict,
             scopes=["https://www.googleapis.com/auth/spreadsheets"]
         )
 
-        # Autoriza o gspread
         client = gspread.authorize(creds)
-        return client
+
+        # 🔹 troque pelo ID real da sua planilha
+        spreadsheet = client.open_by_key("SEU_SPREADSHEET_ID")
+
+        return client, spreadsheet
 
     except Exception as e:
         print("Erro ao conectar com Google Sheets:", e)
-        return None
+        return None, None
+
         
 def carregar_dados():
     """Carrega os dados da aba 'Dados' no Sheets para um DataFrame do Pandas."""
+   def carregar_dados():
     client, spreadsheet = conectar_sheets()
-    if spreadsheet is None:
-        # Retorna um DataFrame vazio se a conexão falhar
-        return pd.DataFrame(columns=EXPECTED_COLUMNS) 
-        
+    if not client or not spreadsheet:
+        raise Exception("Falha ao conectar com Google Sheets")
+
     try:
-        ws_ocorrencias = spreadsheet.worksheet(ABA_OCORRENCIAS)
-        # Tenta carregar os dados. Assume que a primeira linha é o cabeçalho.
-        data = ws_ocorrencias.get_all_records(head=1, default_blank='')
+        worksheet = spreadsheet.sheet1   # primeira aba
+        Dados = worksheet.get_all_records()
+        df = pd.DataFrame(Dados)
+        return df
+    except Exception as e:
+        print("Erro ao carregar dados da planilha:", e)
+        return pd.DataFrame()  # retorna vazio se falhar
         
-        df = pd.DataFrame(data)
         
         if not df.empty:
             df['ID'] = pd.to_numeric(df['ID'], errors='coerce').fillna(0).astype(int)
@@ -476,8 +484,13 @@ def home():
 
 @app.route("/index")
 def index():
-    """Lista todas as ocorrências com filtros."""
-    df = carregar_dados()
+    try:
+        df = carregar_dados()
+        # Aqui você pode mandar o df para o template
+        return render_template("index.html", tabela=df.to_dict(orient="records"))
+    except Exception as e:
+        print("Erro na rota /index:", e)
+        return "Erro ao carregar dados da planilha.", 500
     
     tutor_filtro = request.args.get('tutor', '')
     status_filtro = request.args.get('status', '')
@@ -1158,5 +1171,6 @@ if __name__ == '__main__':
         print("AVISO: Usando SHEET_ID de fallback.")
         
     app.run(debug=True)
+
 
 
