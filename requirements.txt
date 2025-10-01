@@ -1,8 +1,0 @@
-Flask
-gunicorn
-pandas
-gspread
-oauth2client
-fpdf
-matplotlib 
-python-dateutil
