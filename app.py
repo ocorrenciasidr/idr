@@ -9,6 +9,9 @@ from urllib.parse import urlencode
 import pandas as pd
 from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file, flash, abort
 
+import os
+SERVICE_ACCOUNT_FILE = "/etc/secrets/service_account.json"
+
 # Imports para Google Sheets
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
@@ -1158,3 +1161,4 @@ if __name__ == '__main__':
         print("AVISO: Usando SHEET_ID de fallback.")
         
     app.run(debug=True)
+
