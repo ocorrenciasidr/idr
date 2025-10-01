@@ -93,28 +93,24 @@ def index_ocorrencias():
 # -------------------- Funções Auxiliares (Conexão e Carga) --------------------
 
 def conectar_sheets():
-    """Tenta estabelecer a conexão e retornar o objeto client e a planilha."""
     try:
-        # Verifica se o arquivo de credenciais existe
-        if not os.path.exists('service_account.json'):
-            # Se não existir, simula uma falha de conexão (para execução em ambientes restritos)
-            print("ERRO: O arquivo 'service_account.json' não foi encontrado. Retornando conexão nula.")
-            return None, None
-            
-        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-        # Tenta carregar as credenciais
-        # Para ambientes que não permitem o arquivo local, simula o erro
-        if not os.path.exists('service_account.json'):
-             return None, None
-             
-        creds = ServiceAccountCredentials.from_json_keyfile_name('service_account.json', scope)
-        client = gspread.authorize(creds)
-        spreadsheet = client.open_by_key(SHEET_ID)
-        return client, spreadsheet
-    except Exception as e:
-        print(f"Erro ao conectar com Google Sheets: {e}")
-        return None, None
+        creds_json = os.getenv("GOOGLE_CREDS")  # JSON salvo como string
+        creds_dict = json.loads(creds_json)
 
+        # Corrige as quebras de linha da chave privada
+        creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+
+        creds = Credentials.from_service_account_info(
+            creds_dict,
+            scopes=["https://www.googleapis.com/auth/spreadsheets"]
+        )
+        client = gspread.authorize(creds)
+        return client
+
+    except Exception as e:
+        print("Erro ao conectar com Google Sheets:", e)
+        return None
+        
 def carregar_dados():
     """Carrega os dados da aba 'Dados' no Sheets para um DataFrame do Pandas."""
     client, spreadsheet = conectar_sheets()
@@ -1158,3 +1154,4 @@ if __name__ == '__main__':
         print("AVISO: Usando SHEET_ID de fallback.")
         
     app.run(debug=True)
+
