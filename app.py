@@ -620,50 +620,52 @@ def salvar_edicao(oid):
             updates['ATG'] = atg_texto
             updates['DG'] = agora_iso
             updates['FG'] = 'NÃO'
+@app.route("/salvar_edicao/<int:ocorrencia_id>", methods=['POST'])
+def salvar_edicao(ocorrencia_id):
+    """Processa a edição de uma ocorrência existente no Google Sheets."""
+    try:
+        client, spreadsheet = conectar_sheets()
+        if spreadsheet is None:
+            flash("Erro de conexão com a planilha!", 'danger')
+            return redirect(url_for('index'))
 
-        # Atualiza descrição
-        nova_desc = form_data.get('descricao')
-        if nova_desc is not None and nova_desc.strip():
-            updates['Descrição da Ocorrência'] = nova_desc
+        ws = spreadsheet.worksheet(ABA_OCORRENCIAS)
+        header = ws.row_values(1)
+        df = carregar_dados()
 
-        # Atendimento Professor
-        at_prof = form_data.get('at_professor')
-        if at_prof is not None and at_prof.strip():
-            updates['Atendimento Professor'] = at_prof
+        # Busca a ocorrência pelo ID
+        ocorrencia = df.loc[df['ID'] == ocorrencia_id]
+        if ocorrencia.empty:
+            flash("Ocorrência não encontrada!", "danger")
+            return redirect(url_for('index'))
 
-        # Lógica de Status: Se todos os FT/FC/FG forem 'NÃO', o status é 'FINALIZADA'.
-        # Assume que os valores na linha_atual refletem o estado ANTERIOR, 
-        # mas verifica o que será o novo estado após esta atualização.
-        
-        # Pega os valores atuais (ou os novos valores de 'updates')
-        current_ft = updates.get('FT') or str(row_data.get('FT', 'SIM')).strip()
-        current_fc = updates.get('FC') or str(row_data.get('FC', 'SIM')).strip()
-        current_fg = updates.get('FG') or str(row_data.get('FG', 'SIM')).strip()
-        
-        # Define o status final
-        if current_ft == 'SIM' or current_fc == 'SIM' or current_fg == 'SIM':
-            updates['Status'] = 'ATENDIMENTO'
-        else:
-            updates['Status'] = 'FINALIZADA'
-            # O status 'ASSINADA' é definido apenas via rota /gerar_pdf_aluno
+        ocorrencia = ocorrencia.iloc[0].to_dict()
+        form = request.form
 
-        # 3. Enviar atualizações para o Sheets
-        cells_to_update = []
-        for col_name, value in updates.items():
-            if col_name in col_map:
-                col_index = col_map[col_name] + 1
-                cells_to_update.append(gspread.Cell(row_index, col_index, value))
+        # Atualiza apenas os campos editáveis
+        for col in header:
+            if col in form and col != "Status":  # 👈 impede edição do Status
+                ocorrencia[col] = form.get(col, ocorrencia.get(col, ""))
 
-        if cells_to_update:
-            ws.update_cells(cells_to_update)
+        # Mantém o status original SEMPRE
+        ocorrencia["Status"] = "ATENDIMENTO"
 
-        flash(f"Ocorrência ID {oid} atualizada com sucesso! Novo Status: {updates['Status']}", 'success')
-        return redirect(url_for('editar', oid=oid))
+        # Constrói a linha na ordem do cabeçalho
+        linha = [ocorrencia.get(col, "") for col in header]
+
+        # Localiza a linha no Sheets
+        cell = ws.find(str(ocorrencia_id))
+        if cell:
+            ws.update(f"A{cell.row}:Z{cell.row}", [linha])
+
+        flash(f"Ocorrência ID {ocorrencia_id} atualizada com sucesso!", "success")
+        return redirect(url_for("index"))
 
     except Exception as e:
         print(f"Erro ao salvar edição: {e}")
-        flash(f"Erro ao salvar edição: {e}", 'danger')
-        return redirect(url_for('editar', oid=oid))
+        flash(f"Erro ao salvar edição: {e}", "danger")
+        return redirect(url_for('index'))
+
 
 @app.route("/salvar", methods=['POST'])
 def salvar():
@@ -894,3 +896,4 @@ def editar(oid):
 if __name__ == '__main__':
     # Apenas para teste local. No Render, use gunicorn ou equivalente.
     app.run(debug=True)
+
