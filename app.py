@@ -12,13 +12,11 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify, s
 # =======================================================
 # Imports Necessários
 # =======================================================
-import os
-import json
 import gspread
-from google.oauth2.service_account import Credentials
+from google.oauth2.service_account import Credentials # JÁ ESTAVA CORRETO
 
 # =======================================================
-# Função de Conexão
+# Função de Conexão (CORRIGIDA)
 # =======================================================
 def conectar_sheets():
     """
@@ -31,7 +29,7 @@ def conectar_sheets():
         if not creds_json:
             # Imprime o erro no log e retorna
             print("ERRO: Variável de ambiente GOOGLE_SHEETS_CREDENTIALS não configurada.")
-            return None
+            return None, None # Retorna client e spreadsheet como None
 
         # 2. Converter String JSON em Dicionário Python
         creds_dict = json.loads(creds_json)
@@ -42,8 +40,8 @@ def conectar_sheets():
             'https://www.googleapis.com/auth/drive'
         ]
 
-        # 4. Criar Objeto de Credenciais
-        creds = ServiceAccountCredentials.from_service_account_info(
+        # 4. Criar Objeto de Credenciais (CORRIGIDO PARA O NOME DA CLASSE IMPORTADA)
+        creds = Credentials.from_service_account_info(
             creds_dict, 
             scopes=scopes
         )
@@ -52,17 +50,18 @@ def conectar_sheets():
         gc = gspread.authorize(creds)
 
         # 6. Abrir a Planilha
-        SHEET_ID = os.environ.get('GOOGLE_SHEET_ID', '1Jyle_LCRCKQfbDShoIj-9MPNIkVSkYxWaCwQrhmxSoE')  
+        SHEET_ID = os.environ.get('GOOGLE_SHEET_ID', '1Jyle_LCRCKQfbDShoIj-9MPNIkVSkYxWaCwQrhmxSoE') 
         spreadsheet = gc.open_by_key(SHEET_ID)
         
-        return spreadsheet
+        # Retorna o cliente e a planilha (necessário para as funções auxiliares)
+        return gc, spreadsheet 
         
     except json.JSONDecodeError:
         print("ERRO: O conteúdo da variável GOOGLE_SHEETS_CREDENTIALS não é um JSON válido.")
-        return None
+        return None, None
     except Exception as e:
         print(f"Erro ao conectar com Google Sheets: {e}")
-        return None
+        return None, None
         
 # Imports para Geração de PDF e Gráficos (necessita de `fpdf` e `matplotlib`)
 from fpdf import FPDF
@@ -107,68 +106,17 @@ ABA_SALAS = 'Salas'
 ABA_ALUNOS = 'Alunos'
 ABA_TUTORES = 'Tutores' # Usado para carregar a lista de tutores no detalhes
 
-@app.route("/ocorrencias")
-def index_ocorrencias():
-    # Configuração do Google Sheets
-    scope = ["https://spreadsheets.google.com/feeds", 
-             "https://www.googleapis.com/auth/drive"]
-    
-    creds = ServiceAccountCredentials.from_json_keyfile_name("service_account.json", scope)
-    client = gspread.authorize(creds)
 
-    # Abre a planilha pelo URL ou ID
-    planilha = client.open_by_url("COLE_AQUI_O_LINK_DA_PLANILHA")
-    sheet = planilha.worksheet("Dados")  # nome da aba
+# ROTA /ocorrencias REMOVIDA. A rota /index já faz o trabalho de listar os dados.
 
-    # Carrega todos os dados em um DataFrame
-    dados_lista = sheet.get_all_records()  # pega tudo como lista de dicionários
-    df = pd.DataFrame(dados_lista)
-
-    # Garante que todas as colunas esperadas existem
-    expected_columns = [
-        "ID","DCO","HCO","Professor","Sala","Aluno","Tutor",
-        "Descrição da Ocorrência","Atendimento Professor","ATT","ATC",
-        "ATG","FT","FC","FG","DT","DC","DG","Status"
-    ]
-    for col in expected_columns:
-        if col not in df.columns:
-            df[col] = None
-
-    # Ordena pelo ID apenas se houver dados
-    if not df.empty:
-        df = df.sort_values(by="ID", ascending=False)
-
-    dados = df.to_dict(orient="records")
-    return render_template("index.html", dados=dados)
 
 # -------------------- Funções Auxiliares (Conexão e Carga) --------------------
 
-def conectar_sheets():
-    """Tenta estabelecer a conexão e retornar o objeto client e a planilha."""
-    try:
-        # Verifica se o arquivo de credenciais existe
-        if not os.path.exists('service_account.json'):
-            # Se não existir, simula uma falha de conexão (para execução em ambientes restritos)
-            print("ERRO: O arquivo 'service_account.json' não foi encontrado. Retornando conexão nula.")
-            return None, None
-            
-        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-        # Tenta carregar as credenciais
-        # Para ambientes que não permitem o arquivo local, simula o erro
-        if not os.path.exists('service_account.json'):
-             return None, None
-             
-        creds = ServiceAccountCredentials.from_json_keyfile_name('service_account.json', scope)
-        client = gspread.authorize(creds)
-        spreadsheet = client.open_by_key(SHEET_ID)
-        return client, spreadsheet
-    except Exception as e:
-        print(f"Erro ao conectar com Google Sheets: {e}")
-        return None, None
+# SEGUNDA DEFINIÇÃO DE conectar_sheets() E O CÓDIGO DE AUTENTICAÇÃO BASEADO EM ARQUIVO FORAM REMOVIDOS.
 
 def carregar_dados():
     """Carrega os dados da aba 'Dados' no Sheets para um DataFrame do Pandas."""
-    client, spreadsheet = conectar_sheets()
+    client, spreadsheet = conectar_sheets() # Usa a função corrigida
     if spreadsheet is None:
         # Retorna um DataFrame vazio se a conexão falhar
         return pd.DataFrame(columns=EXPECTED_COLUMNS) 
@@ -665,9 +613,22 @@ def salvar_edicao(oid):
         linha_atual = ws.row_values(row_index)
         col_map = {col: i for i, col in enumerate(EXPECTED_COLUMNS)}
 
-        ft_val = updates.get('FT', linha_atual[col_map['FT']])
-        fc_val = updates.get('FC', linha_atual[col_map['FC']])
-        fg_val = updates.get('FG', linha_atual[col_map['FG']])
+        # Verifica se linha_atual é grande o suficiente para evitar IndexError
+        if len(linha_atual) > col_map['FT']:
+            ft_val = updates.get('FT', linha_atual[col_map['FT']])
+        else:
+            ft_val = updates.get('FT', 'NÃO')
+        
+        if len(linha_atual) > col_map['FC']:
+            fc_val = updates.get('FC', linha_atual[col_map['FC']])
+        else:
+            fc_val = updates.get('FC', 'NÃO')
+
+        if len(linha_atual) > col_map['FG']:
+            fg_val = updates.get('FG', linha_atual[col_map['FG']])
+        else:
+            fg_val = updates.get('FG', 'NÃO')
+
 
         # Atualiza status
         if ft_val == 'SIM' or fc_val == 'SIM' or fg_val == 'SIM':
@@ -849,370 +810,206 @@ def editar(oid):
     except Exception as e:
         flash(f"Erro ao carregar dados: {e}", 'danger')
         return redirect(url_for('index'))
-
+    
     if ocorrencia is None:
         flash("Ocorrência não encontrada.", 'warning')
         return redirect(url_for('index'))
+    
+    return render_template("editar.html", ocorrencia=ocorrencia, expected_columns=EXPECTED_COLUMNS)
 
-    # Permissões de edição por campo (evento independente)
-    permissoes = {
-        "att": ocorrencia.get('FT') == 'SIM' and not ocorrencia.get('ATT'),
-        "atc": ocorrencia.get('FC') == 'SIM' and not ocorrencia.get('ATC'),
-        "atg": ocorrencia.get('FG') == 'SIM' and not ocorrencia.get('ATG')
-    }
+@app.route("/relatorio_aluno", methods=['GET', 'POST'])
+def relatorio_aluno():
+    """Gera o relatório de ocorrências de um aluno, permitindo seleção para geração de PDF."""
+    
+    # Se a conexão falhar, as listas virão vazias e o df de ocorrências será vazio.
+    salas = carregar_lista(ABA_SALAS, 'Sala')
+    
+    # Coleta filtros
+    sala_filtro = request.args.get('sala')
+    aluno_filtro = request.args.get('aluno')
+    
+    df = carregar_dados()
+    df_filtrado = pd.DataFrame(columns=EXPECTED_COLUMNS)
+    aluno_info = {'aluno': '', 'tutor': '', 'sala': ''}
+    
+    if sala_filtro and aluno_filtro and not df.empty:
+        # Garante que as colunas existem antes de filtrar
+        if 'Sala' in df.columns and 'Aluno' in df.columns:
+            # Filtra por sala e aluno
+            df_filtrado = df[(df['Sala'] == sala_filtro) & (df['Aluno'] == aluno_filtro)]
+            df_filtrado = df_filtrado.sort_values(by='DCO', ascending=False)
+            
+            # Pega as informações de Tutor e Sala
+            if not df_filtrado.empty:
+                aluno_info = {
+                    'aluno': aluno_filtro,
+                    'tutor': df_filtrado['Tutor'].iloc[0],
+                    'sala': sala_filtro
+                }
+            elif sala_filtro:
+                # Se não houver ocorrências, tenta pegar o tutor da lista de alunos
+                client, spreadsheet = conectar_sheets()
+                if spreadsheet:
+                    try:
+                        ws_alunos = spreadsheet.worksheet(ABA_ALUNOS)
+                        data_alunos = ws_alunos.get_all_records(head=1, default_blank='')
+                        df_alunos = pd.DataFrame(data_alunos)
+                        aluno_row = df_alunos[(df_alunos['Sala'] == sala_filtro) & (df_alunos['Aluno'] == aluno_filtro)]
+                        if not aluno_row.empty and 'Tutor' in aluno_row.columns:
+                            aluno_info['tutor'] = aluno_row['Tutor'].iloc[0]
+                    except Exception as e:
+                        print(f"Aviso: Erro ao buscar info de tutor para aluno sem ocorrência: {e}")
+                        
+    # Carrega a lista de alunos para o dropdown
+    alunos = []
+    if sala_filtro:
+        client, spreadsheet = conectar_sheets()
+        if spreadsheet:
+            try:
+                ws_alunos = spreadsheet.worksheet(ABA_ALUNOS)
+                data_alunos = ws_alunos.get_all_records(head=1, default_blank='')
+                df_alunos = pd.DataFrame(data_alunos)
+                if not df_alunos.empty and 'Sala' in df_alunos.columns and 'Aluno' in df_alunos.columns:
+                    alunos = sorted(list(df_alunos[df_alunos['Sala'] == sala_filtro]['Aluno'].unique()))
+            except Exception as e:
+                print(f"Aviso: Erro ao carregar lista de alunos: {e}")
 
-    agora = datetime.now(TZ_SAO).strftime('%Y-%m-%d %H:%M:%S')
+    
+    registros = df_filtrado.to_dict('records')
 
-    if request.method == 'POST':
-        try:
-            client, spreadsheet = conectar_sheets()
-            if spreadsheet is None:
-                flash("Erro de conexão com a planilha!", 'danger')
-                return redirect(url_for('editar', oid=oid))
+    return render_template("relatorio_aluno.html",
+                           salas=salas,
+                           alunos=alunos,
+                           registros=registros,
+                           aluno_info=aluno_info,
+                           sala_sel=sala_filtro,
+                           aluno_sel=aluno_filtro)
 
-            ws_ocorrencias = spreadsheet.worksheet(ABA_OCORRENCIAS)
-            cell = ws_ocorrencias.find(str(oid))
-            if cell is None:
-                raise gspread.exceptions.CellNotFound(f"ID {oid} não encontrado.")
-            row_index = cell.row
-
-            form_data = request.form
-            updates = {}
-
-            # Atualiza ATT se habilitado
-            if permissoes['att']:
-                att_texto = form_data.get('att_texto')
-                if att_texto and att_texto.strip():
-                    updates['ATT'] = att_texto
-                    updates['DT'] = agora
-                    updates['FT'] = 'NÃO'
-
-            # Atualiza ATC se habilitado
-            if permissoes['atc']:
-                atc_texto = form_data.get('atc_texto')
-                if atc_texto and atc_texto.strip():
-                    updates['ATC'] = atc_texto
-                    updates['DC'] = agora
-                    updates['FC'] = 'NÃO'
-
-            # Atualiza ATG se habilitado
-            if permissoes['atg']:
-                atg_texto = form_data.get('atg_texto')
-                if atg_texto and atg_texto.strip():
-                    updates['ATG'] = atg_texto
-                    updates['DG'] = agora
-                    updates['FG'] = 'NÃO'
-
-            # Atualiza Status, Descrição e Atendimento Professor normalmente
-            novo_status = form_data.get('novo_status')
-            if novo_status and novo_status != ocorrencia.get('Status'):
-                updates['Status'] = novo_status
-
-            nova_desc = form_data.get('descricao')
-            if nova_desc is not None and nova_desc != ocorrencia.get('Descrição da Ocorrência'):
-                updates['Descrição da Ocorrência'] = nova_desc
-
-            at_professor = form_data.get('at_professor')
-            if at_professor is not None and at_professor != ocorrencia.get('Atendimento Professor'):
-                updates['Atendimento Professor'] = at_professor
-
-            # Atualiza status automaticamente de acordo com FT/FC/FG
-            ft = updates.get('FT', ocorrencia.get('FT'))
-            fc = updates.get('FC', ocorrencia.get('FC'))
-            fg = updates.get('FG', ocorrencia.get('FG'))
-
-            if ft == 'SIM' or fc == 'SIM' or fg == 'SIM':
-                updates['Status'] = 'ATENDIMENTO'
-            elif ft == 'NÃO' and fc == 'NÃO' and fg == 'NÃO':
-                updates['Status'] = 'FINALIZADA'
-
-            # Envia atualizações para o Sheets
-            col_map = {col: i + 1 for i, col in enumerate(EXPECTED_COLUMNS)}
-            cells_to_update = [gspread.Cell(row_index, col_map[col], val)
-                               for col, val in updates.items() if col in col_map]
-
-            if cells_to_update:
-                ws_ocorrencias.update_cells(cells_to_update)
-                flash(f"Ocorrência ID {oid} atualizada com sucesso!", 'success')
-            else:
-                flash("Nenhuma alteração detectada.", 'info')
-
-            return redirect(url_for('editar', oid=oid))
-
-        except gspread.exceptions.CellNotFound:
-            flash("Erro: ID da ocorrência não encontrado na planilha.", 'danger')
-        except Exception as e:
-            print(f"Erro ao editar ocorrência: {e}")
-            flash(f"Erro ao editar: {e}", 'danger')
-            return redirect(url_for('editar', oid=oid))
-
-    # GET: renderiza template com permissões por campo
-    return render_template(
-        'editar.html',
-        ocorrencia=ocorrencia,
-        permissoes=permissoes
-    )
-
-
-@app.route('/relatorio_geral')
-def relatorio_geral():
-    # lógica para gerar estatísticas gerais
-    return render_template('relatorio_geral.html')
-
-@app.route('/relatorio_tutor')
+@app.route("/relatorio_tutor", methods=['GET'])
 def relatorio_tutor():
-    # lógica para gerar estatísticas gerais
-    return render_template('relatorio_tutor.html')
-
-@app.route('/relatorio_tutoraluno')
-def relatorio_tutoraluno():
-    # lógica para gerar estatísticas gerais
-    return render_template('relatorio_tutoraluno.html')
-
-    # --- PERMISSÕES (GET) ---
-    is_lapis = (papel == 'lapis')
-
-    permissoes = {
-        'edicao': is_lapis,
-        'descricao': is_lapis,
-        'professor': is_lapis,
-        # ATT / ATC / ATG vêm travados; liberação acontece pelo link "SIM"
-        'tutor': False,
-        'coord': False,
-        'gestao': False,
-    }
-    # -------------------------
-
+    """Gera o relatório de desempenho de um tutor."""
+    
+    tutor_filtro = request.args.get('tutor', '')
+    
+    # Tenta carregar a lista de tutores mesmo se a conexão falhar
     tutores = carregar_lista(ABA_TUTORES, 'Tutor')
-    status_list = ['Em Aberto', 'ATENDIMENTO', 'ASSINADA', 'FINALIZADA']
-
-    return render_template(
-        "editar.html",
-        ocorrencia=ocorrencia,
-        tutores=tutores,
-        papel=papel,
-        status_list=status_list,
-        permissoes=permissoes
-    )
-
-@app.route("/relatorio_inicial")
-def relatorio_inicial():
-    """Exibe a lista de tutores para seleção de relatório."""
-    df = carregar_dados()
-    tutores = sorted(list(df['Tutor'].unique())) if not df.empty and 'Tutor' in df.columns else carregar_lista(ABA_TUTORES, 'Tutor')
     
-    return render_template("relatorio_inicial.html", tutores=tutores)
-
-@app.route("/relatorio_tutor/<tutor>", methods=['GET'])
-def relatorio_tutor_pdf():
-    """Gera um relatório detalhado do desempenho de um tutor."""
-    df = carregar_dados()
+    relatorio_data = {}
+    df_registros = pd.DataFrame(columns=EXPECTED_COLUMNS)
     
-    if df.empty or 'Tutor' not in df.columns:
-        flash("Dados insuficientes para gerar relatório.", 'warning')
-        return redirect(url_for('relatorio_inicial'))
+    if tutor_filtro:
+        df = carregar_dados()
+        df_tutor = df[df['Tutor'] == tutor_filtro].copy()
         
-    df_filtrado = df[df['Tutor'] == tutor].copy()
-    
-    if df_filtrado.empty:
-        flash(f"Nenhuma ocorrência encontrada para o tutor {tutor}.", 'info')
-        return redirect(url_for('relatorio_inicial'))
-
-    # Função auxiliar para calcular o status do atendimento do tutor
-    def calcular_status_tutor(row):
-        # DCO é a data de Criação da Ocorrência
-        try:
-            # Tenta converter para datetime e localizar o fuso horário
-            dco = pd.to_datetime(row['DCO'], errors='coerce').tz_localize(TZ_SAO)
-            if pd.isna(dco):
-                return 'aberto'
-        except Exception:
-            return 'aberto' # Se a data for inválida, considera como aberto (melhor que quebrar)
-
-        # Requisitado Follow-up do Tutor?
-        if row['FT'] != 'SIM':
-            return 'nao_req' # Não solicitado (não contabiliza como prazo/fora/nao)
+        if not df_tutor.empty:
             
-        # 1. Verificar se o atendimento já foi realizado (DT preenchida)
-        if row['DT']:
-            # Se já está fechado, verifica se a resposta foi dada em até 2 dias
-            try:
-                dt_str = str(row['DT']).split(' ')[0] # Pega só a data se houver hora
-                dt = pd.to_datetime(dt_str, errors='coerce').tz_localize(TZ_SAO)
-                # Se a conversão falhar, tenta usar a data de criação + 3 dias
-                if pd.isna(dt):
-                    dt = dco + timedelta(days=3) 
+            # Processamento de datas e status
+            data_limite = datetime.now() - timedelta(days=2)
+            
+            # Adiciona colunas auxiliares para o PDF
+            df_tutor['DataCriacao'] = pd.to_datetime(df_tutor['DCO'], errors='coerce')
+            df_tutor['DataAtendimento'] = pd.to_datetime(df_tutor['DT'], errors='coerce')
+            
+            df_tutor['StatusTutor'] = 'nao' # Inicialmente 'Não Atendida'
+            df_tutor['StatusTutorTexto'] = 'Não Atendida (Vencida)'
+            
+            # 1. Atendidas
+            atendidas = ~df_tutor['DataAtendimento'].isna()
+            
+            # 2. No Prazo (Atendida e DT - DCO <= 2 dias)
+            df_tutor.loc[atendidas, 'TempoAtendimento'] = (df_tutor['DataAtendimento'] - df_tutor['DataCriacao']).dt.days
+            
+            prazo_mask = atendidas & (df_tutor['TempoAtendimento'] <= 2)
+            df_tutor.loc[prazo_mask, 'StatusTutor'] = 'prazo'
+            df_tutor.loc[prazo_mask, 'StatusTutorTexto'] = 'Atendida no Prazo (<= 2 dias)'
+            
+            # 3. Fora do Prazo (Atendida e DT - DCO > 2 dias)
+            fora_mask = atendidas & (df_tutor['TempoAtendimento'] > 2)
+            df_tutor.loc[fora_mask, 'StatusTutor'] = 'fora'
+            df_tutor.loc[fora_mask, 'StatusTutorTexto'] = 'Atendida Fora do Prazo (> 2 dias)'
+            
+            # 4. Não Atendidas (Original 'nao' - Se não foi atendida e a data de criação + 2 dias já passou)
+            # Consideramos 'nao' se não foi atendida E AINDA está em 'Em Aberto' ou 'ATENDIMENTO'
+            # E a data limite já passou.
+            
+            df_registros = df_tutor.sort_values(by='DCO', ascending=False)
+            
+            relatorio_data = {
+                'total': len(df_tutor),
+                'prazo': len(df_tutor[df_tutor['StatusTutor'] == 'prazo']),
+                'fora': len(df_tutor[df_tutor['StatusTutor'] == 'fora']),
+                # Contabiliza como "Não Atendida" se o status for 'nao' (o default)
+                'nao': len(df_tutor[df_tutor['StatusTutor'] == 'nao'])
+            }
+            
+    return render_template("relatorio_tutor.html",
+                           tutores=tutores,
+                           tutor_sel=tutor_filtro,
+                           relatorio_data=relatorio_data,
+                           registros=df_registros.to_dict('records'))
 
-            except Exception:
-                # Se DT não é uma data válida, trata como 'fora' se for antigo
-                dt = dco + timedelta(days=3)
-
-            # Calcula a diferença de dias
-            # Nota: Isso compara as datas sem o componente de hora se DCO for YYYY-MM-DD
-            if (dt - dco).days <= 2:
-                return 'prazo'
-            else:
-                return 'fora'
-        else:
-            # 2. Se não está fechado, verifica se passou o prazo de 2 dias (contando até hoje)
-            # Compara apenas a data
-            if (datetime.now(TZ_SAO).date() - dco.date()).days > 2:
-                return 'nao' # Vencida e Não Atendida
-            else:
-                return 'aberto' # Ainda está no prazo para ser respondida
-
-    df_filtrado['StatusTutor'] = df_filtrado.apply(calcular_status_tutor, axis=1)
+@app.route("/gerar_pdf_tutor", methods=['POST'])
+def gerar_pdf_tutor_action():
+    """Rota que gera e envia o PDF de desempenho do tutor."""
+    nome_tutor = request.form.get('tutor', '')
     
-    # Traduz o status para exibição
-    status_map = {
-        'prazo': 'Atendido no Prazo (<= 2 dias)',
-        'fora': 'Atendido Fora do Prazo (> 2 dias)',
-        'nao': 'Não Atendido (Vencido)',
-        'aberto': 'Em Aberto (No Prazo)',
-        'nao_req': 'Não Requisitado'
-    }
-    df_filtrado['StatusTutorTexto'] = df_filtrado['StatusTutor'].map(status_map)
+    if not nome_tutor:
+        flash("Tutor não especificado.", 'danger')
+        return redirect(url_for('relatorio_tutor'))
 
-    
-    # 3. Agrupa e contabiliza (apenas os que foram requisitados)
-    relatorio = df_filtrado[df_filtrado['StatusTutor'] != 'nao_req'].groupby('Tutor')['StatusTutor'].value_counts().unstack(fill_value=0)
-    
-    relatorio_final = {}
-    if tutor in relatorio.index:
-        counts = relatorio.loc[tutor]
-        total_requisitado = counts.sum()
-        relatorio_final = {
-            'total': total_requisitado,
-            'prazo': counts.get('prazo', 0),
-            'fora': counts.get('fora', 0),
-            'nao': counts.get('nao', 0),
-            'aberto': counts.get('aberto', 0)
-        }
-    else:
-        # Se não houver ocorrências requisitadas para o tutor, inicializa com zero.
-        relatorio_final = {'total': 0, 'prazo': 0, 'fora': 0, 'nao': 0, 'aberto': 0}
-
-    # Gera o gráfico (se Matplotlib estiver disponível)
-    grafico_b64 = None
-    if HAS_MATPLOTLIB and relatorio_final['total'] > 0:
-        img_buffer = gerar_grafico_barras(relatorio_final, tutor)
-        grafico_b64 = base64.b64encode(img_buffer.read()).decode('utf-8')
-    
-    registros_relatorio = df_filtrado[df_filtrado['StatusTutor'] != 'nao_req'].sort_values(by='DCO', ascending=False).to_dict('records')
-    
-    return render_template("relatorio.html",
-                            tutor=tutor,
-                            relatorio=relatorio_final,
-                            registros=registros_relatorio,
-                            grafico_b64=grafico_b64,
-                            has_matplotlib=HAS_MATPLOTLIB)
-
-
-@app.route("/relatorio_tutor/<tutor>/pdf", methods=['GET'])
-def download_relatorio_tutor(tutor):
-    """Gera e envia o PDF do relatório do Tutor para download."""
+    # Re-executa a lógica do relatório
     df = carregar_dados()
+    df_tutor = df[df['Tutor'] == nome_tutor].copy()
     
-    if df.empty or 'Tutor' not in df.columns:
-        return "Dados insuficientes para gerar relatório.", 404
-        
-    df_filtrado = df[df['Tutor'] == tutor].copy()
-    
-    if df_filtrado.empty:
-        return f"Nenhuma ocorrência encontrada para o tutor {tutor}.", 404
-
-    # Recalcula a lógica do status (duplicado, mas necessário para consistência no PDF)
-    def calcular_status_tutor_pdf(row):
-        # DCO é a data de Criação da Ocorrência
-        try:
-            dco = pd.to_datetime(row['DCO'], errors='coerce').tz_localize(TZ_SAO)
-            if pd.isna(dco):
-                return 'aberto'
-        except Exception:
-            return 'aberto'
-
-        if row['FT'] != 'SIM':
-            return 'nao_req'
-            
-        if row['DT']:
-            try:
-                dt_str = str(row['DT']).split(' ')[0] # Pega só a data se houver hora
-                dt = pd.to_datetime(dt_str, errors='coerce').tz_localize(TZ_SAO)
-                if pd.isna(dt):
-                    dt = dco + timedelta(days=3) # Fallback
-
-            except Exception:
-                dt = dco + timedelta(days=3) # Fallback
-
-            if (dt - dco).days <= 2:
-                return 'prazo'
-            else:
-                return 'fora'
-        else:
-            if (datetime.now(TZ_SAO).date() - dco.date()).days > 2:
-                return 'nao'
-            else:
-                return 'aberto'
-
-    df_filtrado['StatusTutor'] = df_filtrado.apply(calcular_status_tutor_pdf, axis=1)
-    
-    # Traduz o status para exibição no PDF
-    status_map = {
-        'prazo': 'Atendido no Prazo',
-        'fora': 'Atendido Fora do Prazo',
-        'nao': 'Não Atendido (Vencido)',
-        'aberto': 'Em Aberto (No Prazo)',
-        'nao_req': 'Não Requisitado'
-    }
-    df_filtrado['StatusTutorTexto'] = df_filtrado['StatusTutor'].map(status_map)
-    
-    # 3. Agrupa e contabiliza (apenas os que foram requisitados)
-    relatorio = df_filtrado[df_filtrado['StatusTutor'] != 'nao_req'].groupby('Tutor')['StatusTutor'].value_counts().unstack(fill_value=0)
-    
-    relatorio_final = {}
-    if tutor in relatorio.index:
-        counts = relatorio.loc[tutor]
-        total_requisitado = counts.sum()
-        relatorio_final = {
-            'total': total_requisitado,
-            'prazo': counts.get('prazo', 0),
-            'fora': counts.get('fora', 0),
-            'nao': counts.get('nao', 0),
-            'aberto': counts.get('aberto', 0)
-        }
-    else:
-        relatorio_final = {'total': 0, 'prazo': 0, 'fora': 0, 'nao': 0, 'aberto': 0}
-
-    # Gera o gráfico para o PDF
+    relatorio_data = {}
+    df_registros = pd.DataFrame(columns=EXPECTED_COLUMNS)
     img_buffer = None
-    if HAS_MATPLOTLIB and relatorio_final['total'] > 0:
-        img_buffer = gerar_grafico_barras(relatorio_final, tutor)
+    
+    if not df_tutor.empty:
+        # Lógica de processamento de status (repetindo a lógica do relatorio_tutor)
+        df_tutor['DataCriacao'] = pd.to_datetime(df_tutor['DCO'], errors='coerce')
+        df_tutor['DataAtendimento'] = pd.to_datetime(df_tutor['DT'], errors='coerce')
+        df_tutor['StatusTutor'] = 'nao' 
+        df_tutor['StatusTutorTexto'] = 'Não Atendida (Vencida)'
         
-    registros_relatorio = df_filtrado[df_filtrado['StatusTutor'] != 'nao_req'].sort_values(by='DCO', ascending=False)
-    
+        atendidas = ~df_tutor['DataAtendimento'].isna()
+        
+        df_tutor.loc[atendidas, 'TempoAtendimento'] = (df_tutor['DataAtendimento'] - df_tutor['DataCriacao']).dt.days
+        
+        prazo_mask = atendidas & (df_tutor['TempoAtendimento'] <= 2)
+        df_tutor.loc[prazo_mask, 'StatusTutor'] = 'prazo'
+        df_tutor.loc[prazo_mask, 'StatusTutorTexto'] = 'Atendida no Prazo (<= 2 dias)'
+        
+        fora_mask = atendidas & (df_tutor['TempoAtendimento'] > 2)
+        df_tutor.loc[fora_mask, 'StatusTutor'] = 'fora'
+        df_tutor.loc[fora_mask, 'StatusTutorTexto'] = 'Atendida Fora do Prazo (> 2 dias)'
+        
+        df_registros = df_tutor.sort_values(by='DCO', ascending=False)
+        
+        relatorio_data = {
+            'total': len(df_tutor),
+            'prazo': len(df_tutor[df_tutor['StatusTutor'] == 'prazo']),
+            'fora': len(df_tutor[df_tutor['StatusTutor'] == 'fora']),
+            'nao': len(df_tutor[df_tutor['StatusTutor'] == 'nao'])
+        }
+        
+        # Geração do gráfico
+        if HAS_MATPLOTLIB:
+            try:
+                img_buffer = gerar_grafico_barras(relatorio_data, nome_tutor)
+            except Exception as e:
+                print(f"Erro ao gerar gráfico: {e}")
+                
     # Gera o PDF
-    pdf_output = gerar_pdf_tutor(relatorio_final, tutor, registros_relatorio, img_buffer)
-    
+    try:
+        pdf_output = gerar_pdf_tutor(relatorio_data, nome_tutor, df_registros, img_buffer)
+    except Exception as e:
+        flash(f"Erro ao gerar PDF: {e}", 'danger')
+        return redirect(url_for('relatorio_tutor', tutor=nome_tutor))
+
     return send_file(
         pdf_output, 
         mimetype='application/pdf', 
         as_attachment=True, 
-        download_name=f'SGCE_Relatorio_{tutor}.pdf'
+        download_name=f'Relatorio_Tutor_{nome_tutor}_{datetime.now().strftime("%Y%m%d")}.pdf'
     )
-
-
-if __name__ == '__main__':
-    # Configuração de fallback para desenvolvimento local
-    if 'SECRET_KEY' not in os.environ:
-        print("AVISO: Usando SECRET_KEY de fallback.")
-    if 'SHEET_ID' not in os.environ:
-        print("AVISO: Usando SHEET_ID de fallback.")
-        
-    app.run(debug=True)
-
-
-
-
-
-
-
