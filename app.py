@@ -93,28 +93,40 @@ def index_ocorrencias():
 # -------------------- Funções Auxiliares (Conexão e Carga) --------------------
 
 def conectar_sheets():
-    """Tenta estabelecer a conexão e retornar o objeto client e a planilha."""
+    """Tenta estabelecer a conexão lendo as credenciais de uma Variável de Ambiente."""
+    # 1. Tenta carregar as credenciais da variável de ambiente
+    creds_json = os.environ.get('GSPREAD_CREDENTIALS')
+
+    if not creds_json:
+        print("ERRO: Variável de ambiente 'GSPREAD_CREDENTIALS' não configurada.")
+        # Tenta fallback para o arquivo local (apenas para testes locais)
+        if os.path.exists('service_account.json'):
+            print("AVISO: Usando 'service_account.json' local.")
+            try:
+                scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+                creds = ServiceAccountCredentials.from_json_keyfile_name('service_account.json', scope)
+                client = gspread.authorize(creds)
+                spreadsheet = client.open_by_key(SHEET_ID)
+                return client, spreadsheet
+            except Exception as e:
+                print(f"Erro no fallback local: {e}")
+                return None, None
+        
+        return None, None
+
     try:
-        # Verifica se o arquivo de credenciais existe
-        if not os.path.exists('service_account.json'):
-            # Se não existir, simula uma falha de conexão (para execução em ambientes restritos)
-            print("ERRO: O arquivo 'service_account.json' não foi encontrado. Retornando conexão nula.")
-            return None, None
-            
+        # 2. Converte a string JSON para um objeto de credenciais
+        creds_info = json.loads(creds_json)
         scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-        # Tenta carregar as credenciais
-        # Para ambientes que não permitem o arquivo local, simula o erro
-        if not os.path.exists('service_account.json'):
-             return None, None
-             
-        creds = ServiceAccountCredentials.from_json_keyfile_name('service_account.json', scope)
+        
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_info, scope)
         client = gspread.authorize(creds)
         spreadsheet = client.open_by_key(SHEET_ID)
         return client, spreadsheet
+        
     except Exception as e:
-        print(f"Erro ao conectar com Google Sheets: {e}")
+        print(f"Erro ao conectar com Google Sheets usando Variável de Ambiente: {e}")
         return None, None
-
 def carregar_dados():
     """Carrega os dados da aba 'Dados' no Sheets para um DataFrame do Pandas."""
     client, spreadsheet = conectar_sheets()
@@ -1158,3 +1170,4 @@ if __name__ == '__main__':
         print("AVISO: Usando SHEET_ID de fallback.")
         
     app.run(debug=True)
+
