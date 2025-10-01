@@ -287,18 +287,11 @@ def gerar_pdf_tutor(relatorio, tutor, registros, grafico_buffer):
             
             pdf.ln(3)
 
-@app.route("/gerar_pdf")
-def gerar_pdf():
-    pdf_output = BytesIO()
-    pdf_bytes = pdf.output(dest='S').encode('latin1')  # Gera como bytes
-    pdf_output.write(pdf_bytes)
-    pdf_output.seek(0)
-    return send_file(
-        pdf_output,
-        as_attachment=True,
-        download_name="relatorio.pdf",
-        mimetype="application/pdf"
-    )
+   pdf_output = BytesIO()
+pdf_bytes = pdf.output(dest='S').encode('latin1')  # Gera como bytes
+pdf_output.write(pdf_bytes)
+pdf_output.seek(0)
+return pdf_output
 
 # -------------------- ROTAS --------------------
 
@@ -1010,4 +1003,3 @@ if __name__ == "__main__":
     # A porta é definida pelo ambiente de hospedagem, mas 5000 é comum localmente
     port = int(os.environ.get('PORT', 5000)) 
     app.run(host='0.0.0.0', port=port, debug=True)
-
