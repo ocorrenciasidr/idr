@@ -9,17 +9,8 @@ from urllib.parse import urlencode
 import pandas as pd
 from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file, flash, abort
 
-import json
-from oauth2client.service_account import ServiceAccountCredentials
-import gspread
-import os
-
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-
-# Lê o JSON direto da variável de ambiente
-creds_dict = json.loads(os.environ["GOOGLE_CREDENTIALS"])
-creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-
+creds = ServiceAccountCredentials.from_json_keyfile_name("service_account.json", scope)
 client = gspread.authorize(creds)
 
 # Imports para Geração de PDF e Gráficos (necessita de `fpdf` e `matplotlib`)
@@ -1167,5 +1158,6 @@ if __name__ == '__main__':
         print("AVISO: Usando SHEET_ID de fallback.")
         
     app.run(debug=True)
+
 
 
