@@ -15,7 +15,7 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify, s
 import os
 import json
 import gspread
-from google.oauth2.service_account import ServiceAccountCredentials
+from google.oauth2.service_account import Credentials
 
 # =======================================================
 # Função de Conexão
@@ -1209,6 +1209,7 @@ if __name__ == '__main__':
         print("AVISO: Usando SHEET_ID de fallback.")
         
     app.run(debug=True)
+
 
 
 
