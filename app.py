@@ -9,12 +9,61 @@ from urllib.parse import urlencode
 import pandas as pd
 from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file, flash, abort
 
-from oauth2client.service_account import ServiceAccountCredentials
+# =======================================================
+# Imports Necessários
+# =======================================================
+import os
+import json
+import gspread
+from google.oauth2.service_account import ServiceAccountCredentials
 
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_name("service_account", scope)
-client = gspread.authorize(creds)
+# =======================================================
+# Função de Conexão
+# =======================================================
+def conectar_sheets():
+    """
+    Autentica no Google Sheets usando credenciais JSON
+    armazenadas na variável de ambiente.
+    """
+    try:
+        # 1. Obter JSON da Variável de Ambiente
+        creds_json = os.environ.get('GOOGLE_SHEETS_CREDENTIALS')
+        if not creds_json:
+            # Imprime o erro no log e retorna
+            print("ERRO: Variável de ambiente GOOGLE_SHEETS_CREDENTIALS não configurada.")
+            return None
 
+        # 2. Converter String JSON em Dicionário Python
+        creds_dict = json.loads(creds_json)
+        
+        # 3. Definir Scopes
+        scopes = [
+            'https://www.googleapis.com/auth/spreadsheets', 
+            'https://www.googleapis.com/auth/drive'
+        ]
+
+        # 4. Criar Objeto de Credenciais
+        creds = ServiceAccountCredentials.from_service_account_info(
+            creds_dict, 
+            scopes=scopes
+        )
+        
+        # 5. Autorizar gspread
+        gc = gspread.authorize(creds)
+
+        # 6. Abrir a Planilha
+        SHEET_ID = os.environ.get('GOOGLE_SHEET_ID', '1Jyle_LCRCKQfbDShoIj-9MPNIkVSkYxWaCwQrhmxSoE')  
+        spreadsheet = gc.open_by_key(SHEET_ID)
+        
+        return spreadsheet
+        
+    except json.JSONDecodeError:
+        print("ERRO: O conteúdo da variável GOOGLE_SHEETS_CREDENTIALS não é um JSON válido.")
+        return None
+    except Exception as e:
+        print(f"Erro ao conectar com Google Sheets: {e}")
+        return None
+        
 # Imports para Geração de PDF e Gráficos (necessita de `fpdf` e `matplotlib`)
 from fpdf import FPDF
 # Você precisará instalar o matplotlib: pip install matplotlib fpdf
@@ -1160,6 +1209,7 @@ if __name__ == '__main__':
         print("AVISO: Usando SHEET_ID de fallback.")
         
     app.run(debug=True)
+
 
 
 
