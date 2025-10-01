@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>SGCE - IMPRESSÃO DE OCORRÊNCIAS</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <style>
+    body { background: #f4f4f4; }
+    .container { margin-top: 30px; }
+    table th, table td { text-align: center; vertical-align: middle; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h2 class="mb-4 text-center">SISTEMA DE GESTÃO DE CONVIVÊNCIA ESCOLAR <br> IMPRESSÃO DE OCORRÊNCIAS</h2>
+
+  <form method="get" class="row g-3 mb-4">
+    <div class="col-md-4">
+      <label for="sala" class="form-label">Sala</label>
+      <select id="sala" name="sala" class="form-select" onchange="this.form.submit()">
+        <option value="">Selecione</option>
+        {% for s in salas %}
+          <option value="{{ s }}" {% if sala_sel == s %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-4">
+      <label for="aluno" class="form-label">Aluno</label>
+      <select id="aluno" name="aluno" class="form-select" onchange="this.form.submit()">
+        <option value="">Selecione</option>
+        {% for a in alunos %}
+          <option value="{{ a }}" {% if aluno_sel == a %}selected{% endif %}>{{ a }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-4 d-flex align-items-end">
+      <a href="{{ url_for('relatorio_inicial') }}" class="btn btn-secondary w-100">⬅️ Voltar</a>
+    </div>
+  </form>
+
+  {% if sala_sel and aluno_sel %}
+    {% if ocorrencias %}
+      <form method="post" action="{{ url_for('gerar_pdf_aluno') }}">
+        <input type="hidden" name="aluno" value="{{ aluno_sel }}">
+        <input type="hidden" name="sala" value="{{ sala_sel }}">
+        <table class="table table-bordered table-striped">
+          <thead class="table-dark">
+            <tr>
+              <th>Selecionar</th>
+              <th>ID</th>
+              <th>Data</th>
+              <th>Descrição</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for o in ocorrencias %}
+            <tr>
+              <td>
+  <input type="checkbox" name="ocorrencias" value="{{ o['ID'] }}"
+  {% if o['Status'] == 'ASSINADA' %} disabled {% endif %}>
+</td>
+              <td>{{ o['ID'] }}</td>
+              <td>{{ o['DCO'] }}</td> <td style="text-align:left">{{ o['Descrição da Ocorrência'] }}</td>
+              <td>{{ o['Status'] }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        <div class="text-center mt-3">
+          <button type="submit" class="btn btn-success">📄 Gerar PDF</button>
+        </div>
+      </form>
+    {% else %}
+      <div class="alert alert-warning text-center">
+        Nenhuma ocorrência encontrada para este aluno.
+      </div>
+    {% endif %}
+  {% endif %}
+</div>
+<footer class="text-center mt-5 mb-3">
+        <small>Desenvolvido: Marcelo André Nogueira Cardes <br> Licenciado: EE PEI Profª Irene Dias Ribeiro</small>
+    </footer>
+</body>
+</html>
