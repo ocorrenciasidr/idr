@@ -100,7 +100,7 @@ def conectar_sheets():
         creds_json = os.getenv("GOOGLE_CREDS")  # variável no Render
         creds_dict = json.loads(creds_json)
 
-        # Corrige formatação da chave privada
+        # Corrige a formatação da chave privada
         creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
 
         creds = Credentials.from_service_account_info(
@@ -110,7 +110,7 @@ def conectar_sheets():
 
         client = gspread.authorize(creds)
 
-        # 🔹 troque pelo ID real da sua planilha
+        # 🔹 Troque pelo ID real da sua planilha
         spreadsheet = client.open_by_key("SEU_SPREADSHEET_ID")
 
         return client, spreadsheet
@@ -118,24 +118,23 @@ def conectar_sheets():
     except Exception as e:
         print("Erro ao conectar com Google Sheets:", e)
         return None, None
-
-        
+  
+# ---------------------------
+# Função para carregar dados
+# ---------------------------
 def carregar_dados():
-    """Carrega os dados da aba 'Dados' no Sheets para um DataFrame do Pandas."""
-   def carregar_dados():
     client, spreadsheet = conectar_sheets()
     if not client or not spreadsheet:
         raise Exception("Falha ao conectar com Google Sheets")
 
     try:
         worksheet = spreadsheet.sheet1   # primeira aba
-        Dados = worksheet.get_all_records()
-        df = pd.DataFrame(Dados)
+        dados = worksheet.get_all_records()
+        df = pd.DataFrame(dados)
         return df
     except Exception as e:
         print("Erro ao carregar dados da planilha:", e)
         return pd.DataFrame()  # retorna vazio se falhar
-        
         
         if not df.empty:
             df['ID'] = pd.to_numeric(df['ID'], errors='coerce').fillna(0).astype(int)
@@ -486,7 +485,6 @@ def home():
 def index():
     try:
         df = carregar_dados()
-        # Aqui você pode mandar o df para o template
         return render_template("index.html", tabela=df.to_dict(orient="records"))
     except Exception as e:
         print("Erro na rota /index:", e)
@@ -1163,7 +1161,12 @@ def download_relatorio_tutor(tutor):
     )
 
 
-if __name__ == '__main__':
+# ---------------------------
+# Rodar o Flask
+# ---------------------------
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000, debug=True)
+
     # Configuração de fallback para desenvolvimento local
     if 'SECRET_KEY' not in os.environ:
         print("AVISO: Usando SECRET_KEY de fallback.")
@@ -1171,6 +1174,7 @@ if __name__ == '__main__':
         print("AVISO: Usando SHEET_ID de fallback.")
         
     app.run(debug=True)
+
 
 
 
