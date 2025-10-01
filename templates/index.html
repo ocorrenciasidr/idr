@@ -73,7 +73,7 @@
         <td>
           {% if reg["FlagTutor"] == "Sim" %}
             <button class="btn btn-outline-primary btn-sm"
-                    onclick="window.location.href='{{ url_for('abrir_pendencia', oid=reg['Nº Ocorrência'], papel='tutor') }}'">
+                    onclick="window.location.href='{{ url_for('abrir_pendencia', oid=reg['ID'], papel='tutor') }}'">
               Sim
             </button>
           {% else %}Não{% endif %}
@@ -82,7 +82,7 @@
         <td>
           {% if reg["FlagCoord"] == "Sim" %}
             <button class="btn btn-outline-warning btn-sm"
-                    onclick="window.location.href='{{ url_for('abrir_pendencia', oid=reg['Nº Ocorrência'], papel='coord') }}'">
+                    onclick="window.location.href='{{ url_for('abrir_pendencia', oid=reg['ID'], papel='coord') }}'">
               Sim
             </button>
           {% else %}Não{% endif %}
@@ -91,7 +91,7 @@
         <td>
           {% if reg["FlagGestao"] == "Sim" %}
             <button class="btn btn-outline-danger btn-sm"
-                    onclick="window.location.href='{{ url_for('abrir_pendencia', oid=reg['Nº Ocorrência'], papel='gestao') }}'">
+                    onclick="window.location.href='{{ url_for('abrir_pendencia', oid=reg['ID'], papel='gestao') }}'">
               Sim
             </button>
           {% else %}Não{% endif %}
@@ -100,10 +100,10 @@
         <td>
           <!-- Botão Lupa (visualizar) -->
           <button class="btn btn-secondary btn-sm"
-                  onclick="window.location.href='{{ url_for('editar', oid=reg['Nº Ocorrência']) }}?campo=view'">🔍</button>
+                  onclick="window.location.href='{{ url_for('editar', oid=reg['ID']) }}?campo=view'">🔍</button>
 
           <!-- Botão Lápis (editar) protegido por modal -->
-          <button class="btn btn-primary btn-sm" onclick="abrirSenha('{{ url_for("editar", oid=reg["Nº Ocorrência"], campo="lapis") }}')">✏️</button>
+          <button class="btn btn-primary btn-sm" onclick="abrirSenha('{{ url_for("editar", oid=reg["ID"], campo="lapis") }}')">✏️</button>
         </td>
       </tr>
     {% else %}
