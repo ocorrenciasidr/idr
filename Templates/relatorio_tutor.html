@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>SGCE - ESTATÍSTICA TUTOR DE OCORRÊNCIAS</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+<div class="container mt-4">
+  <h2 class="mb-4 text-center">SISTEMA DE GESTÃO DE CONVIVÊNCIA ESCOLAR <br> ESTATÍSTICA TUTOR DE OCORRÊNCIAS</h2>
+
+  <form method="get" class="row g-3 mb-4">
+    <div class="col-md-4">
+      <label class="form-label">Data Inicial</label>
+      <input type="date" class="form-control" name="start" required>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Data Final</label>
+      <input type="date" class="form-control" name="end" required>
+    </div>
+    <div class="col-md-4 d-flex align-items-end">
+      <button class="btn btn-primary w-100">Gerar</button>
+    </div>
+  </form>
+
+  <div class="card shadow p-4">
+    <table class="table table-bordered text-center">
+      <thead class="table-dark">
+        <tr>
+          <th>Tutor</th>
+          <th>Total</th>
+          <th>No Prazo</th>
+          <th>Fora do Prazo</th>
+          <th>Não Respondido</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tutor, dados in relatorio.items() %}
+        <tr>
+          <td>{{ tutor }}</td>
+          <td>{{ dados.total }}</td>
+          <td>{{ dados.prazo }}</td>
+          <td>{{ dados.fora }}</td>
+          <td>{{ dados.nao }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<!-- Rodapé -->
+    <footer class="text-center mt-5 mb-3">
+        <small>Desenvolvido: Marcelo André Nogueira Cardes <br> Licenciado: EE PEI Profª Irene Dias Ribeiro</small>
+    </footer>
+</body>
+</html>
