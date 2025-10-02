@@ -534,24 +534,43 @@ def relatorios():
     # Rota que carrega o menu principal de relatórios
     return render_template("relatorios.html")
 
+# ... (restante do app.py)
+
 @app.route("/relatorio_aluno", methods=['GET', 'POST'])
 def relatorio_aluno():
-    df = carregar_dados()
+    df = carregar_dados() # DataFrame com todas as ocorrências
+    
+    # 1. Filtro Sala: Salas que possuem ocorrências.
     salas = sorted(df['Sala'].unique().tolist())
+    
     alunos = []
     ocorrencias = []
     sala_sel = request.args.get('sala')
     aluno_sel = request.args.get('aluno')
     
+    # DataFrame filtrado pela Sala selecionada
+    df_sala = df[df['Sala'] == sala_sel] if sala_sel else df
+    
     if sala_sel:
-        df_alunos_sala = carregar_dados_alunos()
-        alunos = sorted(df_alunos_sala[df_alunos_sala['Sala'] == sala_sel]['Aluno'].unique().tolist())
+        # 2. Filtro Aluno: Apenas alunos DA SALA SELECIONADA que possuem ocorrências.
+        # Usa o dataframe filtrado df_sala para obter apenas os alunos relevantes
+        alunos = sorted(df_sala['Aluno'].unique().tolist())
         
     if aluno_sel and sala_sel:
-        ocorrencias = df[(df['Aluno'] == aluno_sel) & (df['Sala'] == sala_sel)]
+        # Ocorrências específicas do aluno
+        ocorrencias = df_sala[df_sala['Aluno'] == aluno_sel]
+        
+        # Formatação para o template (Garantindo que a coluna 'Descrição da Ocorrência' seja referenciada corretamente)
         ocorrencias = ocorrencias.rename(columns={'Nº Ocorrência': 'ID', 'Descrição da Ocorrência': 'Descrição'}).to_dict('records')
 
-    return render_template("relatorio_aluno.html", salas=salas, alunos=alunos, sala_sel=sala_sel, aluno_sel=aluno_sel, ocorrencias=ocorrencias)
+    return render_template("relatorio_aluno.html", 
+                           salas=salas, 
+                           alunos=alunos, 
+                           sala_sel=sala_sel, 
+                           aluno_sel=aluno_sel, 
+                           ocorrencias=ocorrencias)
+
+# ... (restante do app.py)
 
 @app.route("/gerar_pdf_aluno", methods=['POST'])
 def gerar_pdf_aluno():
@@ -614,4 +633,5 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
