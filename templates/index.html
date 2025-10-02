@@ -5,9 +5,7 @@
     <title>Lista de Ocorrências</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
 </head>
-<body class="p-4">
-
-{% with messages = get_flashed_messages(with_categories=true) %}
+<body class="p-4" data-bs-theme="dark"> {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
         {% for category, message in messages %}
         <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
@@ -20,52 +18,34 @@
 
 <h1 class="mb-4">Lista de Ocorrências</h1>
 
-<form method="GET" action="{{ url_for('index') }}" class="mb-4">
-    <div class="row g-3">
-        <div class="col-md-3">
-            <label class="form-label">Tutor:</label>
+<div class="row g-3 mb-4 align-items-end">
+    <div class="col-md-4">
+        <form method="GET" action="{{ url_for('index') }}" class="m-0 p-0">
+            <label class="form-label">Tutor (Com Ocorrências):</label>
             <select class="form-select" name="tutor" onchange="this.form.submit()">
-                <option value="">Todos os Tutores</option>
+                <option value="">Todos</option>
                 {% for tutor in tutores_disp %}
                     <option value="{{ tutor }}" {% if tutor == tutor_sel %}selected{% endif %}>{{ tutor }}</option>
                 {% endfor %}
             </select>
-        </div>
-        <div class="col-md-3">
-            <label class="form-label">Sala:</label>
-            <select class="form-select" name="sala" onchange="this.form.submit()">
-                <option value="">Todas as Salas</option>
-                {% for sala in salas_disp %}
-                    <option value="{{ sala }}" {% if sala == sala_sel %}selected{% endif %}>{{ sala }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-3">
-            <label class="form-label">Status:</label>
-            <select class="form-select" name="status" onchange="this.form.submit()">
-                {% for status in status_list %}
-                    <option value="{{ status }}" {% if status == status_sel %}selected{% endif %}>{{ status }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-3 d-flex align-items-end">
-            <a href="{{ url_for('index') }}" class="btn btn-secondary w-100">Limpar Filtros</a>
-        </div>
+        </form>
     </div>
-</form>
+    
+    <div class="col-md-8 d-flex justify-content-end gap-2">
+        <a href="{{ url_for('home') }}" class="btn btn-secondary">Tela Inicial</a>
+        <a href="{{ url_for('nova') }}" class="btn btn-success">Nova Ocorrência</a>
+    </div>
+</div>
 
 <table class="table table-bordered table-striped">
-    <thead class="table-dark">
-        <tr>
-            <th>Nº Ocorrência</th>
+    <thead class="table-light"> <tr>
+            <th>Nº</th> <th>DCO Data</th>
+            <th>HCO Hora</th>
             <th>Aluno</th>
             <th>Sala</th>
             <th>Tutor</th>
             <th>Professor</th>
-            <th>FT</th>
-            <th>FC</th>
-            <th>FG</th>
-            <th>Status</th>
+            <th title="Feito Tutor">Tutor</th> <th title="Feito Coordenação">Coord.</th> <th title="Feito Gestão">Gestão</th> <th>Status</th>
             <th>Ações</th>
         </tr>
     </thead>
@@ -73,42 +53,16 @@
         {% for d in registros %}
         <tr>
             <td>{{ d['Nº Ocorrência'] }}</td>
+            <td>{{ d.DCO | default('N/D') }}</td>
+            <td>{{ d.HCO | default('N/D') }}</td>
             <td>{{ d.Aluno }}</td>
             <td>{{ d.Sala }}</td>
             <td>{{ d.Tutor }}</td>
             <td>{{ d.PROFESSOR }}</td>
-            
-            <td>
-                {% if d.FT == 'SIM' %}
-                <span title="Atendimento Tutor Completo" class="text-success fw-bold">✅</span>
-                {% else %}
-                <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='ft') }}" 
-                   class="btn btn-sm btn-outline-danger p-1" title="Clique para Atender Tutor">❌ (Ação!)</a>
-                {% endif %}
-            </td>
-            <td>
-                {% if d.FC == 'SIM' %}
-                <span title="Atendimento Coordenação Completo" class="text-success fw-bold">✅</span>
-                {% else %}
-                <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='fc') }}" 
-                   class="btn btn-sm btn-outline-danger p-1" title="Clique para Atender Coordenação">❌ (Ação!)</a>
-                {% endif %}
-            </td>
-            <td>
-                {% if d.FG == 'SIM' %}
-                <span title="Atendimento Gestão Completo" class="text-success fw-bold">✅</span>
-                {% else %}
-                <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='fg') }}" 
-                   class="btn btn-sm btn-outline-danger p-1" title="Clique para Atender Gestão">❌ (Ação!)</a>
-                {% endif %}
-            </td>
-            
-            <td>
-                <span class="badge bg-{{ d.DisplayColor | default('secondary') }}">
-                    {{ d.DisplayStatus | default(d.Status) }}
-                </span>
-            </td>
-            
+            <td><span class="badge bg-{% if d.FT == 'SIM' %}success{% else %}danger{% endif %}">{{ d.FT | default('N/D') }}</span></td>
+            <td><span class="badge bg-{% if d.FC == 'SIM' %}success{% else %}danger{% endif %}">{{ d.FC | default('N/D') }}</span></td>
+            <td><span class="badge bg-{% if d.FG == 'SIM' %}success{% else %}danger{% endif %}">{{ d.FG | default('N/D') }}</span></td>
+            <td><span class="badge bg-{{ d.DisplayColor }}">{{ d.DisplayStatus }}</span></td>
             <td>
                 <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='lupa') }}" class="btn btn-sm btn-info">Ver</a>
                 <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='lapis') }}" class="btn btn-sm btn-primary">Editar</a>
@@ -116,15 +70,11 @@
         </tr>
         {% else %}
         <tr>
-            <td colspan="10" class="text-center">Nenhuma ocorrência encontrada com os filtros selecionados.</td>
+            <td colspan="12" class="text-center">Nenhuma ocorrência encontrada com os filtros selecionados.</td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
-
-<a href="{{ url_for('nova') }}" class="btn btn-success mt-3">Nova Ocorrência</a>
-
-<a href="{{ url_for('nova') }}" class="btn btn-success mt-3">Nova Ocorrência</a>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
