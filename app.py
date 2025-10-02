@@ -1,4 +1,4 @@
-import os
+noimport os
 import json
 import re
 import base64
@@ -269,6 +269,10 @@ def calculate_display_status_and_color(row):
 @app.route("/")
 def home():
     return render_template("home.html")
+
+@app.route('/relatorio_inicial')
+def relatorio_inicial():
+    return render_template("relatorio_inicial.html")
 
 @app.route("/index")
 def index():
@@ -601,4 +605,5 @@ def relatorios():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
