@@ -313,53 +313,6 @@ def index():
                            sala_sel=filtro_sala,
                            status_sel=filtro_status)
 
-@app.route("/nova", methods=["GET", "POST"])
-def nova():
-    salas_unicas = carregar_salas()
-    professores_unicos = carregar_professores()
-    df_alunos = carregar_dados_alunos()
-    tutores_unicos = sorted(df_alunos['Tutor'].unique().tolist())
-
-    if request.method == "POST":
-        data = request.form
-        
-        supabase = conectar_supabase()
-        if not supabase:
-            return redirect(url_for("nova"))
-            
-        try:
-            next_id = get_proximo_id_supabase(supabase)
-            now_local = datetime.now(TZ_SAO)
-            
-            dco_iso = now_local.isoformat() 
-            hco_iso = now_local.isoformat() 
-
-            # Mapeamento do Form para o DB (TUDO EM MAIÚSCULO)
-            dados_insercao = {
-                "ID": next_id, "DCO": dco_iso, "HCO": hco_iso,
-                "PROFESSOR": data.get('PROFESSOR', '').strip(),
-                "SALA": data.get('SALA', '').strip(),
-                "ALUNO": data.get('ALUNO', '').strip(),
-                "TUTOR": data.get('TUTOR', '').strip(),
-                "DESCRICAO": data.get('DESCRICAO', '').strip(),
-                
-                # Valores padrão
-                "AT_PROFESSOR": '', "ATT": '', "ATC": '', "ATG": '', 
-                "FT": 'NÃO', "FC": 'NÃO', "FG": 'NÃO', # Valores iniciais são NÃO (não feito)
-                "DT": None, "DC": None, "DG": None, "STATUS": 'Aberta'
-            }
-
-            supabase.table('ocorrencias').insert(dados_insercao).execute()
-            
-            limpar_caches()
-            flash(f"Ocorrência Nº {next_id} registrada com sucesso!", "success")
-        except Exception as e:
-            flash(f"Erro ao salvar a ocorrência: {e}", "danger")
-            print(f"Erro no POST /nova: {e}")
-        
-        return redirect(url_for("index"))
-
-    return render_template("nova.html", salas_disp=salas_unicas, professores_disp=professores_unicos, tutores_disp=tutores_unicos)
 
 @app.route('/editar/<int:oid>', methods=['GET', 'POST'])
 def editar(oid):
@@ -648,3 +601,4 @@ def relatorios():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
