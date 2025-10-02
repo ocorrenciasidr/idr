@@ -1,4 +1,12 @@
-Flask==3.1.2
-pandas==2.2.0
-supabase==3.0.1
-gunicorn==21.2.0
+Flask
+pandas
+supabase
+fpdf
+matplotlib
+python-dotenv  # Sugerido para carregar SUPABASE_URL e SUPABASE_KEY localmente
+requests       # Usada indiretamente por Supabase ou Flask, mas boa prática incluir
+numpy          # Dependência de Pandas
+scipy          # Dependência de Matplotlib (e Pandas em alguns casos)
+six            # Dependência de Matplotlib
+python-dateutil # Dependência de Pandas/DateTime
+pytz           # Usado para manipulação de timezone (ou zoneinfo)
