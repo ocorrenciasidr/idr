@@ -784,22 +784,7 @@ def relatorio_geral():
                            relatorio_setor=dados_relatorio['por_setor']
                           )
 
-@app.route("/relatorio_geral")
-def relatorio_geral():
-    df = carregar_dados()
-    data_inicio_str = request.args.get('data_inicio')
-    data_fim_str = request.args.get('data_fim')
-    
-    df_filtrado = df.copy() 
-    
-    ocorrencias_lista = df_filtrado.rename(columns={'Nº Ocorrência': 'ID', 'Descrição da Ocorrência': 'Descrição'}).to_dict('records')
-
-    return render_template("relatorio_geral.html", 
-                           data_inicio=data_inicio_str, 
-                           data_fim=data_fim_str, 
-                           ocorrencias=ocorrencias_lista,
-                           has_matplotlib=HAS_MATPLOTLIB) 
-    
+  
 @app.route("/relatorio_tutor")
 def relatorio_tutor():
     df = carregar_dados()
@@ -829,6 +814,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
