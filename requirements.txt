@@ -3,6 +3,7 @@ pandas
 supabase
 fpdf
 matplotlib
+gunicorn  
 python-dotenv  # Sugerido para carregar SUPABASE_URL e SUPABASE_KEY localmente
 requests       # Usada indiretamente por Supabase ou Flask, mas boa prática incluir
 numpy          # Dependência de Pandas
