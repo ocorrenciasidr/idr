@@ -54,19 +54,23 @@
                 </tr>
               </thead>
               <tbody>
-              {% for o in ocorrencias %}
-                <tr>
-                  <td>
-                      <input type="checkbox" name="ocorrencias" value="{{ o['ID'] }}" 
-                      {% if o['Status'] == 'ASSINADA' %} disabled {% endif %}>
-                  </td>
-                  <td>{{ o['ID'] }}</td>
-                  <td>{{ o['DCO'] }}</td>
-                  <td style="text-align:left">{{ o['Descrição'] }}</td>
-                  <td><span class="badge bg-{% if o.Status == 'ASSINADA' %}success{% elif o.Status == 'ATENDIMENTO' %}danger{% else %}warning{% endif %}">{{ o.Status }}</span></td>
-                </tr>
-              {% endfor %}
-              </tbody>
+{% for o in ocorrencias %}
+    <tr>
+      <td>
+        <input type="checkbox" name="ocorrencias" value="{{ o['ID'] }}"
+               {% if o['Status'] == 'ASSINADA' %} disabled {% endif %}>
+      </td>
+      <td>{{ o['ID'] }}</td>
+      <td>{{ o['DCO'] }}</td> 
+      <td style="text-align:left">{{ o['Descrição da Ocorrência'] }}</td>
+      <td>
+        <span class="badge bg-{% if o.Status == 'ASSINADA' %}success{% elif o.Status == 'ATENDIMENTO' %}warning{% else %}danger{% endif %}">
+            {{ o['Status'] }}
+        </span>
+      </td>
+    </tr>
+{% endfor %}
+</tbody>
             </table>
         </div>
         
