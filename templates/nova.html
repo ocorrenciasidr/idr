@@ -10,51 +10,87 @@
 <h1 class="mb-4">Nova Ocorrência</h1>
 
 <form method="POST" action="{{ url_for('nova') }}">
-    <div class="mb-3">
-        <label class="form-label">Professor:</label>
-        <select class="form-select" name="PROFESSOR" required>
-            <option value="">Selecione</option>
-            {% for prof in professores_disp %}
-                <option value="{{ prof }}">{{ prof }}</option>
-            {% endfor %}
-        </select>
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label class="form-label">Professor:</label>
+            <select class="form-select" name="PROFESSOR" required>
+                <option value="">Selecione um Professor</option>
+                {% for prof in professores_disp %}
+                    <option value="{{ prof }}">{{ prof }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Sala:</label>
+            <select class="form-select" name="SALA" id="sala-select" required onchange="carregarAlunos()">
+                <option value="">Selecione uma Sala</option>
+                {% for sala in salas_disp %}
+                    <option value="{{ sala }}">{{ sala }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label class="form-label">Aluno:</label>
+            <select class="form-select" name="ALUNO" id="aluno-select" required onchange="selecionarTutor()">
+                <option value="">Selecione um Aluno</option>
+                </select>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Tutor:</label>
+            <input type="text" class="form-control" name="TUTOR" id="tutor-input" readonly required>
+        </div>
     </div>
 
     <div class="mb-3">
-        <label class="form-label">Sala:</label>
-        <select class="form-select" name="SALA" id="sala-select" required onchange="carregarAlunos()">
-            <option value="">Selecione</option>
-            {% for sala in salas_disp %}
-                <option value="{{ sala }}">{{ sala }}</option>
-            {% endfor %}
-        </select>
+        <label class="form-label">Descrição da Ocorrência:</label>
+        <textarea class="form-control" name="DESCRICAO" rows="3" required></textarea>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">ATP (Atendimento Professor):</label>
+        <textarea class="form-control" name="ATP" rows="2"></textarea>
     </div>
     
     <div class="mb-3">
-        <label class="form-label">Aluno:</label>
-        <select class="form-select" name="ALUNO" id="aluno-select" required onchange="selecionarTutor()">
-            <option value="">Selecione uma Sala Primeiro</option>
-        </select>
+        <label class="form-label">Solicitar Ações (Marque para indicar que a ação é necessária):</label>
+        <div class="row">
+            <div class="col-md-4">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="FT" id="checkFT">
+                    <label class="form-check-label" for="checkFT">
+                        Atendimento Tutor (FT)
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="FC" id="checkFC">
+                    <label class="form-check-label" for="checkFC">
+                        Atendimento Coordenação (FC)
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="FG" id="checkFG">
+                    <label class="form-check-label" for="checkFG">
+                        Atendimento Gestão (FG)
+                    </label>
+                </div>
+            </div>
+        </div>
     </div>
-
-    <div class="mb-3">
-        <label class="form-label">Tutor:</label>
-        <input type="text" class="form-control" name="TUTOR" id="tutor-input" readonly required>
-        <small class="form-text text-muted">Preenchido automaticamente ao selecionar o Aluno.</small>
-    </div>
-
-    <div class="mb-3">
-        <label class="form-label">Descrição:</label>
-        <textarea class="form-control" name="DESCRICAO" rows="4" required></textarea>
-    </div>
-
-    <button type="submit" class="btn btn-primary">Salvar</button>
-    <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancelar</a>
+    
+    <button type="submit" class="btn btn-success mt-3">Registrar Ocorrência</button>
+    <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Cancelar</a>
 </form>
 
 <script>
-    // Variável global para armazenar a lista de alunos e seus tutores
-    let alunosPorSala = [];
+    // Cache para evitar múltiplas chamadas à API
+    let alunosCache = {}; 
 
     async function carregarAlunos() {
         const salaSelect = document.getElementById('sala-select');
@@ -62,37 +98,46 @@
         const tutorInput = document.getElementById('tutor-input');
         const sala = salaSelect.value;
         
-        alunoSelect.innerHTML = '<option value="">Carregando...</option>';
+        // Limpa o Aluno e o Tutor
+        alunoSelect.innerHTML = '<option value="">Selecione um Aluno</option>';
         tutorInput.value = '';
 
         if (!sala) {
-            alunoSelect.innerHTML = '<option value="">Selecione uma Sala Primeiro</option>';
             return;
         }
 
-        try {
-            // Chamada à API no app.py
-            const response = await fetch(`/api/alunos_sala/${encodeURIComponent(sala)}`);
-            alunosPorSala = await response.json();
+        // Tenta buscar no cache
+        let alunosPorSala = alunosCache[sala];
 
-            alunoSelect.innerHTML = '<option value="">Selecione um Aluno</option>';
-            
-            // Verifica se há alunos e popula o dropdown
-            if (alunosPorSala.length > 0) {
-                alunosPorSala.forEach(aluno => {
-                    const option = document.createElement('option');
-                    option.value = aluno.Aluno; 
-                    option.textContent = aluno.Aluno;
-                    option.dataset.tutor = aluno.Tutor; 
-                    alunoSelect.appendChild(option);
-                });
-            } else {
-                 alunoSelect.innerHTML = '<option value="">Nenhum aluno encontrado</option>';
+        if (!alunosPorSala) {
+            try {
+                // Chama a nova API
+                const response = await fetch(`/api/alunos_por_sala/${encodeURIComponent(sala)}`);
+                if (!response.ok) {
+                    throw new Error('Erro ao buscar alunos');
+                }
+                alunosPorSala = await response.json();
+                // Salva no cache
+                alunosCache[sala] = alunosPorSala; 
+            } catch (error) {
+                console.error("Erro ao carregar alunos:", error);
+                alunoSelect.innerHTML = '<option value="">Erro ao carregar alunos</option>';
+                return;
             }
-
-        } catch (error) {
-            console.error("Erro ao carregar alunos:", error);
-            alunoSelect.innerHTML = '<option value="">Erro ao carregar alunos</option>';
+        }
+        
+        // Popula o dropdown
+        if (alunosPorSala.length > 0) {
+            alunosPorSala.forEach(aluno => {
+                const option = document.createElement('option');
+                option.value = aluno.Aluno; 
+                option.textContent = aluno.Aluno;
+                // Armazena o Tutor como um atributo de dados
+                option.dataset.tutor = aluno.Tutor; 
+                alunoSelect.appendChild(option);
+            });
+        } else {
+             alunoSelect.innerHTML = '<option value="">Nenhum aluno encontrado</option>';
         }
     }
 
@@ -105,6 +150,7 @@
         if (selectedOption && selectedOption.dataset.tutor) {
             tutorInput.value = selectedOption.dataset.tutor;
         } else {
+            // Se nenhum aluno ou a opção "Selecione" for escolhida
             tutorInput.value = '';
         }
     }
