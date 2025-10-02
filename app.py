@@ -270,8 +270,9 @@ def calculate_display_status_and_color(row):
 def home():
     return render_template("home.html")
 
-@app.route('/relatorio_inicial')
+@app.route("/relatorio_inicial")
 def relatorio_inicial():
+    """Rota para carregar o modal de senha antes de acessar o menu de relatórios."""
     return render_template("relatorio_inicial.html")
 
 @app.route("/index")
@@ -605,5 +606,6 @@ def relatorios():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
