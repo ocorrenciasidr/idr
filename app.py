@@ -655,69 +655,6 @@ def relatorio_aluno():
                            aluno_sel=aluno_sel, 
                            ocorrencias=ocorrencias)
 
-# ... (restante do app.py)
-
-@app.route("/gerar_pdf_aluno", methods=['POST'])
-def gerar_pdf_aluno():
-    # Lógica de PDF...
-    pdf_output = b"PDF Generation Placeholder"
-    pdf_file = BytesIO(pdf_output)
-    
-    aluno = request.form.get('aluno', 'aluno')
-    sala = request.form.get('sala', 'sala')
-
-    return send_file(
-        pdf_file,
-        download_name=f"relatorio_{aluno}_{sala}.pdf",
-        as_attachment=True,
-        mimetype='application/pdf'
-    )
-
-# Definição do prazo de 7 dias
-PRAZO_DIAS = 7
-SETORES_ATENDIMENTO = ['Tutor', 'Coordenação', 'Gestão']
-
-def calcular_status_prazo(row):
-    """Calcula o status de prazo para cada setor (Tutor, Coord., Gestão)."""
-    
-    ocorrencia_data_str = str(row['DCO'])
-    try:
-        # data_parser.parse lida com o formato de data/hora salvo no banco (DCO)
-        data_ocorrencia = date_parser.parse(ocorrencia_data_str).date()
-    except Exception:
-        return {'Tutor': 'Inválida', 'Coordenação': 'Inválida', 'Gestão': 'Inválida'}
-
-    status_setor = {}
-    
-    # Mapeamento: [Setor, Flag_Feito (FT/FC/FG), Data_Atendimento (DT/DC/DG)]
-    setor_map = {
-        'Tutor': ['FT', 'DT'],
-        'Coordenação': ['FC', 'DC'],
-        'Gestão': ['FG', 'DG']
-    }
-    
-    for setor, (flag_col, date_col) in setor_map.items():
-        flag = str(row.get(flag_col, 'NÃO')).upper()
-        date_atendimento_str = str(row.get(date_col))
-
-        if flag == 'SIM' and date_atendimento_str and date_atendimento_str.lower() != 'none':
-            try:
-                # data_parser.parse lida com o formato de data (AAAA-MM-DD) salvo em DT/DC/DG
-                data_atendimento = date_parser.parse(date_atendimento_str).date()
-                diferenca_dias = (data_atendimento - data_ocorrencia).days
-                
-                if diferenca_dias <= PRAZO_DIAS:
-                    status_setor[setor] = 'No Prazo'
-                else:
-                    status_setor[setor] = 'Fora do Prazo'
-            except Exception:
-                status_setor[setor] = 'Data Inválida'
-        else:
-            status_setor[setor] = 'Não Respondida'
-            
-    return status_setor
-
-
 def gerar_relatorio_geral_data(start_date_str, end_date_str):
     df = carregar_dados() # Assume-se que a função de carregar dados existe e funciona
     
@@ -892,6 +829,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
