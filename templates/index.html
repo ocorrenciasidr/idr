@@ -7,49 +7,82 @@
 </head>
 <body class="p-4">
 
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
 <h1 class="mb-4">Lista de Ocorrências</h1>
 
-<div class="mb-3 row">
-    <div class="col-md-3">
-        <label class="form-label">Professor:</label>
-        <select class="form-select">
-            <option value="">Todos</option>
-            {% for prof in professores_disp %}
-                <option>{{ prof }}</option>
-            {% endfor %}
-        </select>
+<form method="GET" action="{{ url_for('index') }}" class="mb-4">
+    <div class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label">Tutor:</label>
+            <select class="form-select" name="tutor" onchange="this.form.submit()">
+                <option value="">Todos os Tutores</option>
+                {% for tutor in tutores_disp %}
+                    <option value="{{ tutor }}" {% if tutor == tutor_sel %}selected{% endif %}>{{ tutor }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Sala:</label>
+            <select class="form-select" name="sala" onchange="this.form.submit()">
+                <option value="">Todas as Salas</option>
+                {% for sala in salas_disp %}
+                    <option value="{{ sala }}" {% if sala == sala_sel %}selected{% endif %}>{{ sala }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Status:</label>
+            <select class="form-select" name="status" onchange="this.form.submit()">
+                {% for status in status_list %}
+                    <option value="{{ status }}" {% if status == status_sel %}selected{% endif %}>{{ status }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+            <a href="{{ url_for('index') }}" class="btn btn-secondary w-100">Limpar Filtros</a>
+        </div>
     </div>
-    <div class="col-md-3">
-        <label class="form-label">Tutor:</label>
-        <select class="form-select">
-            <option value="">Todos</option>
-            {% for tutor in tutores_disp %}
-                <option>{{ tutor }}</option>
-            {% endfor %}
-        </select>
-    </div>
-</div>
+</form>
 
-<table class="table table-bordered">
-    <thead class="table-light">
+<table class="table table-bordered table-striped">
+    <thead class="table-dark">
         <tr>
-            <th>ID</th>
-            <th>Professor</th>
+            <th>Nº Ocorrência</th>
+            <th>Aluno</th>
+            <th>Sala</th>
             <th>Tutor</th>
-            <th>Descrição</th>
+            <th>Professor</th>
+            <th>Status</th>
             <th>Ações</th>
         </tr>
     </thead>
     <tbody>
-        {% for d in dados %}
+        {% for d in registros %}
         <tr>
-            <td>{{ d.ID }}</td>
+            <td>{{ d['Nº Ocorrência'] }}</td>
+            <td>{{ d.Aluno }}</td>
+            <td>{{ d.Sala }}</td>
+            <td>{{ d.Tutor }}</td>
             <td>{{ d.PROFESSOR }}</td>
-            <td>{{ d.TUTOR }}</td>
-            <td>{{ d.DESCRICAO }}</td>
+            <td><span class="badge bg-{% if d.Status == 'Aberta' %}danger{% elif d.Status == 'ATENDIMENTO' %}warning{% else %}success{% endif %}">{{ d.Status }}</span></td>
             <td>
-                <a href="{{ url_for('editar', id=d.ID) }}" class="btn btn-sm btn-primary">Editar</a>
+                <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='lupa') }}" class="btn btn-sm btn-info">Ver</a>
+                <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='lapis') }}" class="btn btn-sm btn-primary">Editar</a>
             </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="7" class="text-center">Nenhuma ocorrência encontrada com os filtros selecionados.</td>
         </tr>
         {% endfor %}
     </tbody>

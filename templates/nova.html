@@ -21,13 +21,26 @@
     </div>
 
     <div class="mb-3">
-        <label class="form-label">Tutor:</label>
-        <select class="form-select" name="TUTOR" required>
+        <label class="form-label">Sala:</label>
+        <select class="form-select" name="SALA" id="sala-select" required onchange="carregarAlunos()">
             <option value="">Selecione</option>
-            {% for tutor in tutores_disp %}
-                <option value="{{ tutor }}">{{ tutor }}</option>
+            {% for sala in salas_disp %}
+                <option value="{{ sala }}">{{ sala }}</option>
             {% endfor %}
         </select>
+    </div>
+    
+    <div class="mb-3">
+        <label class="form-label">Aluno:</label>
+        <select class="form-select" name="ALUNO" id="aluno-select" required onchange="selecionarTutor()">
+            <option value="">Selecione uma Sala Primeiro</option>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Tutor:</label>
+        <input type="text" class="form-control" name="TUTOR" id="tutor-input" readonly required>
+        <small class="form-text text-muted">Preenchido automaticamente ao selecionar o Aluno.</small>
     </div>
 
     <div class="mb-3">
@@ -39,6 +52,63 @@
     <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancelar</a>
 </form>
 
+<script>
+    // Variável global para armazenar a lista de alunos e seus tutores
+    let alunosPorSala = [];
+
+    async function carregarAlunos() {
+        const salaSelect = document.getElementById('sala-select');
+        const alunoSelect = document.getElementById('aluno-select');
+        const tutorInput = document.getElementById('tutor-input');
+        const sala = salaSelect.value;
+        
+        alunoSelect.innerHTML = '<option value="">Carregando...</option>';
+        tutorInput.value = '';
+
+        if (!sala) {
+            alunoSelect.innerHTML = '<option value="">Selecione uma Sala Primeiro</option>';
+            return;
+        }
+
+        try {
+            // Chamada à API no app.py
+            const response = await fetch(`/api/alunos_sala/${encodeURIComponent(sala)}`);
+            alunosPorSala = await response.json();
+
+            alunoSelect.innerHTML = '<option value="">Selecione um Aluno</option>';
+            
+            // Verifica se há alunos e popula o dropdown
+            if (alunosPorSala.length > 0) {
+                alunosPorSala.forEach(aluno => {
+                    const option = document.createElement('option');
+                    option.value = aluno.Aluno; 
+                    option.textContent = aluno.Aluno;
+                    option.dataset.tutor = aluno.Tutor; 
+                    alunoSelect.appendChild(option);
+                });
+            } else {
+                 alunoSelect.innerHTML = '<option value="">Nenhum aluno encontrado</option>';
+            }
+
+        } catch (error) {
+            console.error("Erro ao carregar alunos:", error);
+            alunoSelect.innerHTML = '<option value="">Erro ao carregar alunos</option>';
+        }
+    }
+
+    function selecionarTutor() {
+        const alunoSelect = document.getElementById('aluno-select');
+        const tutorInput = document.getElementById('tutor-input');
+        const selectedOption = alunoSelect.options[alunoSelect.selectedIndex];
+        
+        // Pega o tutor do atributo data-tutor do <option> selecionado
+        if (selectedOption && selectedOption.dataset.tutor) {
+            tutorInput.value = selectedOption.dataset.tutor;
+        } else {
+            tutorInput.value = '';
+        }
+    }
+</script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
