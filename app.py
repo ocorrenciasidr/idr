@@ -327,8 +327,13 @@ def alunos_por_sala(sala):
 
 # -------------------- Rota de Nova Ocorrência --------------------
 
+# ... (Seus imports e funções auxiliares)
+
+# -------------------- Rota de Nova Ocorrência (Ajuste Crítico de Lógica) --------------------
+
 @app.route("/nova", methods=["GET", "POST"])
 def nova():
+    # ... (carregar_salas, carregar_professores, etc. - Mantido)
     salas_unicas = carregar_salas()
     professores_unicos = carregar_professores()
     df_alunos = carregar_dados_alunos()
@@ -339,24 +344,33 @@ def nova():
         
         supabase = conectar_supabase()
         if not supabase:
+            flash("Erro ao conectar ao banco de dados.", "danger")
             return redirect(url_for("nova"))
             
         try:
             next_id = get_proximo_id_supabase(supabase)
             now_local = datetime.now(TZ_SAO)
             
-            # CORREÇÃO CRÍTICA:
-            # 1. DCO (Data da Ocorrência): Enviada como ISO completo (Timestamp com fuso)
             dco_iso = now_local.isoformat() 
-            # 2. HCO (Hora da Ocorrência): Enviada como HORA:MINUTO:SEGUNDO
-            # O Supabase (PostgreSQL) com tipo 'time with time zone' espera apenas a hora, 
-            # e a formatação `%H:%M:%S` resolve o erro 'invalid input syntax for type time'.
             hco_str = now_local.strftime('%H:%M:%S')
+
+            # NOVO: LÓGICA CORRIGIDA para FT, FC, FG (Se marcada é SIM/Pendente, se NÃO marcada é NÃO/Feito)
+            # O link de "Ação Rápida" no Index é para quando a ação está PENDENTE, ou seja, FT/FC/FG é 'SIM'.
+            # Se a checkbox for marcada no formulário, a ação é solicitada (SIM).
+            
+            # ATENÇÃO: Se a sua lógica original era que NÃO marcado = Pendente, e MARCADo = Resolvido, 
+            # você deve manter o código anterior, mas a regra do link no INDEX (SIM = Pendente) exige
+            # que a checkbox MARCADA gere 'SIM'.
+            # Vamos seguir a regra lógica comum: Checkbox MARCADAS = Ação Solicitada (SIM)
+            
+            ft_solicitado = 'SIM' if data.get('FT') == 'on' else 'NÃO'
+            fc_solicitado = 'SIM' if data.get('FC') == 'on' else 'NÃO'
+            fg_solicitado = 'SIM' if data.get('FG') == 'on' else 'NÃO'
 
             dados_insercao = {
                 "ID": next_id, 
-                "DCO": dco_iso, # Salva a data completa no formato ISO
-                "HCO": hco_str, # Salva apenas o horário no formato string HH:MM:SS
+                "DCO": dco_iso, 
+                "HCO": hco_str,
                 
                 "PROFESSOR": data.get('PROFESSOR', '').strip(),
                 "SALA": data.get('SALA', '').strip(),
@@ -366,10 +380,9 @@ def nova():
                 
                 "ATP": data.get('ATP', '').strip(), 
                 
-                # 'NÃO' significa que a ação é necessária (Pendente). 'SIM' significa que foi atendido.
-                "FT": 'NÃO' if data.get('FT') == 'on' else 'SIM', 
-                "FC": 'NÃO' if data.get('FC') == 'on' else 'SIM', 
-                "FG": 'NÃO' if data.get('FG') == 'on' else 'SIM', 
+                "FT": ft_solicitado, # SIM se a ação do Tutor é solicitada (pendente)
+                "FC": fc_solicitado, # SIM se a ação da Coordenação é solicitada (pendente)
+                "FG": fg_solicitado, # SIM se a ação da Gestão é solicitada (pendente)
                 
                 "ATT": '', "ATC": '', "ATG": '', 
                 "DT": None, "DC": None, "DG": None, 
@@ -377,13 +390,15 @@ def nova():
             }
 
             # Lógica de status para ATENDIMENTO
-            if dados_insercao["FT"] == "NÃO" or dados_insercao["FC"] == "NÃO" or dados_insercao["FG"] == "NÃO":
+            # Se alguma ação for solicitada (FT='SIM' ou FC='SIM' ou FG='SIM'), o status é ATENDIMENTO
+            if dados_insercao["FT"] == "SIM" or dados_insercao["FC"] == "SIM" or dados_insercao["FG"] == "SIM":
                  dados_insercao["STATUS"] = "ATENDIMENTO"
-            
-            # Executa a inserção no Supabase
+            else:
+                 dados_insercao["STATUS"] = "ABERTA" # Nenhuma ação solicitada, mas ainda não é ASSINADA
+
+            # Executa a inserção no Supabase (Mantido)
             response = supabase.table('ocorrencias').insert(dados_insercao).execute()
             
-            # Verifica se houve erro na resposta (Supabase/PostgREST)
             if response.data is None or len(response.data) == 0:
                  raise Exception(f"Resposta Supabase vazia. Erro: {response.error}")
                  
@@ -391,7 +406,6 @@ def nova():
             limpar_caches()
             flash(f"Ocorrência Nº {next_id} registrada com sucesso!", "success")
         except Exception as e:
-            # Adiciona o erro do banco de dados na mensagem para o usuário
             flash(f"Erro ao salvar a ocorrência. Verifique os logs do servidor: {e}", "danger")
             print(f"Erro no POST /nova: {e}")
         
@@ -399,6 +413,77 @@ def nova():
 
     return render_template("nova.html", salas_disp=salas_unicas, professores_disp=professores_unicos, tutores_disp=tutores_unicos)
 
+# -------------------- Rota de Geração de PDF do Aluno (Ajustes de PDF e Status) --------------------
+
+@app.route("/gerar_pdf_aluno", methods=["POST"])
+def gerar_pdf_aluno():
+    # ... (Seu código existente para gerar PDF)
+    
+    aluno = request.form.get('aluno')
+    sala = request.form.get('sala')
+    ocorrencias_ids = request.form.getlist('ocorrencias')
+    
+    if not ocorrencias_ids:
+        flash("Nenhuma ocorrência selecionada para gerar PDF.", "warning")
+        return redirect(url_for('relatorio_aluno', aluno=aluno, sala=sala))
+        
+    supabase = conectar_supabase()
+    if not supabase:
+        flash("Erro ao conectar ao banco de dados.", "danger")
+        return redirect(url_for('relatorio_aluno', aluno=aluno, sala=sala))
+
+    # 1. ATUALIZAR STATUS E DESABILITAR CAIXAS
+    try:
+        # Muda o STATUS para 'ASSINADA' e desativa a seleção (opcional)
+        # Na verdade, o que desativa a caixa é a condição no relatorio_aluno.html, 
+        # mas o status deve ser atualizado.
+        
+        # AQUI VOCÊ DEVE TER SUA FUNÇÃO DE ATUALIZAÇÃO NO SUPABASE
+        dados_update = {"STATUS": "ASSINADA"}
+        
+        # Atualiza o status para ASSINADA para todas as ocorrências selecionadas
+        response = supabase.table('ocorrencias').update(dados_update).in_('ID', [int(oid) for oid in ocorrencias_ids]).execute()
+
+        if response.error:
+             flash(f"Erro ao atualizar status das ocorrências: {response.error.message}", "danger")
+             return redirect(url_for('relatorio_aluno', aluno=aluno, sala=sala))
+        
+        limpar_caches() # Limpa o cache para que o index e relatórios vejam o novo status
+    
+    except Exception as e:
+        flash(f"Erro crítico ao atualizar status no banco: {e}", "danger")
+        print(f"Erro ao atualizar status: {e}")
+        # Mesmo com erro, tentamos seguir para a geração do PDF, mas com warning.
+    
+    # 2. GERAÇÃO DO PDF (CORRIGIR O ERRO DE ABERTURA)
+    # O erro ao abrir o arquivo é geralmente um problema na forma como o PDF é gerado e retornado
+    # (Ex: Content-Type errado ou BytesIO mal formatado). 
+    
+    try:
+        # Seus dados filtrados para o PDF (precisa rebuscar com o novo status ou usar os dados antigos)
+        # Vamos assumir que você tem uma função para buscar os dados para o PDF:
+        response = supabase.table('ocorrencias').select("*").in_('ID', [int(oid) for oid in ocorrencias_ids]).order('ID').execute()
+        ocorrencias_para_pdf = response.data
+
+        # Use sua função FPDF para gerar o PDF:
+        pdf_bytes = gerar_pdf_ocorrencias(aluno, sala, ocorrencias_para_pdf) 
+
+        # CORREÇÃO CRÍTICA DO RETORNO DO PDF
+        # Garante que o BytesIO está no início (seek(0)) e o mimetype está correto
+        
+        return send_file(
+            pdf_bytes,
+            as_attachment=True,
+            download_name=f"Relatorio_{aluno.replace(' ', '_')}.pdf",
+            mimetype='application/pdf'
+        )
+
+    except Exception as e:
+        flash(f"Erro ao gerar o arquivo PDF: {e}", "danger")
+        print(f"Erro na geração do PDF: {e}")
+        return redirect(url_for('relatorio_aluno', aluno=aluno, sala=sala))
+
+# ... (restante do seu app.py)
 # ... (Código anterior, incluindo a definição de TZ_SAO)
 
 @app.route('/editar/<int:oid>', methods=['GET', 'POST'])
@@ -588,6 +673,180 @@ def gerar_pdf_aluno():
         mimetype='application/pdf'
     )
 
+# Definição do prazo de 7 dias
+PRAZO_DIAS = 7
+SETORES_ATENDIMENTO = ['Tutor', 'Coordenação', 'Gestão']
+
+def calcular_status_prazo(row):
+    """Calcula o status de prazo para cada setor (Tutor, Coord., Gestão)."""
+    
+    ocorrencia_data_str = str(row['DCO'])
+    try:
+        # data_parser.parse lida com o formato de data/hora salvo no banco (DCO)
+        data_ocorrencia = date_parser.parse(ocorrencia_data_str).date()
+    except Exception:
+        return {'Tutor': 'Inválida', 'Coordenação': 'Inválida', 'Gestão': 'Inválida'}
+
+    status_setor = {}
+    
+    # Mapeamento: [Setor, Flag_Feito (FT/FC/FG), Data_Atendimento (DT/DC/DG)]
+    setor_map = {
+        'Tutor': ['FT', 'DT'],
+        'Coordenação': ['FC', 'DC'],
+        'Gestão': ['FG', 'DG']
+    }
+    
+    for setor, (flag_col, date_col) in setor_map.items():
+        flag = str(row.get(flag_col, 'NÃO')).upper()
+        date_atendimento_str = str(row.get(date_col))
+
+        if flag == 'SIM' and date_atendimento_str and date_atendimento_str.lower() != 'none':
+            try:
+                # data_parser.parse lida com o formato de data (AAAA-MM-DD) salvo em DT/DC/DG
+                data_atendimento = date_parser.parse(date_atendimento_str).date()
+                diferenca_dias = (data_atendimento - data_ocorrencia).days
+                
+                if diferenca_dias <= PRAZO_DIAS:
+                    status_setor[setor] = 'No Prazo'
+                else:
+                    status_setor[setor] = 'Fora do Prazo'
+            except Exception:
+                status_setor[setor] = 'Data Inválida'
+        else:
+            status_setor[setor] = 'Não Respondida'
+            
+    return status_setor
+
+
+def gerar_relatorio_geral_data(start_date_str, end_date_str):
+    df = carregar_dados() # Assume-se que a função de carregar dados existe e funciona
+    
+    if df.empty:
+        return {'por_sala': [], 'por_setor': []}
+        
+    # Assegura que DCO é um datetime para o filtro de data
+    df['DCO_DATE'] = pd.to_datetime(df['DCO'], errors='coerce').dt.normalize()
+    df.dropna(subset=['DCO_DATE'], inplace=True)
+
+    # 1. Filtro por Período
+    start_date = pd.to_datetime(start_date_str)
+    end_date = pd.to_datetime(end_date_str)
+    
+    df_filtrado = df[
+        (df['DCO_DATE'] >= start_date) & 
+        (df['DCO_DATE'] <= end_date)
+    ].copy()
+    
+    if df_filtrado.empty:
+        return {'por_sala': [], 'por_setor': []}
+    
+    # 2. Aplica a lógica de prazo (calcula o status para cada setor)
+    df_filtrado['PRAZO_STATUS'] = df_filtrado.apply(calcular_status_prazo, axis=1)
+
+    # 3. Relatório por Sala
+    relatorio_sala = []
+    total_geral = len(df_filtrado)
+    
+    for sala, grupo_sala in df_filtrado.groupby('Sala'):
+        total_sala = len(grupo_sala)
+        
+        contagem_sala = {
+            'Respondidas <7 dias': 0, 
+            'Respondidas >7 dias': 0, 
+            'Não Respondidas': 0
+        }
+        
+        # Para o relatório por Sala, verificamos o prazo do PRIMEIRO atendimento registrado (Tutor/Coord/Gestão)
+        for idx, row in grupo_sala.iterrows():
+            
+            # Pega as datas de atendimento que não são None e não são vazias
+            datas_atendimento = [str(row.get(col)) for col in ['DT', 'DC', 'DG'] if str(row.get(col, 'None')) not in ('', 'None')]
+            
+            if datas_atendimento:
+                data_ocorrencia = pd.to_datetime(row['DCO']).date()
+                
+                # Escolhe a data de atendimento mais antiga
+                datas_parsed = [date_parser.parse(d).date() for d in datas_atendimento]
+                data_atendimento_mais_rapida = min(datas_parsed)
+                diferenca_dias = (data_atendimento_mais_rapida - data_ocorrencia).days
+                
+                if diferenca_dias <= PRAZO_DIAS:
+                    contagem_sala['Respondidas <7 dias'] += 1
+                else:
+                    contagem_sala['Respondidas >7 dias'] += 1
+            else:
+                contagem_sala['Não Respondidas'] += 1
+
+        relatorio_sala.append({
+            'Sala': sala,
+            'Total Ocorrências': total_sala,
+            'Porcentagem': f"{((total_sala / total_geral) * 100):.1f}%" if total_geral > 0 else '0%',
+            'Respondidas <7 dias': contagem_sala['Respondidas <7 dias'],
+            'Respondidas >7 dias': contagem_sala['Respondidas >7 dias'],
+            'Não Respondidas': contagem_sala['Não Respondidas'],
+        })
+
+    # 4. Relatório por Setor (Desempenho)
+    relatorio_setor = []
+    
+    for setor in SETORES_ATENDIMENTO:
+        total_setor = 0
+        contagem_setor = {
+            'No Prazo': 0, 
+            'Fora do Prazo': 0, 
+            'Não Respondida': 0
+        }
+        
+        # Para o Resumo por Setor, o "Total" é o número total de ocorrências no período
+        total_setor = len(df_filtrado)
+        
+        for idx, row in df_filtrado.iterrows():
+            status = row['PRAZO_STATUS'].get(setor)
+            
+            if status == 'No Prazo':
+                contagem_setor['No Prazo'] += 1
+            elif status == 'Fora do Prazo':
+                contagem_setor['Fora do Prazo'] += 1
+            elif status == 'Não Respondida':
+                contagem_setor['Não Respondida'] += 1
+        
+        relatorio_setor.append({
+            'Setor': setor,
+            'Total': total_setor,
+            'Respondidas <7 dias': contagem_setor['No Prazo'],
+            'Respondidas >7 dias': contagem_setor['Fora do Prazo'],
+            'Não Respondidas': contagem_setor['Não Respondida'],
+            'Porc <7 dias': f"({(contagem_setor['No Prazo'] / total_setor * 100):.0f}%)" if total_setor > 0 else '(0%)',
+            'Porc >7 dias': f"({(contagem_setor['Fora do Prazo'] / total_setor * 100):.0f}%)" if total_setor > 0 else '(0%)',
+            'Porc Não Resp': f"({(contagem_setor['Não Respondida'] / total_setor * 100):.0f}%)" if total_setor > 0 else '(0%)'
+        })
+        
+    return {
+        'por_sala': relatorio_sala,
+        'por_setor': relatorio_setor
+    }
+
+# Rota /relatorio_geral atualizada
+@app.route("/relatorio_geral")
+def relatorio_geral():
+    # Pega as datas do formulário ou usa um valor padrão (ex: 30 dias atrás)
+    now_str = datetime.now(TZ_SAO).strftime('%Y-%m-%d')
+    data_fim = request.args.get('data_fim', now_str)
+    data_inicio = request.args.get('data_inicio', (datetime.now(TZ_SAO) - timedelta(days=30)).strftime('%Y-%m-%d'))
+
+    try:
+        dados_relatorio = gerar_relatorio_geral_data(data_inicio, data_fim)
+    except Exception as e:
+        flash(f"Erro ao gerar relatório: {e}", "danger")
+        dados_relatorio = {'por_sala': [], 'por_setor': []}
+
+    return render_template("relatorio_geral.html", 
+                           data_inicio=data_inicio,
+                           data_fim=data_fim,
+                           relatorio_sala=dados_relatorio['por_sala'],
+                           relatorio_setor=dados_relatorio['por_setor']
+                          )
+
 @app.route("/relatorio_geral")
 def relatorio_geral():
     df = carregar_dados()
@@ -633,5 +892,6 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
