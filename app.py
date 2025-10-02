@@ -272,33 +272,47 @@ def calculate_display_status_and_color(row):
 @app.route("/")
 def home():
     return render_template("home.html")
-
 @app.route("/index")
 def index():
     df = carregar_dados()
     
-    # Prepara listas para filtros: APENAS TUTORES COM OCORRÊNCIAS
-    # Se o DataFrame estiver vazio, retorna uma lista vazia para evitar erros
+    # Prepara listas para filtros
     tutores_disp = sorted(df['Tutor'].unique().tolist()) if not df.empty and 'Tutor' in df.columns else []
+    # Usaremos os status dinâmicos (ATENDIMENTO, FINALIZADA, ASSINADA) para o filtro
+    status_disp = ['ATENDIMENTO', 'FINALIZADA', 'ASSINADA', 'ABERTA']
 
-    # Lógica de Filtragem: Apenas o filtro Tutor é mantido
+    # Lógica de Filtragem
     filtro_tutor = request.args.get('tutor')
+    filtro_status = request.args.get('status') # NOVO FILTRO STATUS
     
     ocorrencias_filtradas = df.copy()
+    
+    # APLICA A LÓGICA DINÂMICA DE STATUS PARA FILTRAR CORRETAMENTE
+    ocorrencias_filtradas = ocorrencias_filtradas.apply(calculate_display_status_and_color, axis=1)
 
     if filtro_tutor:
         ocorrencias_filtradas = ocorrencias_filtradas[ocorrencias_filtradas['Tutor'] == filtro_tutor]
     
-    # APLICA A LÓGICA DINÂMICA DE STATUS AQUI
-    ocorrencias_filtradas = ocorrencias_filtradas.apply(calculate_display_status_and_color, axis=1)
+    if filtro_status:
+        # Filtra pelo DisplayStatus calculado
+        ocorrencias_filtradas = ocorrencias_filtradas[ocorrencias_filtradas['DisplayStatus'] == filtro_status]
+    
+    # NOVO: Ordenação pela última ocorrência (ID descendente)
+    # Garante que a coluna 'Nº Ocorrência' seja usada para ordenar
+    if 'Nº Ocorrência' in ocorrencias_filtradas.columns:
+        ocorrencias_filtradas = ocorrencias_filtradas.sort_values(by='Nº Ocorrência', ascending=False)
 
-    ocorrencias_lista = ocorrencias_filtradas.sort_values(by='Nº Ocorrência', ascending=False).to_dict('records')
+
+    ocorrencias_lista = ocorrencias_filtradas.to_dict('records')
 
     return render_template("index.html",
                            registros=ocorrencias_lista,
                            tutores_disp=tutores_disp,
-                           tutor_sel=filtro_tutor)
+                           tutor_sel=filtro_tutor,
+                           status_disp=status_disp,
+                           status_sel=filtro_status)
 
+# ... (Rota /nova continua a mesma)
 
 # -------------------- API para Nova Ocorrência --------------------
 
@@ -331,20 +345,28 @@ def nova():
             next_id = get_proximo_id_supabase(supabase)
             now_local = datetime.now(TZ_SAO)
             
+            # CORREÇÃO CRÍTICA:
+            # 1. DCO (Data da Ocorrência): Enviada como ISO completo (Timestamp com fuso)
             dco_iso = now_local.isoformat() 
-            hco_iso = now_local.isoformat() 
+            # 2. HCO (Hora da Ocorrência): Enviada como HORA:MINUTO:SEGUNDO
+            # O Supabase (PostgreSQL) com tipo 'time with time zone' espera apenas a hora, 
+            # e a formatação `%H:%M:%S` resolve o erro 'invalid input syntax for type time'.
+            hco_str = now_local.strftime('%H:%M:%S')
 
             dados_insercao = {
-                "ID": next_id, "DCO": dco_iso, "HCO": hco_iso,
+                "ID": next_id, 
+                "DCO": dco_iso, # Salva a data completa no formato ISO
+                "HCO": hco_str, # Salva apenas o horário no formato string HH:MM:SS
+                
                 "PROFESSOR": data.get('PROFESSOR', '').strip(),
                 "SALA": data.get('SALA', '').strip(),
                 "ALUNO": data.get('ALUNO', '').strip(),
                 "TUTOR": data.get('TUTOR', '').strip(),
                 "DESCRICAO": data.get('DESCRICAO', '').strip(),
                 
-                # CORREÇÃO DEFINITIVA: Usando a chave 'ATP'
                 "ATP": data.get('ATP', '').strip(), 
                 
+                # 'NÃO' significa que a ação é necessária (Pendente). 'SIM' significa que foi atendido.
                 "FT": 'NÃO' if data.get('FT') == 'on' else 'SIM', 
                 "FC": 'NÃO' if data.get('FC') == 'on' else 'SIM', 
                 "FG": 'NÃO' if data.get('FG') == 'on' else 'SIM', 
@@ -354,21 +376,30 @@ def nova():
                 "STATUS": 'Aberta'
             }
 
+            # Lógica de status para ATENDIMENTO
             if dados_insercao["FT"] == "NÃO" or dados_insercao["FC"] == "NÃO" or dados_insercao["FG"] == "NÃO":
                  dados_insercao["STATUS"] = "ATENDIMENTO"
             
-            supabase.table('ocorrencias').insert(dados_insercao).execute()
+            # Executa a inserção no Supabase
+            response = supabase.table('ocorrencias').insert(dados_insercao).execute()
+            
+            # Verifica se houve erro na resposta (Supabase/PostgREST)
+            if response.data is None or len(response.data) == 0:
+                 raise Exception(f"Resposta Supabase vazia. Erro: {response.error}")
+                 
             
             limpar_caches()
             flash(f"Ocorrência Nº {next_id} registrada com sucesso!", "success")
         except Exception as e:
-            flash(f"Erro ao salvar a ocorrência: {e}", "danger")
+            # Adiciona o erro do banco de dados na mensagem para o usuário
+            flash(f"Erro ao salvar a ocorrência. Verifique os logs do servidor: {e}", "danger")
             print(f"Erro no POST /nova: {e}")
         
         return redirect(url_for("index"))
 
     return render_template("nova.html", salas_disp=salas_unicas, professores_disp=professores_unicos, tutores_disp=tutores_unicos)
 
+# ... (Código anterior, incluindo a definição de TZ_SAO)
 
 @app.route('/editar/<int:oid>', methods=['GET', 'POST'])
 def editar(oid):
@@ -392,17 +423,18 @@ def editar(oid):
     ocorrencia['ID'] = ocorrencia.get('ID', oid)
     ocorrencia['STATUS'] = ocorrencia.get('STATUS', 'Aberta')
     
+    # Lógica de formatação de data/hora para exibição (mantida)
     for col in ['DCO', 'DT', 'DC', 'DG', 'HCO']:
         val = ocorrencia.get(col)
         if val:
             try:
                 dt_obj = date_parser.parse(str(val))
-                # Formatação de data/hora (Apenas para exibição)
                 if col == 'DCO':
                     ocorrencia[col] = dt_obj.strftime('%d/%m/%Y')
                 elif col == 'HCO':
                     ocorrencia[col] = dt_obj.strftime('%H:%M')
                 else: # DT, DC, DG
+                    # Garante que a data seja exibida no formato DD/MM/AAAA no HTML
                     ocorrencia[col] = dt_obj.strftime('%d/%m/%Y')
             except:
                 pass 
@@ -413,6 +445,7 @@ def editar(oid):
         "editar_att": False, "editar_atc": False, "editar_atg": False, 
     }
     
+    # LÓGICA DE PERMISSÕES (Mantida)
     if papel == "lapis": 
         permissoes.update({
             "editar_descricao": True, "editar_atp": True, 
@@ -424,44 +457,56 @@ def editar(oid):
         permissoes["editar_atc"] = True
     elif papel == "fg": 
         permissoes["editar_atg"] = True
+    
+    if papel in ["ft", "fc", "fg"]:
+         permissoes["visualizar"] = True
 
     if request.method == "POST":
         dados_update = {}
-        now_iso = datetime.now(TZ_SAO).isoformat()
+        now_local = datetime.now(TZ_SAO)
         
+        # NOVO: Variável para salvar apenas a data (AAAA-MM-DD)
+        now_date_str = now_local.strftime('%Y-%m-%d')
+        
+        # Lógica de Atualização (Mantida)
         if permissoes["editar_descricao"] and "DESCRICAO" in request.form:
             dados_update["DESCRICAO"] = request.form["DESCRICAO"]
         
-        # CORREÇÃO: Usando a chave 'ATP' no update
         if permissoes["editar_atp"] and "ATP" in request.form:
             dados_update["ATP"] = request.form["ATP"]
         
+        # NOVO: LÓGICA DE ATENDIMENTO E DATA - AGORA SALVANDO APENAS now_date_str
+        
         if permissoes["editar_att"] and "ATT" in request.form:
-            dados_update["ATT"] = request.form["ATT"]
-            dados_update["FT"] = "SIM" if dados_update["ATT"].strip() else "NÃO" 
-            dados_update["DT"] = now_iso if dados_update["ATT"].strip() else None 
+            att_val = request.form["ATT"].strip()
+            dados_update["ATT"] = att_val
+            # Se preenchido, marca SIM e registra apenas a DATA
+            dados_update["FT"] = "SIM" if att_val else "NÃO" 
+            dados_update["DT"] = now_date_str if att_val else None 
         
         if permissoes["editar_atc"] and "ATC" in request.form:
-            dados_update["ATC"] = request.form["ATC"]
-            dados_update["FC"] = "SIM" if dados_update["ATC"].strip() else "NÃO" 
-            dados_update["DC"] = now_iso if dados_update["ATC"].strip() else None 
+            atc_val = request.form["ATC"].strip()
+            dados_update["ATC"] = atc_val
+            dados_update["FC"] = "SIM" if atc_val else "NÃO" 
+            dados_update["DC"] = now_date_str if atc_val else None 
 
         if permissoes["editar_atg"] and "ATG" in request.form:
-            dados_update["ATG"] = request.form["ATG"]
-            dados_update["FG"] = "SIM" if dados_update["ATG"].strip() else "NÃO" 
-            dados_update["DG"] = now_iso if dados_update["ATG"].strip() else None 
+            atg_val = request.form["ATG"].strip()
+            dados_update["ATG"] = atg_val
+            dados_update["FG"] = "SIM" if atg_val else "NÃO" 
+            dados_update["DG"] = now_date_str if atg_val else None 
 
+        # Lógica de Status (Mantida)
         ft = dados_update.get("FT", ocorrencia_raw.get("FT", 'NÃO')).upper()
         fc = dados_update.get("FC", ocorrencia_raw.get("FC", 'NÃO')).upper()
         fg = dados_update.get("FG", ocorrencia_raw.get("FG", 'NÃO')).upper()
 
-        # Lógica de Status: Simplificada para refletir se há atendimentos pendentes ou se está finalizada
         if ft == "SIM" and fc == "SIM" and fg == "SIM":
             dados_update["STATUS"] = "ASSINADA" 
         elif ft == "NÃO" or fc == "NÃO" or fg == "NÃO":
             dados_update["STATUS"] = "ATENDIMENTO"
         else:
-             dados_update["STATUS"] = "Aberta" # Caso seja criada sem flags
+             dados_update["STATUS"] = "ABERTA" 
 
         try:
             supabase.table("ocorrencias").update(dados_update).eq("ID", oid).execute()
@@ -472,7 +517,7 @@ def editar(oid):
             flash(f"Erro ao atualizar: {e}", "danger")
             print(f"Erro no POST /editar: {e}")
             
-        return redirect(url_for('editar', oid=oid, papel=papel)) 
+        return redirect(url_for('index'))
 
     return render_template("editar.html", ocorrencia=ocorrencia, permissoes=permissoes, papel=papel)
 
@@ -569,3 +614,4 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
