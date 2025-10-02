@@ -19,27 +19,42 @@
 <h1 class="mb-4">Lista de Ocorrências</h1>
 
 <div class="row g-3 mb-4 align-items-end">
-    <div class="col-md-4">
-        <form method="GET" action="{{ url_for('index') }}" class="m-0 p-0">
-            <label class="form-label">Tutor (Com Ocorrências):</label>
-            <select class="form-select" name="tutor" onchange="this.form.submit()">
-                <option value="">Todos</option>
-                {% for tutor in tutores_disp %}
-                    <option value="{{ tutor }}" {% if tutor == tutor_sel %}selected{% endif %}>{{ tutor }}</option>
-                {% endfor %}
-            </select>
-        </form>
+    <div class="col-md-3">
+        <label class="form-label">Tutor (Com Ocorrências):</label>
+        <select class="form-select" name="tutor" id="filtro-tutor" onchange="submeterFiltros()">
+            <option value="">Todos</option>
+            {% for tutor in tutores_disp %}
+                <option value="{{ tutor }}" {% if tutor == tutor_sel %}selected{% endif %}>{{ tutor }}</option>
+            {% endfor %}
+        </select>
     </div>
     
-    <div class="col-md-8 d-flex justify-content-end gap-2">
+    <div class="col-md-3">
+        <label class="form-label">Status:</label>
+        <select class="form-select" name="status" id="filtro-status" onchange="submeterFiltros()">
+            <option value="">Todos</option>
+            {% for status in status_disp %}
+                <option value="{{ status }}" {% if status == status_sel %}selected{% endif %}>{{ status }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    
+    <div class="col-md-6 d-flex justify-content-end gap-2">
         <a href="{{ url_for('home') }}" class="btn btn-secondary">Tela Inicial</a>
         <a href="{{ url_for('nova') }}" class="btn btn-success">Nova Ocorrência</a>
     </div>
 </div>
 
+<form method="GET" action="{{ url_for('index') }}" id="filtro-form" class="d-none">
+    <input type="hidden" name="tutor" id="input-tutor">
+    <input type="hidden" name="status" id="input-status">
+</form>
+
 <table class="table table-bordered table-striped">
-    <thead class="table-light"> <tr>
-            <th>Nº</th> <th>DCO Data</th>
+    <thead class="table-light">
+        <tr>
+            <th>Nº</th>
+            <th>DCO Data</th>
             <th>HCO Hora</th>
             <th>Aluno</th>
             <th>Sala</th>
@@ -59,9 +74,27 @@
             <td>{{ d.Sala }}</td>
             <td>{{ d.Tutor }}</td>
             <td>{{ d.PROFESSOR }}</td>
-            <td><span class="badge bg-{% if d.FT == 'SIM' %}success{% else %}danger{% endif %}">{{ d.FT | default('N/D') }}</span></td>
-            <td><span class="badge bg-{% if d.FC == 'SIM' %}success{% else %}danger{% endif %}">{{ d.FC | default('N/D') }}</span></td>
-            <td><span class="badge bg-{% if d.FG == 'SIM' %}success{% else %}danger{% endif %}">{{ d.FG | default('N/D') }}</span></td>
+            <td>
+                {% if d.FT == 'SIM' %}
+                <span class="badge bg-success">SIM</span>
+                {% else %}
+                <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='ft') }}" class="badge bg-danger text-white text-decoration-none">NÃO</a>
+                {% endif %}
+            </td>
+            <td>
+                {% if d.FC == 'SIM' %}
+                <span class="badge bg-success">SIM</span>
+                {% else %}
+                <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='fc') }}" class="badge bg-danger text-white text-decoration-none">NÃO</a>
+                {% endif %}
+            </td>
+            <td>
+                {% if d.FG == 'SIM' %}
+                <span class="badge bg-success">SIM</span>
+                {% else %}
+                <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='fg') }}" class="badge bg-danger text-white text-decoration-none">NÃO</a>
+                {% endif %}
+            </td>
             <td><span class="badge bg-{{ d.DisplayColor }}">{{ d.DisplayStatus }}</span></td>
             <td>
                 <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='lupa') }}" class="btn btn-sm btn-info">Ver</a>
@@ -75,6 +108,20 @@
         {% endfor %}
     </tbody>
 </table>
+
+<script>
+    function submeterFiltros() {
+        const tutor = document.getElementById('filtro-tutor').value;
+        const status = document.getElementById('filtro-status').value;
+
+        // Oculta o formulário de filtros e submete um formulário auxiliar GET
+        const form = document.getElementById('filtro-form');
+        document.getElementById('input-tutor').value = tutor;
+        document.getElementById('input-status').value = status;
+        
+        form.submit();
+    }
+</script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
