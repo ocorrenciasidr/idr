@@ -5,17 +5,18 @@ import base64
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from urllib.parse import urlencode
+from dateutil import parser as date_parser
 
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file, abort
 import pandas as pd
-from supabase import create_client, Client
-from dateutil import parser as date_parser
+from supabase import create_client, Client 
 
 # --- Configuração de Fuso Horário ---
 try:
     from zoneinfo import ZoneInfo
     TZ_SAO = ZoneInfo("America/Sao_Paulo")
 except ImportError:
+    # Fallback para ambientes sem zoneinfo (como Render mais antigos ou Py < 3.9)
     TZ_SAO = timezone(timedelta(hours=-3))
 
 # --- Imports para FPDF e Matplotlib ---
@@ -29,6 +30,7 @@ except ImportError:
         def cell(self, *args, **kwargs): pass
         def ln(self): pass
         def multi_cell(self, *args, **kwargs): pass
+        def image(self, *args, **kwargs): pass
         def output(self, *args, **kwargs): 
             pdf_mock = BytesIO()
             pdf_mock.write(b"PDF Library Missing")
@@ -105,11 +107,12 @@ FINAL_COLUMNS_MAP = {
     'DCO': 'DCO',
     'HCO': 'HCO',
     'DESCRICAO': 'Descrição da Ocorrência',
-    'AT_PROFESSOR': 'Atendimento Professor',
+    'ATP': 'Atendimento Professor', # <-- CORRIGIDO: Usando ATP no DB
     'ATT': 'ATT', 'ATC': 'ATC', 'ATG': 'ATG', 
     'FT': 'FT', 'FC': 'FC', 'FG': 'FG', 
     'DT': 'DT', 'DC': 'DC', 'DG': 'DG', 
     'STATUS': 'Status',
+    'TUTOR': 'Tutor' # Adicionando o tutor
 }
 
 def carregar_professores():
@@ -210,7 +213,7 @@ def carregar_dados() -> pd.DataFrame:
 
     for col in ['DCO', 'DT', 'DC', 'DG', 'HCO']:
         if col in df.columns:
-            df[col] = pd.to_datetime(df[col], errors='coerce') 
+            df[col] = pd.to_datetime(df[col], errors='coerce', utc=True).dt.tz_convert(TZ_SAO)
             
             # Coluna DCO é formatada para o display no HTML (DD/MM/AAAA)
             if col == 'DCO':
@@ -270,171 +273,32 @@ def calculate_display_status_and_color(row):
 def home():
     return render_template("home.html")
 
-@app.route("/relatorio_inicial")
-def relatorio_inicial():
-    """Rota para carregar o modal de senha antes de acessar o menu de relatórios."""
-    return render_template("relatorio_inicial.html")
-
 @app.route("/index")
 def index():
     df = carregar_dados()
-    df_alunos = carregar_dados_alunos()
     
-    # Prepara listas para filtros
-    salas_disp = sorted(df_alunos['Sala'].unique().tolist())
-    tutores_disp = sorted(df_alunos['Tutor'].unique().tolist())
-    professores_disp = sorted(df['PROFESSOR'].unique().tolist()) 
+    # Prepara listas para filtros: APENAS TUTORES COM OCORRÊNCIAS
+    # Se o DataFrame estiver vazio, retorna uma lista vazia para evitar erros
+    tutores_disp = sorted(df['Tutor'].unique().tolist()) if not df.empty and 'Tutor' in df.columns else []
 
-    # Lógica de Filtragem
+    # Lógica de Filtragem: Apenas o filtro Tutor é mantido
     filtro_tutor = request.args.get('tutor')
-    filtro_sala = request.args.get('sala')
-    filtro_status = request.args.get('status')
     
     ocorrencias_filtradas = df.copy()
 
     if filtro_tutor:
         ocorrencias_filtradas = ocorrencias_filtradas[ocorrencias_filtradas['Tutor'] == filtro_tutor]
     
-    if filtro_sala:
-        ocorrencias_filtradas = ocorrencias_filtradas[ocorrencias_filtradas['Sala'] == filtro_sala]
-
-    if filtro_status and filtro_status != 'Todos':
-        ocorrencias_filtradas = ocorrencias_filtradas[ocorrencias_filtradas['Status'] == filtro_status]
-    
     # APLICA A LÓGICA DINÂMICA DE STATUS AQUI
     ocorrencias_filtradas = ocorrencias_filtradas.apply(calculate_display_status_and_color, axis=1)
 
     ocorrencias_lista = ocorrencias_filtradas.sort_values(by='Nº Ocorrência', ascending=False).to_dict('records')
-    # Gera a lista de status baseada nos status CALCULADOS
-    status_opcoes = ['Todos'] + sorted(ocorrencias_filtradas['DisplayStatus'].unique().tolist()) 
 
     return render_template("index.html",
                            registros=ocorrencias_lista,
                            tutores_disp=tutores_disp,
-                           salas_disp=salas_disp,
-                           professores_disp=professores_disp,
-                           status_list=status_opcoes,
-                           tutor_sel=filtro_tutor,
-                           sala_sel=filtro_sala,
-                           status_sel=filtro_status)
+                           tutor_sel=filtro_tutor)
 
-
-@app.route('/editar/<int:oid>', methods=['GET', 'POST'])
-def editar(oid):
-    supabase = conectar_supabase()
-    if not supabase:
-        return redirect(url_for("index"))
-
-    # Buscar ocorrência no Supabase - coluna 'ID' em MAIÚSCULO
-    try:
-        response = supabase.table("ocorrencias").select("*").eq("ID", oid).execute()
-    except Exception as e:
-        flash(f"Erro ao buscar ocorrência: {e}", "danger")
-        return redirect(url_for("index"))
-
-    if not response.data:
-        flash("Ocorrência não encontrada!", "danger")
-        return redirect(url_for("index"))
-
-    ocorrencia_raw = response.data[0]
-    
-    # Mapeia chaves para UPPER CASE para compatibilidade com editar.html
-    ocorrencia = {k.upper(): v for k, v in ocorrencia_raw.items()}
-    ocorrencia['ID'] = ocorrencia.get('ID', oid)
-    ocorrencia['STATUS'] = ocorrencia.get('STATUS', 'Aberta')
-    
-    # Processamento de datas para o template
-    for col in ['DCO', 'DT', 'DC', 'DG']:
-        val = ocorrencia.get(col)
-        if val:
-            try:
-                dt_obj = date_parser.parse(str(val))
-                ocorrencia[col] = dt_obj.strftime('%d/%m/%Y')
-            except:
-                pass 
-
-    # Lógica de Permissões (papel 'ft', 'fc', 'fg' adicionados)
-    papel = request.args.get('papel', 'lupa')
-    permissoes = { 
-        "visualizar": True, "editar_descricao": False, "editar_atp": False, 
-        "editar_att": False, "editar_atc": False, "editar_atg": False, 
-    }
-    
-    if papel == "lapis": 
-        permissoes.update({
-            "editar_descricao": True, "editar_atp": True, 
-            "editar_att": True, "editar_atc": True, "editar_atg": True,
-        })
-    elif papel == "ft": 
-        # Permissão especial para o Tutor (FT)
-        permissoes["editar_att"] = True
-    elif papel == "fc": 
-        # Permissão especial para a Coordenação (FC)
-        permissoes["editar_atc"] = True
-    elif papel == "fg": 
-        # Permissão especial para a Gestão (FG)
-        permissoes["editar_atg"] = True
-
-    if request.method == "POST":
-        dados_update = {}
-        now_iso = datetime.now(TZ_SAO).isoformat()
-        
-        # Mapeamento do Form para o DB (TUDO EM MAIÚSCULO)
-        
-        if permissoes["editar_descricao"] and "DESCRICAO" in request.form:
-            dados_update["DESCRICAO"] = request.form["DESCRICAO"]
-        
-        if permissoes["editar_atp"] and "ATP" in request.form:
-            dados_update["AT_PROFESSOR"] = request.form["ATP"]
-        
-        # Atualização do Tutor (ATT)
-        if permissoes["editar_att"] and "ATT" in request.form:
-            # Colunas de atendimento (ATT, ATC, ATG)
-            dados_update["ATT"] = request.form["ATT"]
-            # Colunas de flag e data (FT, DT, FC, DC, FG, DG)
-            dados_update["FT"] = "SIM" if dados_update["ATT"].strip() else "NÃO" 
-            dados_update["DT"] = now_iso if dados_update["ATT"].strip() else None 
-        
-        # Atualização da Coordenação (ATC)
-        if permissoes["editar_atc"] and "ATC" in request.form:
-            dados_update["ATC"] = request.form["ATC"]
-            dados_update["FC"] = "SIM" if dados_update["ATC"].strip() else "NÃO" 
-            dados_update["DC"] = now_iso if dados_update["ATC"].strip() else None 
-
-        # Atualização da Gestão (ATG)
-        if permissoes["editar_atg"] and "ATG" in request.form:
-            dados_update["ATG"] = request.form["ATG"]
-            dados_update["FG"] = "SIM" if dados_update["ATG"].strip() else "NÃO" 
-            dados_update["DG"] = now_iso if dados_update["ATG"].strip() else None 
-
-        # Lógica de Atualização de Status (Baseada no estado das flags)
-        # Deve usar os valores mais recentes (os que estão sendo atualizados ou os originais)
-        ft = dados_update.get("FT", ocorrencia_raw.get("FT", 'NÃO')).upper()
-        fc = dados_update.get("FC", ocorrencia_raw.get("FC", 'NÃO')).upper()
-        fg = dados_update.get("FG", ocorrencia_raw.get("FG", 'NÃO')).upper()
-
-        if ft == "SIM" and fc == "SIM" and fg == "SIM":
-            dados_update["STATUS"] = "ASSINADA" # Todos os atendimentos feitos
-        elif ft == "SIM" or fc == "SIM" or fg == "SIM":
-            dados_update["STATUS"] = "ATENDIMENTO" # Pelo menos um atendimento feito
-        else:
-            dados_update["STATUS"] = "Aberta" # Nenhum atendimento feito
-
-        try:
-            # Atualiza no Supabase, filtrando pelo 'ID' em MAIÚSCULO
-            supabase.table("ocorrencias").update(dados_update).eq("ID", oid).execute()
-            
-            limpar_caches() 
-            flash("Ocorrência atualizada com sucesso!", "success")
-        except Exception as e:
-            flash(f"Erro ao atualizar: {e}", "danger")
-            print(f"Erro no POST /editar: {e}")
-            
-        return redirect(url_for('editar', oid=oid, papel=papel)) 
-
-    return render_template("editar.html", ocorrencia=ocorrencia, permissoes=permissoes, papel=papel)
-
-# ... (Mantenha todos os imports e funções existentes: conectar_supabase, get_proximo_id_supabase, carregar_professores, carregar_salas, carregar_dados_alunos, carregar_dados, calculate_display_status_and_color, home, index, editar) ...
 
 # -------------------- API para Nova Ocorrência --------------------
 
@@ -442,15 +306,12 @@ def editar(oid):
 def alunos_por_sala(sala):
     """Retorna lista de alunos e seus tutores para uma sala específica."""
     df_alunos = carregar_dados_alunos()
-    # Garante que a comparação de sala seja case-insensitive, mas o retorno mantém a formatação do DB
     alunos_filtrados = df_alunos[df_alunos['Sala'].str.upper() == sala.upper()]
-    # Retorna apenas Aluno e Tutor
     resultado = alunos_filtrados[['Aluno', 'Tutor']].to_dict('records')
-    # O resultado deve ser {'Aluno': 'Nome', 'Tutor': 'Tutor'}
     return jsonify(resultado)
 
 
-# -------------------- Rota de Nova Ocorrência (Corrigida) --------------------
+# -------------------- Rota de Nova Ocorrência --------------------
 
 @app.route("/nova", methods=["GET", "POST"])
 def nova():
@@ -473,7 +334,6 @@ def nova():
             dco_iso = now_local.isoformat() 
             hco_iso = now_local.isoformat() 
 
-            # Mapeamento do Form para o DB (TUDO EM MAIÚSCULO)
             dados_insercao = {
                 "ID": next_id, "DCO": dco_iso, "HCO": hco_iso,
                 "PROFESSOR": data.get('PROFESSOR', '').strip(),
@@ -482,23 +342,18 @@ def nova():
                 "TUTOR": data.get('TUTOR', '').strip(),
                 "DESCRICAO": data.get('DESCRICAO', '').strip(),
                 
-                # NOVO CAMPO: Atendimento Professor (ATP)
-                "AT_PROFESSOR": data.get('ATP', '').strip(), 
+                # CORREÇÃO DEFINITIVA: Usando a chave 'ATP'
+                "ATP": data.get('ATP', '').strip(), 
                 
-                # FLAGS: Se a caixa for marcada, o status inicial é 'NÃO' (Ação Pendente). 
-                # Se não for marcada, é 'SIM' (Não Requerido/Feito), para não aparecer na lista de pendências.
                 "FT": 'NÃO' if data.get('FT') == 'on' else 'SIM', 
                 "FC": 'NÃO' if data.get('FC') == 'on' else 'SIM', 
                 "FG": 'NÃO' if data.get('FG') == 'on' else 'SIM', 
                 
-                # Campos de Atendimento (vazios na criação)
                 "ATT": '', "ATC": '', "ATG": '', 
                 "DT": None, "DC": None, "DG": None, 
                 "STATUS": 'Aberta'
             }
 
-            # Lógica simples para status inicial: 
-            # Se qualquer flag foi definida como 'NÃO' (Ação Pendente), o status é ATENDIMENTO.
             if dados_insercao["FT"] == "NÃO" or dados_insercao["FC"] == "NÃO" or dados_insercao["FG"] == "NÃO":
                  dados_insercao["STATUS"] = "ATENDIMENTO"
             
@@ -515,7 +370,124 @@ def nova():
     return render_template("nova.html", salas_disp=salas_unicas, professores_disp=professores_unicos, tutores_disp=tutores_unicos)
 
 
-# -------------------- Rotas de Relatório (Adicionadas) --------------------
+@app.route('/editar/<int:oid>', methods=['GET', 'POST'])
+def editar(oid):
+    supabase = conectar_supabase()
+    if not supabase:
+        return redirect(url_for("index"))
+
+    try:
+        response = supabase.table("ocorrencias").select("*").eq("ID", oid).execute()
+    except Exception as e:
+        flash(f"Erro ao buscar ocorrência: {e}", "danger")
+        return redirect(url_for("index"))
+
+    if not response.data:
+        flash("Ocorrência não encontrada!", "danger")
+        return redirect(url_for("index"))
+
+    ocorrencia_raw = response.data[0]
+    
+    ocorrencia = {k.upper(): v for k, v in ocorrencia_raw.items()}
+    ocorrencia['ID'] = ocorrencia.get('ID', oid)
+    ocorrencia['STATUS'] = ocorrencia.get('STATUS', 'Aberta')
+    
+    for col in ['DCO', 'DT', 'DC', 'DG', 'HCO']:
+        val = ocorrencia.get(col)
+        if val:
+            try:
+                dt_obj = date_parser.parse(str(val))
+                # Formatação de data/hora (Apenas para exibição)
+                if col == 'DCO':
+                    ocorrencia[col] = dt_obj.strftime('%d/%m/%Y')
+                elif col == 'HCO':
+                    ocorrencia[col] = dt_obj.strftime('%H:%M')
+                else: # DT, DC, DG
+                    ocorrencia[col] = dt_obj.strftime('%d/%m/%Y')
+            except:
+                pass 
+
+    papel = request.args.get('papel', 'lupa')
+    permissoes = { 
+        "visualizar": True, "editar_descricao": False, "editar_atp": False, 
+        "editar_att": False, "editar_atc": False, "editar_atg": False, 
+    }
+    
+    if papel == "lapis": 
+        permissoes.update({
+            "editar_descricao": True, "editar_atp": True, 
+            "editar_att": True, "editar_atc": True, "editar_atg": True,
+        })
+    elif papel == "ft": 
+        permissoes["editar_att"] = True
+    elif papel == "fc": 
+        permissoes["editar_atc"] = True
+    elif papel == "fg": 
+        permissoes["editar_atg"] = True
+
+    if request.method == "POST":
+        dados_update = {}
+        now_iso = datetime.now(TZ_SAO).isoformat()
+        
+        if permissoes["editar_descricao"] and "DESCRICAO" in request.form:
+            dados_update["DESCRICAO"] = request.form["DESCRICAO"]
+        
+        # CORREÇÃO: Usando a chave 'ATP' no update
+        if permissoes["editar_atp"] and "ATP" in request.form:
+            dados_update["ATP"] = request.form["ATP"]
+        
+        if permissoes["editar_att"] and "ATT" in request.form:
+            dados_update["ATT"] = request.form["ATT"]
+            dados_update["FT"] = "SIM" if dados_update["ATT"].strip() else "NÃO" 
+            dados_update["DT"] = now_iso if dados_update["ATT"].strip() else None 
+        
+        if permissoes["editar_atc"] and "ATC" in request.form:
+            dados_update["ATC"] = request.form["ATC"]
+            dados_update["FC"] = "SIM" if dados_update["ATC"].strip() else "NÃO" 
+            dados_update["DC"] = now_iso if dados_update["ATC"].strip() else None 
+
+        if permissoes["editar_atg"] and "ATG" in request.form:
+            dados_update["ATG"] = request.form["ATG"]
+            dados_update["FG"] = "SIM" if dados_update["ATG"].strip() else "NÃO" 
+            dados_update["DG"] = now_iso if dados_update["ATG"].strip() else None 
+
+        ft = dados_update.get("FT", ocorrencia_raw.get("FT", 'NÃO')).upper()
+        fc = dados_update.get("FC", ocorrencia_raw.get("FC", 'NÃO')).upper()
+        fg = dados_update.get("FG", ocorrencia_raw.get("FG", 'NÃO')).upper()
+
+        # Lógica de Status: Simplificada para refletir se há atendimentos pendentes ou se está finalizada
+        if ft == "SIM" and fc == "SIM" and fg == "SIM":
+            dados_update["STATUS"] = "ASSINADA" 
+        elif ft == "NÃO" or fc == "NÃO" or fg == "NÃO":
+            dados_update["STATUS"] = "ATENDIMENTO"
+        else:
+             dados_update["STATUS"] = "Aberta" # Caso seja criada sem flags
+
+        try:
+            supabase.table("ocorrencias").update(dados_update).eq("ID", oid).execute()
+            
+            limpar_caches() 
+            flash("Ocorrência atualizada com sucesso!", "success")
+        except Exception as e:
+            flash(f"Erro ao atualizar: {e}", "danger")
+            print(f"Erro no POST /editar: {e}")
+            
+        return redirect(url_for('editar', oid=oid, papel=papel)) 
+
+    return render_template("editar.html", ocorrencia=ocorrencia, permissoes=permissoes, papel=papel)
+
+
+# -------------------- Rotas de Relatório --------------------
+
+@app.route("/relatorio_inicial")
+def relatorio_inicial():
+    """Rota para carregar o modal de senha antes de acessar o menu de relatórios."""
+    return render_template("relatorio_inicial.html")
+
+@app.route("/relatorios")
+def relatorios():
+    # Rota que carrega o menu principal de relatórios
+    return render_template("relatorios.html")
 
 @app.route("/relatorio_aluno", methods=['GET', 'POST'])
 def relatorio_aluno():
@@ -532,21 +504,14 @@ def relatorio_aluno():
         
     if aluno_sel and sala_sel:
         ocorrencias = df[(df['Aluno'] == aluno_sel) & (df['Sala'] == sala_sel)]
-        # Renomeia colunas para o template de PDF (se necessário, usando o nome da coluna no DB)
         ocorrencias = ocorrencias.rename(columns={'Nº Ocorrência': 'ID', 'Descrição da Ocorrência': 'Descrição'}).to_dict('records')
 
     return render_template("relatorio_aluno.html", salas=salas, alunos=alunos, sala_sel=sala_sel, aluno_sel=aluno_sel, ocorrencias=ocorrencias)
 
 @app.route("/gerar_pdf_aluno", methods=['POST'])
 def gerar_pdf_aluno():
-    # Placeholder para a lógica de PDF (requer a implementação da classe PDF)
-    
-    if HAS_MATPLOTLIB: 
-        # A lógica real da FPDF deve ser implementada aqui (omissão por complexidade)
-        pdf_output = FPDF().output(dest='S').encode('latin-1') 
-    else:
-        pdf_output = b"PDF Generation Placeholder"
-        
+    # Lógica de PDF...
+    pdf_output = b"PDF Generation Placeholder"
     pdf_file = BytesIO(pdf_output)
     
     aluno = request.form.get('aluno', 'aluno')
@@ -561,7 +526,6 @@ def gerar_pdf_aluno():
 
 @app.route("/relatorio_geral")
 def relatorio_geral():
-    # Lógica de relatorio_geral (ajustada para usar o nome do template)
     df = carregar_dados()
     data_inicio_str = request.args.get('data_inicio')
     data_fim_str = request.args.get('data_fim')
@@ -578,7 +542,6 @@ def relatorio_geral():
     
 @app.route("/relatorio_tutor")
 def relatorio_tutor():
-    # Lógica de relatorio_tutor (ajustada para usar o nome do template)
     df = carregar_dados()
     start_date_str = request.args.get('start')
     end_date_str = request.args.get('end')
@@ -599,14 +562,10 @@ def relatorio_tutoraluno():
     
     return render_template("relatorio_tutoraluno.html", dados=dados_agrupados)
 
-@app.route("/relatorios")
-def relatorios():
-    # Redireciona para o inicial protegido por senha
-    return redirect(url_for('relatorio_inicial'))
+
+@app.route("/tutoria")
+def tutoria():
+    return render_template("tutoria.html")
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
-
-
-
-
