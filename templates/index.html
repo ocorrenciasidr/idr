@@ -60,12 +60,12 @@
         {% for d in registros %}
         <tr>
             <td>{{ d['Nº Ocorrência'] }}</td>
-            <td>{{ d.DCO }}</td>
-            <td>{{ d.HCO }}</td>
-            <td>{{ d.ALUNO }}</td>
-            <td>{{ d.SALA }}</td>
-            <td>{{ d.PROFESSOR }}</td>
-            <td>{{ d.TUTOR }}</td>
+            <td>{{ d['DCO'] }}</td>
+            <td>{{ d['HCO'] }}</td>
+            <td>{{ d['ALUNO'] }}</td>
+            <td>{{ d['SALA'] }}</td>
+            <td>{{ d['PROFESSOR'] }}</td>
+            <td>{{ d['TUTOR'] }}</td>
 
             <td>
                 {% if d.FT == 'SIM' %}
