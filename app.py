@@ -750,10 +750,13 @@ def editar(oid):
         data = request.form
         update_data = {}
 
+        # Definir permissões no POST
         permissoes = {
             "editar_att": data.get("FT") == "SIM",
             "editar_atc": data.get("FC") == "SIM",
             "editar_atg": data.get("FG") == "SIM",
+            "editar_descricao": False,  # altere para True se quiser permitir edição da descrição
+            "editar_atp": False,        # altere para True se quiser permitir edição do ATP
         }
 
         if permissoes["editar_att"]:
@@ -780,7 +783,22 @@ def editar(oid):
     # GET → carregar ocorrência
     response = supabase.table("ocorrencias").select("*").eq("ID", oid).execute()
     ocorrencia = response.data[0] if response.data else None
-    return render_template("editar.html", ocorrencia=ocorrencia)
+
+    # Definir permissões para o template no GET
+    permissoes = {
+        "editar_descricao": False,  # ou True se quiser liberar edição da descrição
+        "editar_atp": False,        # ou True se quiser liberar edição do ATP
+        "editar_att": ocorrencia.get("FT") == "SIM" if ocorrencia else False,
+        "editar_atc": ocorrencia.get("FC") == "SIM" if ocorrencia else False,
+        "editar_atg": ocorrencia.get("FG") == "SIM" if ocorrencia else False,
+    }
+
+    return render_template(
+        "editar.html",
+        ocorrencia=ocorrencia,
+        permissoes=permissoes,
+        papel=request.args.get("papel")
+    )
 
 @app.route("/relatorios")
 def relatorios():
@@ -971,6 +989,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
