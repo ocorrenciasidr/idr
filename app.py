@@ -6,6 +6,7 @@ from dateutil import parser as date_parser
 
 import pandas as pd
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file
+from datetime import datetime
 from fpdf import FPDF
 
 # Supabase
@@ -186,8 +187,7 @@ def calcular_relatorio_por_sala():
 # -------------------------- ROTAS --------------------------
 @app.route("/")
 def home():
-    # Página raiz "/" vai para o template home.html
-    return render_template("home.html")
+    return render_template("home.html", ano=datetime.now().year)
 
 @app.route("/index")
 def index():
@@ -345,6 +345,7 @@ def relatorio_tutor():
 # -------------------------- RUN --------------------------
 if __name__=="__main__":
     app.run(debug=True, port=int(os.environ.get("PORT",5000)))
+
 
 
 
