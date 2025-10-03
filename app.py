@@ -820,25 +820,23 @@ def gerar_relatorio_geral_data(start_date_str, end_date_str):
     }
 
 # Rota /relatorio_geral atualizada
+# Importe a função que calcula os dados estatísticos
+from .app import calcular_relatorio_estatistico, calcular_relatorio_por_sala # Adapte a importação conforme a estrutura do seu projeto
+
 @app.route("/relatorio_geral")
 def relatorio_geral():
-    # Pega as datas do formulário ou usa um valor padrão (ex: 30 dias atrás)
-    now_str = datetime.now(TZ_SAO).strftime('%Y-%m-%d')
-    data_fim = request.args.get('data_fim', now_str)
-    data_inicio = request.args.get('data_inicio', (datetime.now(TZ_SAO) - timedelta(days=30)).strftime('%Y-%m-%d'))
-
-    try:
-        dados_relatorio = gerar_relatorio_geral_data(data_inicio, data_fim)
-    except Exception as e:
-        flash(f"Erro ao gerar relatório: {e}", "danger")
-        dados_relatorio = {'por_sala': [], 'por_setor': []}
-
-    return render_template("relatorio_geral.html", 
-                           data_inicio=data_inicio,
-                           data_fim=data_fim,
-                           relatorio_sala=dados_relatorio['por_sala'],
-                           relatorio_setor=dados_relatorio['por_setor']
-                          )
+    # Calcula as estatísticas de Resposta e Não Resposta (Tabela superior)
+    estatisticas_resumo = calcular_relatorio_estatistico()
+    
+    # Calcula a distribuição de ocorrências por sala (Tabela inferior)
+    relatorio_salas = calcular_relatorio_por_sala()
+    
+    return render_template(
+        "relatorio_geral.html",
+        resumo=estatisticas_resumo,
+        salas=relatorio_salas,
+        data_geracao=datetime.now(TZ_SAO).strftime('%d/%m/%Y %H:%M:%S')
+    )
 
   
 @app.route("/relatorio_tutor")
@@ -867,6 +865,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
