@@ -809,33 +809,51 @@ def relatorios():
 
 # ... (restante do app.py)
 
-@app.route("/relatorio_aluno")
+@app.route("/relatorio_aluno", methods=["GET", "POST"])
 def relatorio_aluno():
-    sala = request.args.get("sala")
-    aluno = request.args.get("aluno")
+    sala_sel = request.args.get("sala", "")
+    aluno_sel = request.args.get("aluno", "")
 
     supabase = conectar_supabase()
     if not supabase:
         flash("Erro ao conectar ao banco de dados.", "danger")
-        return redirect(url_for("index"))
+        return redirect(url_for("relatorio_inicial"))
 
-    response = supabase.table("ocorrencias").select("*") \
-        .eq("SALA", sala).eq("ALUNO", aluno).execute()
+    try:
+        # Buscar dados do Supabase
+        response = supabase.table("ocorrencias").select("*").execute()
+        df = pd.DataFrame(response.data)
 
-    ocorrencias = pd.DataFrame(response.data)
+        # Normalizar colunas de data/hora para exibição BR
+        if not df.empty:
+            if "DCO" in df.columns:
+                df["DCO"] = pd.to_datetime(df["DCO"], errors="coerce").dt.strftime("%d/%m/%Y")
+            if "HCO" in df.columns:
+                df["HCO"] = pd.to_datetime(df["HCO"], errors="coerce").dt.strftime("%H:%M")
 
-    if ocorrencias.empty:
-        flash("Nenhuma ocorrência encontrada para este aluno.", "info")
-        return redirect(url_for("index"))
+        # Aplicar filtros
+        if sala_sel:
+            df = df[df["SALA"] == sala_sel]
+        if aluno_sel:
+            df = df[df["ALUNO"] == aluno_sel]
 
-    # 🔹 Renomear apenas para exibição no template
-    ocorrencias = ocorrencias.rename(columns={"ID": "Nº Ocorrência"})
+        # Listas únicas para filtros
+        salas = sorted(df["SALA"].dropna().unique().tolist()) if "SALA" in df.columns else []
+        alunos = sorted(df["ALUNO"].dropna().unique().tolist()) if "ALUNO" in df.columns else []
+
+        registros = df.to_dict(orient="records")
+
+    except Exception as e:
+        flash(f"Erro ao carregar relatório de alunos: {e}", "danger")
+        registros, salas, alunos, sala_sel, aluno_sel = [], [], [], "", ""
 
     return render_template(
         "relatorio_aluno.html",
-        sala=sala,
-        aluno=aluno,
-        ocorrencias=ocorrencias.to_dict(orient="records")
+        registros=registros,
+        salas=salas,
+        alunos=alunos,
+        sala_sel=sala_sel,
+        aluno_sel=aluno_sel
     )
 
 def gerar_relatorio_geral_data(start_date_str, end_date_str):
@@ -991,6 +1009,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
