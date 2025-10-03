@@ -5,31 +5,34 @@
     <title>Sistema de Gestão de Convivência Escolar</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
 </head>
-<body class="bg-light p-4" data-bs-theme="dark"> <div class="container text-center mt-5">
+<body class="bg-dark text-light p-4" data-bs-theme="dark">
+
+    <div class="container text-center mt-5">
         <h1 class="mb-4">SISTEMA DE GESTÃO DE CONVIVÊNCIA ESCOLAR</h1>
 
-        <div class="d-grid gap-2 col-6 mx-auto">
-            <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg">Ocorrências</a>
-            <button type="button" class="btn btn-success btn-lg" 
+        <div class="d-grid gap-3 col-6 mx-auto">
+            <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg shadow">Ocorrências</a>
+            <button type="button" class="btn btn-success btn-lg shadow"
                     onclick="abrirModal('{{ url_for('relatorio_inicial') }}')">
                 Relatórios
             </button>
         </div>
     </div>
 
+    <!-- Modal -->
     <div class="modal fade" id="senhaModal" tabindex="-1" aria-labelledby="senhaModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-light border-secondary shadow">
+                <div class="modal-header border-secondary">
                     <h5 class="modal-title" id="senhaModalLabel">Acesso Restrito</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <p>Digite a senha para acessar o menu de Relatórios.</p>
-                    <input type="password" id="senhaInput" class="form-control" placeholder="Senha">
+                    <input type="password" id="senhaInput" class="form-control bg-dark text-light border-secondary" placeholder="Senha">
                     <div id="senhaErro" class="text-danger mt-2" style="display:none;">Senha incorreta!</div>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer border-secondary">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="button" class="btn btn-primary" onclick="validarSenha()">Acessar</button>
                 </div>
@@ -37,20 +40,21 @@
         </div>
     </div>
 
-    <footer class="text-center mt-5 mb-3">
-        <small>Desenvolvido: Marcelo André Nogueira Cardes <br> Licenciado: EE PEI Profª Irene Dias Ribeiro</small>
+    <footer class="text-center mt-5 mb-3 text-secondary">
+        <small>
+            Desenvolvido: Marcelo André Nogueira Cardes <br>
+            Licenciado: EE PEI Profª Irene Dias Ribeiro
+        </small>
     </footer>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let destino = "";
         
-        // CORREÇÃO: Funções movidas de relatorio_inicial para home.html
         function abrirModal(url) {
             destino = url;
             document.getElementById("senhaInput").value = "";
             document.getElementById("senhaErro").style.display = "none";
-            // É necessário carregar o Bootstrap JS antes de usar a classe Modal
             let modal = new bootstrap.Modal(document.getElementById("senhaModal"));
             modal.show();
         }
@@ -60,7 +64,6 @@
             let senhaErro = document.getElementById("senhaErro");
             senhaErro.style.display = "none";
 
-            // Substitua 'idrgestao' pela sua senha real
             if (senha === "idrgestao") { 
                 window.location.href = destino;
             } else {
