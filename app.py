@@ -576,71 +576,48 @@ def _adicionar_ocorrencia_ao_pdf(pdf, ocorrencia):
     pdf.cell(0, 5, 'Ocorrência registrada no SGCE.', 0, 1, 'R')
     
 
-@app.route("/gerar_pdf_aluno", methods=['POST'])
+@app.route("/gerar_pdf_aluno", methods=["POST"])
 def gerar_pdf_aluno():
-    # Verifica se o FPDF real foi importado (usando o mock para evitar crash)
-    if FPDF.__name__ == 'FPDF' and 'fpdf.FPDF' not in str(FPDF): 
-        # Esta é a checagem de mock, se estiver em produção com fpdf2, remova.
-        flash("Funcionalidade de PDF indisponível. Instale a biblioteca fpdf2.", "danger")
-        # Retorna para o relatório do aluno ou para a home se a rota falhar
-        return redirect(url_for('relatorio_aluno') if 'relatorio_aluno' in app.view_functions else url_for('home'))
-
-    aluno_selecionado = request.form.get('aluno')
-    # Recebe a lista de IDs de ocorrências selecionadas
-    ocorrencias_ids = request.form.getlist('ocorrencias') 
+    aluno = request.form.get("aluno")
+    sala = request.form.get("sala")
+    ocorrencias_ids = request.form.getlist("ocorrencias[]")  # pega lista
     
-    if not aluno_selecionado or not ocorrencias_ids:
-        flash("Nenhuma ocorrência selecionada ou aluno não especificado.", "warning")
-        return redirect(url_for('relatorio_aluno'))
+    if not ocorrencias_ids:
+        flash("Nenhuma ocorrência selecionada!", "warning")
+        return redirect(url_for("relatorio_aluno", sala=sala, aluno=aluno))
 
-    # 1. Carregar e Filtrar dados
-    df_ocorrencias = carregar_dados() 
+    # 🔹 Buscar do Supabase só as ocorrências selecionadas
+    ocorrencias = supabase.table("ocorrencias") \
+        .select("*") \
+        .in_("Numero", ocorrencias_ids) \
+        .execute()
     
-    # Filtrar ocorrências selecionadas (usando 'Nº Ocorrência' como a chave correta)
-    df_selecionado = df_ocorrencias[
-        (df_ocorrencias['Aluno'] == aluno_selecionado) & 
-        (df_ocorrencias['Nº Ocorrência'].astype(str).isin(ocorrencias_ids))
-    ].sort_values(by='Nº Ocorrência', ascending=True)
+    dados = ocorrencias.data
 
-    if df_selecionado.empty:
-        flash("As ocorrências selecionadas não foram encontradas.", "warning")
-        return redirect(url_for('relatorio_aluno'))
-        
-    ocorrencias_lista = df_selecionado.to_dict(orient='records')
-
-    # 2. Gerar PDF
-    pdf = PDF('P', 'mm', 'A4')
-    pdf.set_auto_page_break(auto=True, margin=15)
-    pdf.alias_nb_pages()
+    # 🔹 Gera PDF
+    from fpdf import FPDF
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
     
-    # Adicionar fontes para suportar caracteres UTF-8 (acentos, cedilha)
-    # É fundamental que os arquivos 'arial.ttf' e 'arialbd.ttf' estejam disponíveis no servidor.
-    try:
-        pdf.add_font('Arial', '', 'arial.ttf', uni=True)
-        pdf.add_font('Arial', 'B', 'arialbd.ttf', uni=True)
-    except Exception:
-        pass # Fallback para fonte padrão
+    pdf.cell(200, 10, f"Relatório de Ocorrências - {aluno} ({sala})", ln=True, align="C")
+    pdf.ln(10)
 
-    for ocorrencia in ocorrencias_lista:
-        pdf.add_page()
-        _adicionar_ocorrencia_ao_pdf(pdf, ocorrencia)
+    for o in dados:
+        pdf.multi_cell(0, 10, f"Nº: {o['Numero']} - Data: {o['DCO']} - Status: {o['Status']}")
+        pdf.multi_cell(0, 10, f"Descrição: {o['Descricao']}")
+        pdf.ln(5)
 
-    # 3. Saída do PDF
-    buffer = BytesIO()
-    pdf.output(buffer, 'S')
-    buffer.seek(0)
+        # 🔹 Atualizar status para ASSINADA
+        supabase.table("ocorrencias").update({"Status": "ASSINADA"}).eq("Numero", o["Numero"]).execute()
 
-    # Geração do nome do arquivo
-    safe_aluno = re.sub(r'[^\w\s-]', '', aluno_selecionado).strip().replace(' ', '_')
-    data_geracao = datetime.now(TZ_SAO).strftime('%Y%m%d')
-    download_name = f"Relatorio_{safe_aluno}_{data_geracao}.pdf"
-    
-    return send_file(
-        buffer,
-        download_name=download_name,
-        as_attachment=True,
-        mimetype='application/pdf'
-    )
+    # 🔹 Retornar PDF
+    pdf_output = BytesIO()
+    pdf_bytes = pdf.output(dest="S").encode("latin1")
+    pdf_output.write(pdf_bytes)
+    pdf_output.seek(0)
+
+    return send_file(pdf_output, download_name=f"ocorrencias_{aluno}.pdf", as_attachment=True)
 
 # ... (restante do seu código app.py) ...
 @app.route('/editar/<int:oid>', methods=['GET', 'POST'])
@@ -937,6 +914,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
