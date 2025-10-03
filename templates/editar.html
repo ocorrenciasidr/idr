@@ -7,7 +7,7 @@
 </head>
 <body class="p-4" data-bs-theme="dark">
 
-<h1 class="mb-4">Editar Ocorrência Nº: {{ ocorrencia.ID }}</h1>
+<h1 class="mb-4">Ocorrência Nº: {{ ocorrencia.ID }}</h1>
 <h3 class="mb-4 text-secondary">Aluno: {{ ocorrencia.ALUNO }} ({{ ocorrencia.SALA }}) | Status: {{ ocorrencia.STATUS }}</h3>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
@@ -15,54 +15,80 @@
         {% for category, message in messages %}
         <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
             {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
         </div>
         {% endfor %}
     {% endif %}
 {% endwith %}
 
-<form method="POST" action="{{ url_for('editar', oid=ocorrencia.ID, papel='editar') }}">
+<form method="POST" action="{{ url_for('editar', oid=ocorrencia.ID) }}"> 
 
-    <!-- Descrição -->
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            <label class="form-label">Professor:</label>
+            <input type="text" class="form-control" value="{{ ocorrencia.PROFESSOR | default('N/D') }}" readonly>
+        </div>
+        <div class="col-md-4 mb-3">
+            <label class="form-label">Sala:</label>
+            <input type="text" class="form-control" value="{{ ocorrencia.SALA | default('N/D') }}" readonly>
+        </div>
+        <div class="col-md-4 mb-3">
+            <label class="form-label">Aluno:</label>
+            <input type="text" class="form-control" value="{{ ocorrencia.ALUNO | default('N/D') }}" readonly>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            <label class="form-label">Tutor Designado:</label>
+            <input type="text" class="form-control" value="{{ ocorrencia.TUTOR | default('SEM TUTOR') }}" readonly>
+        </div>
+        <div class="col-md-4 mb-3">
+            <label class="form-label">Data Ocorrência:</label>
+            <input type="text" class="form-control" value="{{ ocorrencia.DCO | default('N/D') }}" readonly>
+        </div>
+        <div class="col-md-4 mb-3">
+            <label class="form-label">Hora Ocorrência:</label>
+            <input type="text" class="form-control" value="{{ ocorrencia.HCO | default('N/D') }}" readonly>
+        </div>
+    </div>
+    
     <div class="mb-3">
         <label class="form-label">Descrição da Ocorrência:</label>
-        <textarea class="form-control" name="DESCRICAO" rows="3"
-            {% if not permissoes.editar_descricao %}readonly{% endif %}>{{ ocorrencia.DESCRICAO | default('') }}</textarea>
+        <textarea class="form-control" name="DESCRICAO" rows="3" 
+            {% if not campos_editaveis.DESCRICAO %}readonly{% endif %}>{{ ocorrencia.DESCRICAO | default('') }}</textarea>
     </div>
 
-    <!-- Atendimento Professor -->
     <div class="mb-3">
         <label class="form-label">Atendimento Professor (ATP):</label>
-        <textarea class="form-control" name="ATP" rows="2"
-            {% if not permissoes.editar_atp %}readonly{% endif %}>{{ ocorrencia.ATP | default('') }}</textarea>
+        <textarea class="form-control" name="ATP" rows="2" 
+            {% if not campos_editaveis.ATP %}readonly{% endif %}>{{ ocorrencia.ATP | default('') }}</textarea>
     </div>
 
-    <!-- Atendimento Tutor -->
     <div class="mb-3">
-        <label class="form-label">ATT - FT: {{ ocorrencia.FT }} | DT: {{ ocorrencia.DT }}:</label>
-        <textarea class="form-control" name="ATT" rows="2"
-            {% if not permissoes.editar_att %}readonly{% endif %}>{{ ocorrencia.ATT | default('') }}</textarea>
+        <label class="form-label">Atendimento Tutor (ATT) - FT: {{ ocorrencia.FT | default('N/D') }} | DT: {{ ocorrencia.DT | default('N/D') }}:</label>
+        <textarea class="form-control" name="ATT" rows="2" 
+            {% if not campos_editaveis.ATT %}readonly{% endif %}>{{ ocorrencia.ATT | default('') }}</textarea>
     </div>
 
-    <!-- Atendimento Coordenação -->
     <div class="mb-3">
-        <label class="form-label">ATC - FC: {{ ocorrencia.FC }} | DC: {{ ocorrencia.DC }}:</label>
-        <textarea class="form-control" name="ATC" rows="2"
-            {% if not permissoes.editar_atc %}readonly{% endif %}>{{ ocorrencia.ATC | default('') }}</textarea>
+        <label class="form-label">Atendimento Coordenação (ATC) - FC: {{ ocorrencia.FC | default('N/D') }} | DC: {{ ocorrencia.DC | default('N/D') }}:</label>
+        <textarea class="form-control" name="ATC" rows="2" 
+            {% if not campos_editaveis.ATC %}readonly{% endif %}>{{ ocorrencia.ATC | default('') }}</textarea>
     </div>
 
-    <!-- Atendimento Gestão -->
     <div class="mb-3">
-        <label class="form-label">ATG - FG: {{ ocorrencia.FG }} | DG: {{ ocorrencia.DG }}:</label>
-        <textarea class="form-control" name="ATG" rows="2"
-            {% if not permissoes.editar_atg %}readonly{% endif %}>{{ ocorrencia.ATG | default('') }}</textarea>
+        <label class="form-label">Atendimento Gestão (ATG) - FG: {{ ocorrencia.FG | default('N/D') }} | DG: {{ ocorrencia.DG | default('N/D') }}:</label>
+        <textarea class="form-control" name="ATG" rows="2" 
+            {% if not campos_editaveis.ATG %}readonly{% endif %}>{{ ocorrencia.ATG | default('') }}</textarea>
     </div>
-
-    {% if permissoes.editar_descricao or permissoes.editar_atp or permissoes.editar_att or permissoes.editar_atc or permissoes.editar_atg %}
+    
+    {% if modo == 'edit' %}
         <button type="submit" class="btn btn-primary">Salvar Alterações</button>
     {% else %}
         <div class="alert alert-info">Modo Visualização. Nenhuma alteração permitida.</div>
     {% endif %}
+
 </form>
 
 <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Voltar para a Lista</a>
@@ -70,4 +96,3 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-
