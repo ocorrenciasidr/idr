@@ -22,7 +22,8 @@
 
 <form method="GET" action="{{ url_for('index') }}" class="mb-4">
     <div class="row g-3">
-        
+
+        <!-- Filtro Tutor -->
         <div class="col-md-3">
             <label class="form-label">Tutor:</label>
             <select class="form-select" name="tutor" onchange="this.form.submit()">
@@ -32,22 +33,22 @@
                 {% endfor %}
             </select>
         </div>
-        
+
+        <!-- Filtro Status fixo -->
         <div class="col-md-3">
             <label class="form-label">Status:</label>
             <select class="form-select" name="status" onchange="this.form.submit()">
-                {% for status in status_list %} 
-                    <option value="{{ status }}" {% if status == status_sel %}selected{% endif %}>{{ status }}</option>
-                {% endfor %}
+                <option value="">Todos</option>
+                <option value="ATENDIMENTO" {% if status_sel == 'ATENDIMENTO' %}selected{% endif %}>ATENDIMENTO</option>
+                <option value="FINALIZADA" {% if status_sel == 'FINALIZADA' %}selected{% endif %}>FINALIZADA</option>
+                <option value="ASSINADA" {% if status_sel == 'ASSINADA' %}selected{% endif %}>ASSINADA</option>
             </select>
         </div>
-        
-        <div class="col-md-3 d-flex align-items-end">
-            <a href="{{ url_for('index') }}" class="btn btn-secondary w-100">Limpar Filtros</a>
-        </div>
 
-        <div class="col-md-3 d-flex align-items-end">
-            <a href="{{ url_for('home') }}" class="btn btn-success w-100">Tela Inicial</a>
+        <!-- Botões Nova Ocorrência e Tela Inicial -->
+        <div class="col-md-6 d-flex align-items-end">
+            <a href="{{ url_for('nova') }}" class="btn btn-success me-2">Nova Ocorrência</a>
+            <a href="{{ url_for('home') }}" class="btn btn-primary">Tela Inicial</a>
         </div>
     </div>
 </form>
@@ -69,13 +70,14 @@
     <tbody>
         {% for d in registros %}
         <tr>
-            <td>{{ d['Nº Ocorrência'] }}</td> <td>{{ d.DCO }}</td> 
-            <td>{{ d.HCO }}</td> 
+            <td>{{ d['Nº Ocorrência'] }}</td>
+            <td>{{ d.DCO }}</td>
+            <td>{{ d.HCO }}</td>
             <td>{{ d.Aluno }}</td>
             <td>{{ d.Sala }}</td>
             <td>{{ d.PROFESSOR }}</td>
             <td>{{ d.Tutor }}</td>
-            
+
             <td>
                 {% if d.FT == 'SIM' %}
                 <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='ft') }}" class="badge bg-danger text-white text-decoration-none">SIM</a>
@@ -97,11 +99,11 @@
                 <span class="badge bg-success">NÃO</span>
                 {% endif %}
             </td>
-            
+
             <td>
                 <span class="badge bg-{% if d.Status == 'Aberta' %}danger{% elif d.Status == 'ATENDIMENTO' %}warning{% else %}success{% endif %}">{{ d.Status }}</span>
             </td>
-            
+
             <td>
                 <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='lupa') }}" class="btn btn-sm btn-info">Ver</a>
                 <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='lapis') }}" class="btn btn-sm btn-primary">Editar</a>
@@ -114,8 +116,6 @@
         {% endfor %}
     </tbody>
 </table>
-
-<a href="{{ url_for('nova') }}" class="btn btn-success mt-3">Nova Ocorrência</a>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
