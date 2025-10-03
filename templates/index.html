@@ -22,7 +22,6 @@
 
 <form method="GET" action="{{ url_for('index') }}" class="mb-4">
     <div class="row g-3">
-        <!-- Filtro Tutor -->
         <div class="col-md-3">
             <label class="form-label">Tutor:</label>
             <select class="form-select" name="tutor" onchange="this.form.submit()">
@@ -32,7 +31,6 @@
                 {% endfor %}
             </select>
         </div>
-        <!-- Filtro Status -->
         <div class="col-md-3">
             <label class="form-label">Status:</label>
             <select class="form-select" name="status" onchange="this.form.submit()">
@@ -42,7 +40,6 @@
                 <option value="ASSINADA" {% if status_sel == 'ASSINADA' %}selected{% endif %}>ASSINADA</option>
             </select>
         </div>
-        <!-- Botões -->
         <div class="col-md-6 d-flex align-items-end">
             <a href="{{ url_for('nova') }}" class="btn btn-success me-2">Nova Ocorrência</a>
             <a href="{{ url_for('home') }}" class="btn btn-primary">Tela Inicial</a>
@@ -63,51 +60,48 @@
         {% for d in registros %}
         <tr>
             <td>{{ d['Nº Ocorrência'] }}</td>
-            <td>{{ d.DCO }}</td>
-            <td>{{ d.HCO }}</td>
-            <td>{{ d.ALUNO }}</td>
-            <td>{{ d.SALA }}</td>
-            <td>{{ d.PROFESSOR }}</td>
-            <td>{{ d.TUTOR }}</td>
+            <td>{{ d.DCO | default('N/D') }}</td>
+            <td>{{ d.HCO | default('N/D') }}</td>
+            <td>{{ d.ALUNO | default('N/D') }}</td>
+            <td>{{ d.SALA | default('N/D') }}</td>
+            <td>{{ d.PROFESSOR | default('N/D') }}</td>
+            <td>{{ d.TUTOR | default('N/D') }}</td>
 
-            <!-- FT -->
             <td>
                 {% if d.FT == 'SIM' %}
-                    <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='ft') }}" class="badge bg-danger text-white text-decoration-none">SIM</a>
+                    <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='ft') }}" 
+                       class="badge bg-danger text-white text-decoration-none">SIM</a>
                 {% else %}
                     <span class="badge bg-success">NÃO</span>
                 {% endif %}
             </td>
-            <!-- FC -->
             <td>
                 {% if d.FC == 'SIM' %}
-                    <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='fc') }}" class="badge bg-danger text-white text-decoration-none">SIM</a>
+                    <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='fc') }}" 
+                       class="badge bg-danger text-white text-decoration-none">SIM</a>
                 {% else %}
                     <span class="badge bg-success">NÃO</span>
                 {% endif %}
             </td>
-            <!-- FG -->
             <td>
                 {% if d.FG == 'SIM' %}
-                    <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='fg') }}" class="badge bg-danger text-white text-decoration-none">SIM</a>
+                    <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='fg') }}" 
+                       class="badge bg-danger text-white text-decoration-none">SIM</a>
                 {% else %}
                     <span class="badge bg-success">NÃO</span>
                 {% endif %}
             </td>
 
-            <!-- Status -->
             <td>
-                {% if d.FT == 'NÃO' and d.FC == 'NÃO' and d.FG == 'NÃO' %}
-                    <span class="badge bg-success">FINALIZADA</span>
-                {% else %}
-                    <span class="badge bg-warning text-dark">ATENDIMENTO</span>
-                {% endif %}
+                <span class="badge bg-{% if d.Status == 'FINALIZADA' %}success{% elif d.Status == 'ATENDIMENTO' %}warning{% else %}danger{% endif %}">
+                    {{ d.Status }}
+                </span>
             </td>
 
-            <!-- Ações -->
             <td>
                 <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='ver') }}" class="btn btn-sm btn-info">Ver</a>
-                <a href="#" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#senhaModal" onclick="setEditarOid({{ d['Nº Ocorrência'] }})">Editar</a>
+                <a href="#" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#senhaModal" 
+                   onclick="setEditarOid({{ d['Nº Ocorrência'] }})">Editar</a>
             </td>
         </tr>
         {% else %}
@@ -146,7 +140,7 @@ function setEditarOid(oid) {
 }
 
 function validarSenha() {
-    const senhaCorreta = "{{ SENHA_SISTEMA }}"  // configurada no app.py
+    const senhaCorreta = "{{ SENHA_SISTEMA }}" // idrgestao
     const senhaInput = document.getElementById('senhaInput').value;
     const erroDiv = document.getElementById('senhaErro');
 
