@@ -272,6 +272,11 @@ def calculate_display_status_and_color(row):
 @app.route("/")
 def home():
     return render_template("home.html")
+
+@app.route("/relatorio_inicial", methods=["GET", "POST"])
+def relatorio_inicial():
+    return render_template("relatorio_inicial.html")
+
 @app.route("/index")
 def index():
     df = carregar_dados()
@@ -928,5 +933,6 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
