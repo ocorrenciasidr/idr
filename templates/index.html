@@ -51,45 +51,72 @@
 </form>
 
 <table class="table table-bordered table-striped">
-    <thead class="table-light">
+    <thead class="table-dark">
         <tr>
             <th>Nº</th>
-            <th>DCO Data</th>
-            <th>HCO Hora</th>
+            <th>Data</th>
+            <th>Hora</th>
             <th>Aluno</th>
             <th>Sala</th>
-            <th>Tutor</th>
             <th>Professor</th>
-            <th title="Feito Tutor">Tutor</th> <th title="Feito Coordenação">Coord.</th> <th title="Feito Gestão">Gestão</th> <th>Status</th>
+            <th>Tutor</th>
+            <th>FT</th>
+            <th>FC</th>
+            <th>FG</th>
+            <th>Status</th>
             <th>Ações</th>
         </tr>
     </thead>
-<tbody>
+    <tbody>
         {% for d in registros %}
         <tr>
+            <td>{{ d['ID'] }}</td>
+            <td>{{ d.DCO }}</td>
+            <td>{{ d.HCO }}</td>
+            <td>{{ d.Aluno }}</td>
+            <td>{{ d.Sala }}</td>
+            <td>{{ d.PROFESSOR }}</td>
+            <td>{{ d.Tutor }}</td>
+            
             <td>
                 {% if d.FT == 'SIM' %}
-                <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='ft') }}" class="badge bg-danger text-white text-decoration-none">SIM</a>
-                {% else %}
-                <span class="badge bg-success">NÃO</span>
-                {% endif %}
-            </td>
-            <td>
-                {% if d.FC == 'SIM' %}
-                <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='fc') }}" class="badge bg-danger text-white text-decoration-none">SIM</a>
-                {% else %}
-                <span class="badge bg-success">NÃO</span>
-                {% endif %}
-            </td>
-            <td>
-                {% if d.FG == 'SIM' %}
-                <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='fg') }}" class="badge bg-danger text-white text-decoration-none">SIM</a>
+                <a href="{{ url_for('editar', oid=d['ID'], papel='ft') }}" class="badge bg-danger text-white text-decoration-none">SIM</a>
                 {% else %}
                 <span class="badge bg-success">NÃO</span>
                 {% endif %}
             </td>
             
-            </tr>
+            <td>
+                {% if d.FC == 'SIM' %}
+                <a href="{{ url_for('editar', oid=d['ID'], papel='fc') }}" class="badge bg-danger text-white text-decoration-none">SIM</a>
+                {% else %}
+                <span class="badge bg-success">NÃO</span>
+                {% endif %}
+            </td>
+            
+            <td>
+                {% if d.FG == 'SIM' %}
+                <a href="{{ url_for('editar', oid=d['ID'], papel='fg') }}" class="badge bg-danger text-white text-decoration-none">SIM</a>
+                {% else %}
+                <span class="badge bg-success">NÃO</span>
+                {% endif %}
+            </td>
+            
+            <td>
+                <span class="badge bg-{% if d.Status == 'Aberta' %}danger{% elif d.Status == 'ATENDIMENTO' %}warning{% elif d.Status == 'ASSINADA' %}primary{% else %}success{% endif %}">
+                    {{ d.Status }}
+                </span>
+            </td>
+            
+            <td>
+                <a href="{{ url_for('editar', oid=d['ID'], papel='lupa') }}" class="btn btn-sm btn-info">Ver</a>
+                <a href="{{ url_for('editar', oid=d['ID'], papel='lapis') }}" class="btn btn-sm btn-primary">Editar</a>
+            </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="12" class="text-center">Nenhuma ocorrência encontrada com os filtros selecionados.</td>
+        </tr>
         {% endfor %}
     </tbody>
 </table>
