@@ -652,6 +652,7 @@ def editar(oid):
 
     ocorrencia_raw = response.data[0]
     
+    # Padroniza chaves para MAIÚSCULAS
     ocorrencia = {k.upper(): v for k, v in ocorrencia_raw.items()}
     ocorrencia['ID'] = ocorrencia.get('ID', oid)
     ocorrencia['STATUS'] = ocorrencia.get('STATUS', 'Aberta')
@@ -692,60 +693,101 @@ def editar(oid):
         permissoes["editar_atg"] = True
     
     if papel in ["ft", "fc", "fg"]:
-         permissoes["visualizar"] = True
+          permissoes["visualizar"] = True
 
     if request.method == "POST":
         dados_update = {}
         now_local = datetime.now(TZ_SAO)
         
-        # NOVO: Variável para salvar apenas a data (AAAA-MM-DD)
+        # Variável para salvar apenas a data (AAAA-MM-DD)
         now_date_str = now_local.strftime('%Y-%m-%d')
         
-        # Lógica de Atualização (Mantida)
+        # --- LÓGICA DE ATUALIZAÇÃO GERAL (Válido para o papel 'lapis') ---
+        
         if permissoes["editar_descricao"] and "DESCRICAO" in request.form:
             dados_update["DESCRICAO"] = request.form["DESCRICAO"]
         
         if permissoes["editar_atp"] and "ATP" in request.form:
             dados_update["ATP"] = request.form["ATP"]
         
-        # NOVO: LÓGICA DE ATENDIMENTO E DATA - AGORA SALVANDO APENAS now_date_str
-        
+        # Atualização do Tutor (ATT)
         if permissoes["editar_att"] and "ATT" in request.form:
             att_val = request.form["ATT"].strip()
             dados_update["ATT"] = att_val
-            # Se preenchido, marca SIM e registra apenas a DATA
-            dados_update["FT"] = "SIM" if att_val else "NÃO" 
+            # Se preenchido, marca 'NÃO' (resolvido); se vazio, 'SIM' (necessita)
+            dados_update["FT"] = "NÃO" if att_val else "SIM" 
             dados_update["DT"] = now_date_str if att_val else None 
         
+        # Atualização da Coordenação (ATC)
         if permissoes["editar_atc"] and "ATC" in request.form:
             atc_val = request.form["ATC"].strip()
             dados_update["ATC"] = atc_val
-            dados_update["FC"] = "SIM" if atc_val else "NÃO" 
+            # Se preenchido, marca 'NÃO' (resolvido); se vazio, 'SIM' (necessita)
+            dados_update["FC"] = "NÃO" if atc_val else "SIM" 
             dados_update["DC"] = now_date_str if atc_val else None 
 
+        # Atualização da Gestão (ATG)
         if permissoes["editar_atg"] and "ATG" in request.form:
             atg_val = request.form["ATG"].strip()
             dados_update["ATG"] = atg_val
-            dados_update["FG"] = "SIM" if atg_val else "NÃO" 
+            # Se preenchido, marca 'NÃO' (resolvido); se vazio, 'SIM' (necessita)
+            dados_update["FG"] = "NÃO" if atg_val else "SIM" 
             dados_update["DG"] = now_date_str if atg_val else None 
+        
+        # --- LÓGICA EXPLÍCITA DE ATUALIZAÇÃO DE STATUS POR PAPEL (SE O RESPONSÁVEL CONCLUI) ---
 
-        # Lógica de Status (Mantida)
-        ft = dados_update.get("FT", ocorrencia_raw.get("FT", 'NÃO')).upper()
-        fc = dados_update.get("FC", ocorrencia_raw.get("FC", 'NÃO')).upper()
-        fg = dados_update.get("FG", ocorrencia_raw.get("FG", 'NÃO')).upper()
+        # Lógica para FT (Tutor):
+        if papel == 'ft' and "ATT" in request.form:
+            att_val = request.form["ATT"].strip()
+            if att_val:
+                dados_update['FT'] = 'NÃO' # Marca como concluído pelo Tutor
+                dados_update['STATUS'] = 'ATENDIMENTO' # Status após 1º atendimento
+                dados_update['DT'] = now_date_str 
+                flash("Atendimento do Tutor registrado e status atualizado para 'ATENDIMENTO'.", "success")
 
-        if ft == "SIM" and fc == "SIM" and fg == "SIM":
-            dados_update["STATUS"] = "ASSINADA" 
-        elif ft == "NÃO" or fc == "NÃO" or fg == "NÃO":
-            dados_update["STATUS"] = "ATENDIMENTO"
-        else:
-             dados_update["STATUS"] = "ABERTA" 
+        # Lógica para FC (Coordenação):
+        elif papel == 'fc' and "ATC" in request.form:
+            atc_val = request.form["ATC"].strip()
+            if atc_val:
+                dados_update['FC'] = 'NÃO' # Marca como concluído pela Coordenação
+                dados_update['STATUS'] = 'COORDENAÇÃO' # Status após atendimento da Coordenação
+                dados_update['DC'] = now_date_str
+                flash("Atendimento da Coordenação registrado e status atualizado para 'COORDENAÇÃO'.", "success")
+
+        # Lógica para FG (Gestão):
+        elif papel == 'fg' and "ATG" in request.form:
+            atg_val = request.form["ATG"].strip()
+            if atg_val:
+                dados_update['FG'] = 'NÃO' # Marca como concluído pela Gestão
+                dados_update['STATUS'] = 'ASSINADA' # Status final
+                dados_update['DG'] = now_date_str
+                flash("Atendimento da Gestão (Assinatura) registrado e ocorrência finalizada.", "success")
+        
+        # Lógica de Status para o papel 'lapis' (que pode editar tudo e precisa de reavaliação)
+        # NOTA: O 'lapis' precisa do status calculado se não houver um papel específico.
+        if papel == 'lapis':
+            # Obtém o status dos flags, considerando a atualização de dados_update
+            ft = dados_update.get("FT", ocorrencia_raw.get("ft", 'SIM')).upper()
+            fc = dados_update.get("FC", ocorrencia_raw.get("fc", 'SIM')).upper()
+            fg = dados_update.get("FG", ocorrencia_raw.get("fg", 'SIM')).upper()
+            
+            if ft == "NÃO" and fc == "NÃO" and fg == "NÃO":
+                 dados_update["STATUS"] = "ASSINADA" 
+            elif fc == "NÃO": # Coordenador atendeu (independente do Tutor)
+                 dados_update["STATUS"] = "COORDENAÇÃO"
+            elif ft == "NÃO": # Tutor atendeu
+                 dados_update["STATUS"] = "ATENDIMENTO"
+            else: # Todos 'SIM' (necessita de atendimento)
+                 dados_update["STATUS"] = "ABERTA" 
+
 
         try:
             supabase.table("ocorrencias").update(dados_update).eq("ID", oid).execute()
             
             limpar_caches() 
-            flash("Ocorrência atualizada com sucesso!", "success")
+            # Se não for um dos papéis que já deu flash, mostra o flash genérico
+            if not any(p == papel for p in ['ft', 'fc', 'fg']):
+                 flash("Ocorrência atualizada com sucesso!", "success")
         except Exception as e:
             flash(f"Erro ao atualizar: {e}", "danger")
             print(f"Erro no POST /editar: {e}")
@@ -753,13 +795,7 @@ def editar(oid):
         return redirect(url_for('index'))
 
     return render_template("editar.html", ocorrencia=ocorrencia, permissoes=permissoes, papel=papel)
-
-
-# -------------------- Rotas de Relatório --------------------
-
-@app.route("/relatorio_inicial")
-def relatorio_inicial():
-    """Rota para carregar o modal de senha antes de acessar o menu de relatórios."""
+""Rota para carregar o modal de senha antes de acessar o menu de relatórios."""
     return render_template("relatorio_inicial.html")
 
 @app.route("/relatorios")
@@ -962,6 +998,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
