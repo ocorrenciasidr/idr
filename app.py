@@ -199,6 +199,10 @@ def relatorios_inicial():
     # Gestão de Relatórios
     return render_template("relatorios_inicial.html")
 
+@app.route("/nova", methods=["GET", "POST"])
+def nova():
+    return render_template("nova.html")
+
 @app.route('/relatorio_tutor_aluno')
 def relatorio_tutoraluno():
     # Obtenha os dados dos alunos por tutor
@@ -345,6 +349,7 @@ def relatorio_tutor():
 # -------------------------- RUN --------------------------
 if __name__=="__main__":
     app.run(debug=True, port=int(os.environ.get("PORT",5000)))
+
 
 
 
