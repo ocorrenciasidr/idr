@@ -22,7 +22,6 @@
 
 <form method="GET" action="{{ url_for('index') }}" class="mb-4">
     <div class="row g-3">
-        <!-- Filtro Tutor -->
         <div class="col-md-3">
             <label class="form-label">Tutor:</label>
             <select class="form-select" name="tutor" onchange="this.form.submit()">
@@ -32,8 +31,6 @@
                 {% endfor %}
             </select>
         </div>
-
-        <!-- Filtro Status -->
         <div class="col-md-3">
             <label class="form-label">Status:</label>
             <select class="form-select" name="status" onchange="this.form.submit()">
@@ -43,8 +40,6 @@
                 <option value="ASSINADA" {% if status_sel == 'ASSINADA' %}selected{% endif %}>ASSINADA</option>
             </select>
         </div>
-
-        <!-- Botões Nova Ocorrência e Tela Inicial -->
         <div class="col-md-6 d-flex align-items-end">
             <a href="{{ url_for('nova') }}" class="btn btn-success me-2">Nova Ocorrência</a>
             <a href="{{ url_for('home') }}" class="btn btn-primary">Tela Inicial</a>
@@ -56,14 +51,9 @@
     <thead class="table-dark">
         <tr>
             <th>Nº</th> <th>Data</th> <th>Hora</th> <th>Aluno</th>
-            <th>Sala</th>
-            <th>Professor</th>
-            <th>Tutor</th>
-            <th>FT</th>
-            <th>FC</th>
-            <th>FG</th>
-            <th>Status</th>
-            <th>Ações</th>
+            <th>Sala</th> <th>Professor</th> <th>Tutor</th>
+            <th>FT</th> <th>FC</th> <th>FG</th>
+            <th>Status</th> <th>Ações</th>
         </tr>
     </thead>
     <tbody>
@@ -72,28 +62,31 @@
             <td>{{ d['Nº Ocorrência'] }}</td>
             <td>{{ d.DCO }}</td>
             <td>{{ d.HCO }}</td>
-            <td>{{ d.Aluno }}</td>
-            <td>{{ d.Sala }}</td>
+            <td>{{ d.ALUNO }}</td>
+            <td>{{ d.SALA }}</td>
             <td>{{ d.PROFESSOR }}</td>
-            <td>{{ d.Tutor }}</td>
+            <td>{{ d.TUTOR }}</td>
 
             <td>
                 {% if d.FT == 'SIM' %}
-                    <span class="badge bg-danger text-white">SIM</span>
+                    <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='ft') }}" 
+                       class="badge bg-danger text-white text-decoration-none">SIM</a>
                 {% else %}
                     <span class="badge bg-success">NÃO</span>
                 {% endif %}
             </td>
             <td>
                 {% if d.FC == 'SIM' %}
-                    <span class="badge bg-danger text-white">SIM</span>
+                    <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='fc') }}" 
+                       class="badge bg-danger text-white text-decoration-none">SIM</a>
                 {% else %}
                     <span class="badge bg-success">NÃO</span>
                 {% endif %}
             </td>
             <td>
                 {% if d.FG == 'SIM' %}
-                    <span class="badge bg-danger text-white">SIM</span>
+                    <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='fg') }}" 
+                       class="badge bg-danger text-white text-decoration-none">SIM</a>
                 {% else %}
                     <span class="badge bg-success">NÃO</span>
                 {% endif %}
@@ -104,11 +97,9 @@
             </td>
 
             <td>
-                <!-- Botão Ver (modo visualização) -->
                 <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='ver') }}" class="btn btn-sm btn-info">Ver</a>
-
-                <!-- Botão Editar (com modal de senha) -->
-                <button type="button" class="btn btn-sm btn-primary editar-btn" data-oid="{{ d['Nº Ocorrência'] }}">Editar</button>
+                <a href="#" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#senhaModal" 
+                   onclick="setEditarOid({{ d['Nº Ocorrência'] }})">Editar</a>
             </td>
         </tr>
         {% else %}
@@ -134,38 +125,31 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary" id="btnAcessar">Acessar</button>
+        <button type="button" class="btn btn-primary" onclick="validarSenha()">Acessar</button>
       </div>
     </div>
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-const senhaCorreta = "SUA_SENHA_DO_SISTEMA"; // coloque a senha real
-let oidSelecionado = null;
+let editarOid = null;
+function setEditarOid(oid) {
+    editarOid = oid;
+}
 
-// Abre modal ao clicar no botão Editar
-document.querySelectorAll('.editar-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-        oidSelecionado = this.getAttribute('data-oid');
-        const modal = new bootstrap.Modal(document.getElementById('senhaModal'));
-        modal.show();
-    });
-});
+function validarSenha() {
+    const senhaCorreta = "{{ SENHA_SISTEMA }}" // coloque a senha do sistema aqui
+    const senhaInput = document.getElementById('senhaInput').value;
+    const erroDiv = document.getElementById('senhaErro');
 
-// Valida senha e redireciona para editar
-document.getElementById('btnAcessar').addEventListener('click', function() {
-    const senhaDigitada = document.getElementById('senhaInput').value;
-    const erro = document.getElementById('senhaErro');
-
-    if (senhaDigitada === senhaCorreta) {
-        erro.style.display = 'none';
-        window.location.href = `/editar/${oidSelecionado}?papel=editar`;
+    if (senhaInput === senhaCorreta) {
+        window.location.href = `/editar/${editarOid}?papel=editar`;
     } else {
-        erro.style.display = 'block';
+        erroDiv.style.display = 'block';
     }
-});
+}
 </script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
