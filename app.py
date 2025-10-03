@@ -188,9 +188,15 @@ def calcular_relatorio_por_sala():
 def index():
     return redirect(url_for("relatorios"))
 
-@app.route("/relatorios")
-def relatorios():
-    return render_template("relatorios.html")
+@app.route('/relatorio_tutor_aluno')
+def relatorio_tutoraluno():
+    # Obtenha os dados dos alunos por tutor
+    dados = obter_dados_tutor_aluno()  # função que retorna dicionário de tutores e alunos
+    return render_template("relatorio_tutoraluno.html", dados=dados)
+
+@app.route("/relatorios_inicial")
+def relatorios_inicial():
+    return render_template("relatorios_inicial.html")
 
 @app.route("/tutoria")
 def tutoria():
@@ -332,3 +338,4 @@ def relatorio_tutor():
 # -------------------------- RUN --------------------------
 if __name__=="__main__":
     app.run(debug=True, port=int(os.environ.get("PORT",5000)))
+
