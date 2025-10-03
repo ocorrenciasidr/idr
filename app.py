@@ -637,102 +637,48 @@ def gerar_pdf_aluno():
     )
 
 # ... (restante do seu código app.py) ...
-@app.route('/editar/<int:oid>', methods=['GET', 'POST'])
+@app.route("/editar/<int:oid>", methods=["GET", "POST"])
 def editar(oid):
     supabase = conectar_supabase()
     if not supabase:
+        flash("Erro ao conectar ao banco de dados.", "danger")
         return redirect(url_for("index"))
-
-    try:
-        response = supabase.table("ocorrencias").select("*").eq("ID", oid).execute()
-    except Exception as e:
-        flash(f"Erro ao buscar ocorrência: {e}", "danger")
-        return redirect(url_for("index"))
-
-    if not response.data:
-        flash("Ocorrência não encontrada!", "danger")
-        return redirect(url_for("index"))
-
-    ocorrencia_raw = response.data[0]
-    ocorrencia = {k.upper(): v for k, v in ocorrencia_raw.items()}
-    ocorrencia['ID'] = ocorrencia.get('ID', oid)
-    ocorrencia['STATUS'] = ocorrencia.get('STATUS', 'Aberta')
-
-    # Formatar datas/hora para exibição
-    for col in ['DCO', 'DT', 'DC', 'DG', 'HCO']:
-        val = ocorrencia.get(col)
-        if val:
-            try:
-                dt_obj = date_parser.parse(str(val))
-                if col == 'DCO':
-                    ocorrencia[col] = dt_obj.strftime('%d/%m/%Y')
-                elif col == 'HCO':
-                    ocorrencia[col] = dt_obj.strftime('%H:%M')
-                else:
-                    ocorrencia[col] = dt_obj.strftime('%d/%m/%Y')
-            except:
-                pass
-
-    papel = request.args.get('papel', 'lupa')
-    permissoes = {
-        "visualizar": True, "editar_descricao": False, "editar_atp": False,
-        "editar_att": False, "editar_atc": False, "editar_atg": False,
-    }
-
-    # Permissões
-    if papel == "lapis":
-        permissoes.update({
-            "editar_descricao": True, "editar_atp": True,
-            "editar_att": True, "editar_atc": True, "editar_atg": True,
-        })
-    elif papel == "ft":
-        permissoes["editar_att"] = True
-    elif papel == "fc":
-        permissoes["editar_atc"] = True
-    elif papel == "fg":
-        permissoes["editar_atg"] = True
 
     if request.method == "POST":
         data = request.form
         update_data = {}
 
-        # Só salva os campos permitidos para edição
-        if permissoes["editar_descricao"]:
-            update_data["DESCRICAO"] = data.get("DESCRICAO", "").strip()
-        if permissoes["editar_atp"]:
-            update_data["ATP"] = data.get("ATP", "").strip()
+        permissoes = {
+            "editar_att": data.get("FT") == "SIM",
+            "editar_atc": data.get("FC") == "SIM",
+            "editar_atg": data.get("FG") == "SIM",
+        }
+
         if permissoes["editar_att"]:
             update_data["ATT"] = data.get("ATT", "").strip()
             update_data["DT"] = datetime.now(TZ_SAO).isoformat()
+
         if permissoes["editar_atc"]:
             update_data["ATC"] = data.get("ATC", "").strip()
             update_data["DC"] = datetime.now(TZ_SAO).isoformat()
+
         if permissoes["editar_atg"]:
             update_data["ATG"] = data.get("ATG", "").strip()
             update_data["DG"] = datetime.now(TZ_SAO).isoformat()
-
-        # Atualiza status conforme regras
-        ft_done = ocorrencia.get("FT", "").upper() == "SIM" and update_data.get("ATT", ocorrencia.get("ATT"))
-        fc_done = ocorrencia.get("FC", "").upper() == "SIM" and update_data.get("ATC", ocorrencia.get("ATC"))
-        fg_done = ocorrencia.get("FG", "").upper() == "SIM" and update_data.get("ATG", ocorrencia.get("ATG"))
-
-        if ocorrencia.get("STATUS") == "ASSINADA":
-            update_data["STATUS"] = "ASSINADA"
-        elif not ft_done or not fc_done or not fg_done:
-            update_data["STATUS"] = "ATENDIMENTO"
-        else:
-            update_data["STATUS"] = "FINALIZADA"
 
         try:
             supabase.table("ocorrencias").update(update_data).eq("ID", oid).execute()
             limpar_caches()
             flash("Ocorrência atualizada com sucesso!", "success")
         except Exception as e:
-            flash(f"Erro ao atualizar ocorrência: {e}", "danger")
+            flash(f"Erro ao salvar atualização: {e}", "danger")
 
         return redirect(url_for("index"))
 
-    return render_template("editar.html", ocorrencia=ocorrencia, permissoes=permissoes)
+    # GET → carregar ocorrência
+    response = supabase.table("ocorrencias").select("*").eq("ID", oid).execute()
+    ocorrencia = response.data[0] if response.data else None
+    return render_template("editar.html", ocorrencia=ocorrencia)
 
 @app.route("/relatorios")
 def relatorios():
@@ -948,6 +894,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
