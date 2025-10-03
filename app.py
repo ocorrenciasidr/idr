@@ -186,11 +186,11 @@ def calcular_relatorio_por_sala():
 # -------------------------- ROTAS --------------------------
 @app.route("/")
 def home():
-    return redirect(url_for("home.html"))
+    return redirect(url_for("home"))
 
 @app.route("/index")
 def index():
-    return redirect(url_for("index.html"))
+    return redirect(url_for("index"))
 
 @app.route('/relatorio_tutor_aluno')
 def relatorio_tutoraluno():
@@ -342,5 +342,6 @@ def relatorio_tutor():
 # -------------------------- RUN --------------------------
 if __name__=="__main__":
     app.run(debug=True, port=int(os.environ.get("PORT",5000)))
+
 
 
