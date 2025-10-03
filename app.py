@@ -415,6 +415,38 @@ def nova():
 
 # -------------------- Rota de Geração de PDF do Aluno (Ajustes de PDF e Status) --------------------
 
+def gerar_pdf_ocorrencias(aluno, sala, ocorrencias):
+    """Gera um PDF para as ocorrências de um aluno, usando FPDF."""
+    from fpdf import FPDF # Importa FPDF localmente para garantir que esteja disponível
+    
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    
+    for ocorrencia in ocorrencias:
+        pdf.add_page()
+        pdf.set_font('Arial', 'B', 14)
+        pdf.cell(0, 10, 'RELATÓRIO DE OCORRÊNCIAS', 0, 1, 'C')
+        pdf.set_font('Arial', '', 10)
+        
+        pdf.cell(0, 6, f"Aluno: {aluno} | Sala: {sala}", 0, 1)
+        pdf.cell(0, 6, f"Ocorrência Nº: {ocorrencia['ID']} | Data: {ocorrencia['DCO']}", 0, 1)
+        
+        pdf.ln(2)
+        pdf.set_font('Arial', 'B', 10)
+        pdf.multi_cell(0, 5, 'Descrição da Ocorrência:', 0, 'L')
+        pdf.set_font('Arial', '', 10)
+        pdf.multi_cell(0, 5, ocorrencia.get('DESCRICAO', 'N/D'), 1, 'L')
+        
+        pdf.ln(2)
+        pdf.set_font('Arial', 'B', 10)
+        pdf.multi_cell(0, 5, 'Status:', 0, 'L')
+        pdf.set_font('Arial', '', 10)
+        pdf.multi_cell(0, 5, ocorrencia.get('STATUS', 'N/D'), 1, 'L')
+        
+    pdf_output = BytesIO(pdf.output(dest='S').encode('latin-1'))
+    pdf_output.seek(0)
+    return pdf_output
+
 @app.route("/gerar_pdf_aluno", methods=["POST"])
 def gerar_pdf_aluno():
     # ... (Seu código existente para gerar PDF)
@@ -814,6 +846,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
