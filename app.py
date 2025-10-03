@@ -355,6 +355,24 @@ def carregar_dados() -> pd.DataFrame:
 
 # -------------------- Rotas do Flask --------------------
 
+def normalizar_datas(df, colunas, tz=TZ_SAO):
+    """
+    Normaliza colunas de datas/hora de um DataFrame para o fuso especificado.
+    Aceita formatos ISO com ou sem milissegundos, com ou sem Z.
+    """
+    for col in colunas:
+        if col in df.columns:
+            try:
+                df[col] = pd.to_datetime(
+                    df[col],
+                    errors="coerce",     # não quebra se houver valores inválidos
+                    utc=True             # assume UTC antes de converter
+                ).dt.tz_convert(tz)
+            except Exception as e:
+                print(f"[WARN] Erro ao converter coluna {col}: {e}")
+    return df
+
+
 # --- Lógica de Status Dinâmico ---
 def calculate_display_status_and_color(row):
     """Calcula o status de exibição e a cor baseados nos flags FT/FC/FG."""
@@ -1009,6 +1027,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
