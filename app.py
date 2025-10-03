@@ -478,79 +478,37 @@ def alunos_por_sala(sala):
 
 # -------------------- Rota de Nova Ocorrência (Ajuste Crítico de Lógica) --------------------
 
-@app.route("/nova", methods=["GET", "POST"])
+@app.route("/nova", methods=["POST"])
 def nova():
-    # Carregar listas de salas, professores e tutores
-    salas_unicas = carregar_salas()
-    professores_unicos = carregar_professores()
-    df_alunos = carregar_dados_alunos()
-    tutores_unicos = sorted(df_alunos['Tutor'].unique().tolist())
+    try:
+        # Pega os dados do formulário
+        professor = request.form.get("professor")
+        descricao = request.form.get("descricao")
+        usuario = request.form.get("usuario")
 
-    if request.method == "POST":
-        data = request.form
-        supabase = conectar_supabase()
+        # Data e hora local SP (sem timezone no banco)
+        now_local = datetime.now(TZ_SAO)
+        dco_str = now_local.strftime("%Y-%m-%d %H:%M:%S")  # Data completa
+        hco_str = now_local.strftime("%H:%M:%S")           # Apenas hora
 
-        if not supabase:
-            flash("Erro ao conectar ao banco de dados.", "danger")
-            return redirect(url_for("nova"))
-        
-        try:
-            next_id = get_proximo_id_supabase(supabase)
-            now_local = datetime.now(TZ_SAO)
+        dados_insercao = {
+            "PROFESSOR": professor,
+            "DESCRICAO": descricao,
+            "USUARIO": usuario,
+            "DCO": dco_str,
+            "HCO": hco_str,
+            "FT": "SIM",
+            "FC": "SIM",
+            "FG": "SIM"
+        }
 
-            # Salva em formato seguro para o Supabase
-            dco_iso = now_local.date().isoformat()   # '2025-10-03'
-            hco_str = now_local.strftime('%H:%M')    # '13:20'
-
-            # FT, FC, FG conforme checkbox
-            ft_solicitado = 'SIM' if data.get('FT') == 'on' else 'NÃO'
-            fc_solicitado = 'SIM' if data.get('FC') == 'on' else 'NÃO'
-            fg_solicitado = 'SIM' if data.get('FG') == 'on' else 'NÃO'
-
-            dados_insercao = {
-                "ID": next_id,
-                "DCO": dco_iso,
-                "HCO": hco_str,
-                "PROFESSOR": data.get('PROFESSOR', '').strip(),
-                "SALA": data.get('SALA', '').strip(),
-                "ALUNO": data.get('ALUNO', '').strip(),
-                "TUTOR": data.get('TUTOR', '').strip(),
-                "DESCRICAO": data.get('DESCRICAO', '').strip(),
-                "ATP": data.get('ATP', '').strip(),
-                "FT": ft_solicitado,
-                "FC": fc_solicitado,
-                "FG": fg_solicitado,
-                "ATT": '', "ATC": '', "ATG": '',
-                "DT": None, "DC": None, "DG": None,
-                "STATUS": "ABERTA"
-            }
-
-            # Ajusta status automaticamente
-            if dados_insercao["FT"] == "SIM" or dados_insercao["FC"] == "SIM" or dados_insercao["FG"] == "SIM":
-                dados_insercao["STATUS"] = "ATENDIMENTO"
-            else:
-                dados_insercao["STATUS"] = "ABERTA"
-
-            # Inserir no Supabase
-            response = supabase.table('ocorrencias').insert(dados_insercao).execute()
-            if response.data is None or len(response.data) == 0:
-                raise Exception(f"Resposta Supabase vazia. Erro: {response.error}")
-
-            limpar_caches()
-            flash(f"Ocorrência Nº {next_id} registrada com sucesso!", "success")
-
-        except Exception as e:
-            flash(f"Erro ao salvar a ocorrência. Verifique os logs do servidor: {e}", "danger")
-            print(f"Erro no POST /nova: {e}")
-
+        supabase.table("ocorrencias").insert(dados_insercao).execute()
+        flash("Ocorrência registrada com sucesso!", "success")
         return redirect(url_for("index"))
 
-    return render_template(
-        "nova.html", 
-        salas_disp=salas_unicas, 
-        professores_disp=professores_unicos, 
-        tutores_disp=tutores_unicos
-    )
+    except Exception as e:
+        flash(f"Erro ao registrar ocorrência: {e}", "danger")
+        return redirect(url_for("index"))
 
 # -------------------- Rota de Geração de PDF do Aluno (Ajustes de PDF e Status) --------------------
 
@@ -1027,6 +985,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
