@@ -447,66 +447,193 @@ def gerar_pdf_ocorrencias(aluno, sala, ocorrencias):
     pdf_output.seek(0)
     return pdf_output
 
-@app.route("/gerar_pdf_aluno", methods=["POST"])
+# app.py (Código para ser inserido)
+
+# ... (Mantenha todos os imports existentes, certificando-se de ter 'from io import BytesIO' e que FPDF está configurado) ...
+
+# -------------------------- PDF GENERATION CLASS --------------------------
+# Define a classe para a geração do PDF, herdando de FPDF
+class PDF(FPDF):
+    def header(self):
+        self.set_font('Arial', 'B', 12)
+        # Cor da borda azul escura para o cabeçalho (opcional)
+        self.set_draw_color(0, 51, 102) 
+        self.cell(0, 10, 'RELATÓRIO DE REGISTRO DE OCORRÊNCIAS', 'B', 1, 'C')
+        self.set_font('Arial', '', 10)
+        self.cell(0, 5, 'E.E. PEI PROFESSOR IRENE DIAS RIBEIRO', 0, 1, 'C')
+        self.ln(5)
+
+    def footer(self):
+        self.set_y(-15)
+        self.set_font('Arial', 'I', 8)
+        self.cell(0, 10, f'Página {self.page_no()}/{{nb}}', 0, 0, 'C')
+
+
+def _adicionar_ocorrencia_ao_pdf(pdf, ocorrencia):
+    """Adiciona os detalhes de uma única ocorrência ao objeto PDF, replicando o layout do modelo."""
+    
+    # Define a largura das colunas para os metadados (30% Label, 70% Value)
+    w_label = 45
+    w_value = 145
+    
+    pdf.set_font('Arial', 'B', 10)
+    pdf.set_fill_color(240, 240, 240) # Cor de fundo cinza claro para as labels
+    
+    # Função auxiliar para gerar linha de metadados
+    def add_meta_row(label, value):
+        # Quebra de linha manual para lidar com datas longas (ex: 2025-09-19 16:23:10.658000)
+        value_display = str(value).split(' ')[0] if label == 'Data:' and value else str(value)
+
+        pdf.set_font('Arial', 'B', 10)
+        pdf.cell(w_label, 7, label, 'LR', 0, 'L', 1) 
+        pdf.set_font('Arial', '', 10)
+        pdf.cell(w_value, 7, value_display, 'LR', 1, 'L', 0) 
+
+    # ------------------- METADADOS -------------------
+    
+    pdf.set_draw_color(0, 0, 0) # Borda preta
+    
+    # Bloco Aluno/Tutor/Data/Professor (borda superior no primeiro item)
+    pdf.cell(w_label + w_value, 0, '', 'T', 1, 'L') 
+    
+    # Linha 1: Aluno
+    add_meta_row('Aluno:', ocorrencia.get('Aluno', 'N/D'))
+    
+    # Linha 2: Tutor
+    add_meta_row('Tutor:', ocorrencia.get('Tutor', 'N/D'))
+    
+    # Linha 3: Data (DCO)
+    add_meta_row('Data:', ocorrencia.get('DCO', 'N/D'))
+    
+    # Linha 4: Professor
+    add_meta_row('Professor:', ocorrencia.get('PROFESSOR', 'N/D'))
+    
+    # Linha 5: Sala (com borda inferior)
+    pdf.set_font('Arial', 'B', 10)
+    pdf.cell(w_label, 7, 'Sala:', 'LBR', 0, 'L', 1) 
+    pdf.set_font('Arial', '', 10)
+    pdf.cell(w_value, 7, ocorrencia.get('Sala', 'N/D'), 'RBT', 1, 'L', 0) 
+    
+    pdf.ln(2)
+    
+    # Ocorrência Nº / Hora - Juntos na mesma linha
+    pdf.set_font('Arial', 'B', 10)
+    pdf.cell(w_label, 7, 'Ocorrência nº:', 1, 0, 'L', 1)
+    pdf.set_font('Arial', '', 10)
+    # ATENÇÃO: Usando 'Nº Ocorrência' conforme definido no seu código
+    pdf.cell(w_value / 2, 7, str(ocorrencia.get('Nº Ocorrência', 'N/D')), 1, 0, 'L') 
+
+    pdf.set_font('Arial', 'B', 10)
+    pdf.cell(w_label / 2, 7, 'Hora:', 1, 0, 'L', 1)
+    pdf.set_font('Arial', '', 10)
+    pdf.cell(w_value / 2 - w_label / 2, 7, ocorrencia.get('HCO', 'N/D'), 1, 1, 'L')
+    
+    pdf.ln(5)
+
+    # ------------------- DESCRIÇÃO E ATENDIMENTOS -------------------
+    
+    # Função auxiliar para blocos de atendimento
+    def adicionar_bloco_texto(label, campo_db):
+        pdf.set_font('Arial', 'B', 10)
+        pdf.cell(0, 7, label, 1, 1, 'L', 1)
+        pdf.set_font('Arial', '', 10)
+        conteudo = ocorrencia.get(campo_db, '').strip()
+        if not conteudo:
+             conteudo = 'NÃO APLICÁVEL'
+        pdf.multi_cell(0, 6, conteudo, 1, 'L', 0) 
+        pdf.ln(2)
+
+    # Bloco Descrição
+    adicionar_bloco_texto('Descrição:', 'Descrição da Ocorrência') 
+
+    # Assumindo que os campos de atendimento são 'ATP' (Professor), 'ATT' (Tutor), 'ATC' (Coordenação), 'ATG' (Gestão)
+    adicionar_bloco_texto('Atendimento Professor:', 'ATP') 
+    adicionar_bloco_texto('Atendimento Tutor (Se solicitado):', 'ATT')
+    adicionar_bloco_texto('Atendimento Coordenação (Se solicitado):', 'ATC')
+    adicionar_bloco_texto('Atendimento Gestão (Se solicitado):', 'ATG')
+    
+    pdf.ln(10)
+    
+    # ------------------- ASSINATURA -------------------
+    pdf.set_font('Arial', 'B', 10)
+    pdf.cell(100, 7, 'Assinatura Responsável:', 0, 0, 'L')
+    pdf.cell(0, 7, 'Data:       /       /       ', 0, 1, 'L')
+    
+    # Linha tracejada de separação
+    pdf.ln(5)
+    pdf.set_font('Arial', '', 8)
+    pdf.cell(0, 1, '-' * 125, 0, 1, 'L') 
+    pdf.set_font('Arial', 'I', 8)
+    pdf.cell(0, 5, 'Ocorrência registrada no SGCE.', 0, 1, 'R')
+    
+
+@app.route("/gerar_pdf_aluno", methods=['POST'])
 def gerar_pdf_aluno():
-    aluno = request.form.get('aluno')
-    sala = request.form.get('sala')
-    ocorrencias_ids = request.form.getlist('ocorrencias')
+    # Verifica se o FPDF real foi importado (usando o mock para evitar crash)
+    if FPDF.__name__ == 'FPDF' and 'fpdf.FPDF' not in str(FPDF): 
+        # Esta é a checagem de mock, se estiver em produção com fpdf2, remova.
+        flash("Funcionalidade de PDF indisponível. Instale a biblioteca fpdf2.", "danger")
+        # Retorna para o relatório do aluno ou para a home se a rota falhar
+        return redirect(url_for('relatorio_aluno') if 'relatorio_aluno' in app.view_functions else url_for('home'))
+
+    aluno_selecionado = request.form.get('aluno')
+    # Recebe a lista de IDs de ocorrências selecionadas
+    ocorrencias_ids = request.form.getlist('ocorrencias') 
     
-    if not ocorrencias_ids:
-        flash("Nenhuma ocorrência selecionada para gerar PDF.", "warning")
-        return redirect(url_for('relatorio_aluno', aluno=aluno, sala=sala))
-        
-    supabase = conectar_supabase()
-    if not supabase:
-        flash("Erro ao conectar ao banco de dados.", "danger")
-        return redirect(url_for('relatorio_aluno', aluno=aluno, sala=sala))
+    if not aluno_selecionado or not ocorrencias_ids:
+        flash("Nenhuma ocorrência selecionada ou aluno não especificado.", "warning")
+        return redirect(url_for('relatorio_aluno'))
 
-    # 1. ATUALIZAR STATUS para ASSINADA
-    try:
-        dados_update = {"STATUS": "ASSINADA"}
-        
-        # Atualiza o status para ASSINADA para todas as ocorrências selecionadas
-        response = supabase.table('ocorrencias').update(dados_update).in_('ID', [int(oid) for oid in ocorrencias_ids]).execute()
-
-        # NOVO: CORREÇÃO DA VERIFICAÇÃO DE ERRO NO SUPABASE
-        # Verifica se o retorno tem dados ou se houve um erro na execução
-        if response.data is None or len(response.data) == 0:
-             # Isso cobre a maioria dos erros Postgrest, mas o erro HTTP real estaria no log
-             flash(f"Aviso: Status não atualizado. Confirme se há permissão.", "warning")
-        
-        limpar_caches() # Limpa o cache para que o index e relatórios vejam o novo status
+    # 1. Carregar e Filtrar dados
+    df_ocorrencias = carregar_dados() 
     
-    except Exception as e:
-        flash(f"Erro crítico ao atualizar status no banco. O PDF não foi gerado. {e}", "danger")
-        print(f"Erro ao atualizar status: {e}")
-        return redirect(url_for('relatorio_aluno', aluno=aluno, sala=sala)) # Interrompe se a atualização falhar
+    # Filtrar ocorrências selecionadas (usando 'Nº Ocorrência' como a chave correta)
+    df_selecionado = df_ocorrencias[
+        (df_ocorrencias['Aluno'] == aluno_selecionado) & 
+        (df_ocorrencias['Nº Ocorrência'].astype(str).isin(ocorrencias_ids))
+    ].sort_values(by='Nº Ocorrência', ascending=True)
 
-    # 2. GERAÇÃO DO PDF (Agora a função 'gerar_pdf_ocorrencias' está definida)
+    if df_selecionado.empty:
+        flash("As ocorrências selecionadas não foram encontradas.", "warning")
+        return redirect(url_for('relatorio_aluno'))
+        
+    ocorrencias_lista = df_selecionado.to_dict(orient='records')
+
+    # 2. Gerar PDF
+    pdf = PDF('P', 'mm', 'A4')
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.alias_nb_pages()
+    
+    # Adicionar fontes para suportar caracteres UTF-8 (acentos, cedilha)
+    # É fundamental que os arquivos 'arial.ttf' e 'arialbd.ttf' estejam disponíveis no servidor.
     try:
-        # Busca os dados atualizados
-        response = supabase.table('ocorrencias').select("*").in_('ID', [int(oid) for oid in ocorrencias_ids]).order('ID').execute()
-        ocorrencias_para_pdf = response.data
+        pdf.add_font('Arial', '', 'arial.ttf', uni=True)
+        pdf.add_font('Arial', 'B', 'arialbd.ttf', uni=True)
+    except Exception:
+        pass # Fallback para fonte padrão
 
-        if not ocorrencias_para_pdf:
-            raise Exception("Nenhum dado encontrado para gerar o PDF após a atualização.")
+    for ocorrencia in ocorrencias_lista:
+        pdf.add_page()
+        _adicionar_ocorrencia_ao_pdf(pdf, ocorrencia)
 
-        # Usa a função agora definida
-        pdf_bytes = gerar_pdf_ocorrencias(aluno, sala, ocorrencias_para_pdf) 
+    # 3. Saída do PDF
+    buffer = BytesIO()
+    pdf.output(buffer, 'S')
+    buffer.seek(0)
 
-        # Retorna o arquivo
-        return send_file(
-            pdf_bytes,
-            as_attachment=True,
-            download_name=f"Relatorio_{aluno.replace(' ', '_')}.pdf",
-            mimetype='application/pdf'
-        )
+    # Geração do nome do arquivo
+    safe_aluno = re.sub(r'[^\w\s-]', '', aluno_selecionado).strip().replace(' ', '_')
+    data_geracao = datetime.now(TZ_SAO).strftime('%Y%m%d')
+    download_name = f"Relatorio_{safe_aluno}_{data_geracao}.pdf"
+    
+    return send_file(
+        buffer,
+        download_name=download_name,
+        as_attachment=True,
+        mimetype='application/pdf'
+    )
 
-    except Exception as e:
-        flash(f"Erro fatal ao gerar o arquivo PDF: {e}", "danger")
-        print(f"Erro na geração do PDF: {e}")
-        return redirect(url_for('relatorio_aluno', aluno=aluno, sala=sala))
-
+# ... (restante do seu código app.py) ...
 @app.route('/editar/<int:oid>', methods=['GET', 'POST'])
 def editar(oid):
     supabase = conectar_supabase()
@@ -835,6 +962,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
