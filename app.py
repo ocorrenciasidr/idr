@@ -713,38 +713,65 @@ def gerar_pdf_aluno():
     )
 
 # ... (restante do seu código app.py) ...
-@app.route("/editar/<int:id>", methods=["POST"])
-def editar(id):
-    try:
-        dados_update = {}
+@app.route("/editar/<int:oid>", methods=["GET", "POST"])
+def editar(oid):
+    supabase = conectar_supabase()
+    if not supabase:
+        flash("Erro ao conectar ao banco de dados.", "danger")
+        return redirect(url_for("index"))
+
+    if request.method == "POST":
+        data = request.form
+        update_data = {}
+
+        # Permissões de edição de acordo com FT, FC, FG
+        permissoes = {
+            "editar_att": data.get("FT") == "SIM",
+            "editar_atc": data.get("FC") == "SIM",
+            "editar_atg": data.get("FG") == "SIM",
+        }
+
         now_local = datetime.now(TZ_SAO)
         data_str = now_local.strftime("%Y-%m-%d %H:%M:%S")
 
-        # Se FT = SIM → editar ATT
-        if request.form.get("ATT"):
-            dados_update["ATT"] = request.form.get("ATT")
-            dados_update["FT"] = "NÃO"
-            dados_update["DT"] = data_str
+        # Atualizações
+        if permissoes["editar_att"] and data.get("ATT"):
+            update_data["ATT"] = data.get("ATT").strip()
+            update_data["FT"] = "NÃO"
+            update_data["DT"] = data_str
 
-        # Se FC = SIM → editar ATC
-        if request.form.get("ATC"):
-            dados_update["ATC"] = request.form.get("ATC")
-            dados_update["FC"] = "NÃO"
-            dados_update["DC"] = data_str
+        if permissoes["editar_atc"] and data.get("ATC"):
+            update_data["ATC"] = data.get("ATC").strip()
+            update_data["FC"] = "NÃO"
+            update_data["DC"] = data_str
 
-        # Se FG = SIM → editar ATG
-        if request.form.get("ATG"):
-            dados_update["ATG"] = request.form.get("ATG")
-            dados_update["FG"] = "NÃO"
-            dados_update["DG"] = data_str
+        if permissoes["editar_atg"] and data.get("ATG"):
+            update_data["ATG"] = data.get("ATG").strip()
+            update_data["FG"] = "NÃO"
+            update_data["DG"] = data_str
 
-        supabase.table("ocorrencias").update(dados_update).eq("id", id).execute()
-        flash("Ocorrência atualizada com sucesso!", "success")
+        try:
+            # Atualiza dados principais
+            supabase.table("ocorrencias").update(update_data).eq("ID", oid).execute()
+
+            # Revalidar status após atualizar
+            resp = supabase.table("ocorrencias").select("FT,FC,FG").eq("ID", oid).execute()
+            if resp.data:
+                ft, fc, fg = resp.data[0]["FT"], resp.data[0]["FC"], resp.data[0]["FG"]
+                novo_status = "FINALIZADA" if (ft == "NÃO" and fc == "NÃO" and fg == "NÃO") else "ATENDIMENTO"
+                supabase.table("ocorrencias").update({"STATUS": novo_status}).eq("ID", oid).execute()
+
+            limpar_caches()
+            flash("Ocorrência atualizada com sucesso!", "success")
+        except Exception as e:
+            flash(f"Erro ao salvar atualização: {e}", "danger")
+
         return redirect(url_for("index"))
 
-    except Exception as e:
-        flash(f"Erro ao editar ocorrência: {e}", "danger")
-        return redirect(url_for("index"))
+    # GET → carregar ocorrência para exibir no editar
+    response = supabase.table("ocorrencias").select("*").eq("ID", oid).execute()
+    ocorrencia = response.data[0] if response.data else None
+    return render_template("editar.html", ocorrencia=ocorrencia)
 
 @app.route("/relatorios")
 def relatorios():
@@ -953,6 +980,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
