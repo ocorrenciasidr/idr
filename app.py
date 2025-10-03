@@ -449,8 +449,6 @@ def gerar_pdf_ocorrencias(aluno, sala, ocorrencias):
 
 @app.route("/gerar_pdf_aluno", methods=["POST"])
 def gerar_pdf_aluno():
-    # ... (Seu código existente para gerar PDF)
-    
     aluno = request.form.get('aluno')
     sala = request.form.get('sala')
     ocorrencias_ids = request.form.getlist('ocorrencias')
@@ -464,45 +462,39 @@ def gerar_pdf_aluno():
         flash("Erro ao conectar ao banco de dados.", "danger")
         return redirect(url_for('relatorio_aluno', aluno=aluno, sala=sala))
 
-    # 1. ATUALIZAR STATUS E DESABILITAR CAIXAS
+    # 1. ATUALIZAR STATUS para ASSINADA
     try:
-        # Muda o STATUS para 'ASSINADA' e desativa a seleção (opcional)
-        # Na verdade, o que desativa a caixa é a condição no relatorio_aluno.html, 
-        # mas o status deve ser atualizado.
-        
-        # AQUI VOCÊ DEVE TER SUA FUNÇÃO DE ATUALIZAÇÃO NO SUPABASE
         dados_update = {"STATUS": "ASSINADA"}
         
         # Atualiza o status para ASSINADA para todas as ocorrências selecionadas
         response = supabase.table('ocorrencias').update(dados_update).in_('ID', [int(oid) for oid in ocorrencias_ids]).execute()
 
-        if response.error:
-             flash(f"Erro ao atualizar status das ocorrências: {response.error.message}", "danger")
-             return redirect(url_for('relatorio_aluno', aluno=aluno, sala=sala))
+        # NOVO: CORREÇÃO DA VERIFICAÇÃO DE ERRO NO SUPABASE
+        # Verifica se o retorno tem dados ou se houve um erro na execução
+        if response.data is None or len(response.data) == 0:
+             # Isso cobre a maioria dos erros Postgrest, mas o erro HTTP real estaria no log
+             flash(f"Aviso: Status não atualizado. Confirme se há permissão.", "warning")
         
         limpar_caches() # Limpa o cache para que o index e relatórios vejam o novo status
     
     except Exception as e:
-        flash(f"Erro crítico ao atualizar status no banco: {e}", "danger")
+        flash(f"Erro crítico ao atualizar status no banco. O PDF não foi gerado. {e}", "danger")
         print(f"Erro ao atualizar status: {e}")
-        # Mesmo com erro, tentamos seguir para a geração do PDF, mas com warning.
-    
-    # 2. GERAÇÃO DO PDF (CORRIGIR O ERRO DE ABERTURA)
-    # O erro ao abrir o arquivo é geralmente um problema na forma como o PDF é gerado e retornado
-    # (Ex: Content-Type errado ou BytesIO mal formatado). 
-    
+        return redirect(url_for('relatorio_aluno', aluno=aluno, sala=sala)) # Interrompe se a atualização falhar
+
+    # 2. GERAÇÃO DO PDF (Agora a função 'gerar_pdf_ocorrencias' está definida)
     try:
-        # Seus dados filtrados para o PDF (precisa rebuscar com o novo status ou usar os dados antigos)
-        # Vamos assumir que você tem uma função para buscar os dados para o PDF:
+        # Busca os dados atualizados
         response = supabase.table('ocorrencias').select("*").in_('ID', [int(oid) for oid in ocorrencias_ids]).order('ID').execute()
         ocorrencias_para_pdf = response.data
 
-        # Use sua função FPDF para gerar o PDF:
+        if not ocorrencias_para_pdf:
+            raise Exception("Nenhum dado encontrado para gerar o PDF após a atualização.")
+
+        # Usa a função agora definida
         pdf_bytes = gerar_pdf_ocorrencias(aluno, sala, ocorrencias_para_pdf) 
 
-        # CORREÇÃO CRÍTICA DO RETORNO DO PDF
-        # Garante que o BytesIO está no início (seek(0)) e o mimetype está correto
-        
+        # Retorna o arquivo
         return send_file(
             pdf_bytes,
             as_attachment=True,
@@ -511,12 +503,9 @@ def gerar_pdf_aluno():
         )
 
     except Exception as e:
-        flash(f"Erro ao gerar o arquivo PDF: {e}", "danger")
+        flash(f"Erro fatal ao gerar o arquivo PDF: {e}", "danger")
         print(f"Erro na geração do PDF: {e}")
         return redirect(url_for('relatorio_aluno', aluno=aluno, sala=sala))
-
-# ... (restante do seu app.py)
-# ... (Código anterior, incluindo a definição de TZ_SAO)
 
 @app.route('/editar/<int:oid>', methods=['GET', 'POST'])
 def editar(oid):
@@ -846,6 +835,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
