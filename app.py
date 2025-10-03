@@ -594,8 +594,16 @@ def gerar_pdf_aluno():
         return redirect(url_for("relatorio_aluno", sala=sala, aluno=aluno))
 
     selecionadas = [int(x) for x in selecionadas]
-    ocorrencias = df[df["Nº Ocorrência"].isin(selecionadas)]
 
+    # 🔹 Buscar do Supabase em vez de usar df "mágico"
+    response = supabase.table("ocorrencias").select("*").in_("Nº Ocorrência", selecionadas).execute()
+    ocorrencias = pd.DataFrame(response.data)
+
+    if ocorrencias.empty:
+        flash("Não foram encontradas ocorrências selecionadas.", "danger")
+        return redirect(url_for("relatorio_aluno", sala=sala, aluno=aluno))
+
+    # 🔹 Criar o PDF
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 14)
@@ -612,13 +620,11 @@ def gerar_pdf_aluno():
         pdf.multi_cell(0, 8, row["Descrição da Ocorrência"])
         pdf.ln(5)
 
-        # Atualizar no DataFrame
-        df.loc[df["Nº Ocorrência"] == row["Nº Ocorrência"], "Status"] = "ASSINADA"
-
-        # Atualizar no Supabase
+        # Atualizar no Supabase diretamente
         supabase.table("ocorrencias").update({"Status": "ASSINADA"}) \
             .eq("Nº Ocorrência", row["Nº Ocorrência"]).execute()
 
+    # 🔹 Retornar o PDF
     pdf_output = BytesIO()
     pdf.output(pdf_output)
     pdf_output.seek(0)
@@ -629,6 +635,7 @@ def gerar_pdf_aluno():
         download_name=f"Relatorio_{aluno}.pdf",
         mimetype="application/pdf"
     )
+
 # ... (restante do seu código app.py) ...
 @app.route('/editar/<int:oid>', methods=['GET', 'POST'])
 def editar(oid):
@@ -941,6 +948,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
