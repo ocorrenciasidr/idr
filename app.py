@@ -928,7 +928,6 @@ def gerar_relatorio_geral_data(start_date_str, end_date_str):
 
 # Rota /relatorio_geral atualizada
 # Importe a função que calcula os dados estatísticos
-from .app import calcular_relatorio_estatistico, calcular_relatorio_por_sala # Adapte a importação conforme a estrutura do seu projeto
 
 @app.route("/relatorio_geral")
 def relatorio_geral():
@@ -972,6 +971,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
