@@ -22,6 +22,7 @@
 
 <form method="GET" action="{{ url_for('index') }}" class="mb-4">
     <div class="row g-3">
+        
         <div class="col-md-3">
             <label class="form-label">Tutor:</label>
             <select class="form-select" name="tutor" onchange="this.form.submit()">
@@ -31,15 +32,7 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="col-md-3">
-            <label class="form-label">Sala:</label>
-            <select class="form-select" name="sala" onchange="this.form.submit()">
-                <option value="">Todas as Salas</option>
-                {% for sala in salas_disp %}
-                    <option value="{{ sala }}" {% if sala == sala_sel %}selected{% endif %}>{{ sala }}</option>
-                {% endfor %}
-            </select>
-        </div>
+        
         <div class="col-md-3">
             <label class="form-label">Status:</label>
             <select class="form-select" name="status" onchange="this.form.submit()">
@@ -48,8 +41,13 @@
                 {% endfor %}
             </select>
         </div>
+        
         <div class="col-md-3 d-flex align-items-end">
             <a href="{{ url_for('index') }}" class="btn btn-secondary w-100">Limpar Filtros</a>
+        </div>
+
+        <div class="col-md-3 d-flex align-items-end">
+            <a href="{{ url_for('home') }}" class="btn btn-success w-100">Tela Inicial</a>
         </div>
     </div>
 </form>
