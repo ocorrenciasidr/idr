@@ -688,56 +688,34 @@ def relatorios():
 
 # ... (restante do app.py)
 
-@app.route("/relatorio_aluno", methods=["GET"])
+@app.route("/relatorio_aluno")
 def relatorio_aluno():
-    # 1. Carregar dados (CORREÇÃO DO NAMERROR)
-    # É essencial carregar o DataFrame 'df' antes de tentar acessá-lo.
-    # Assumindo que 'carregar_dados()' retorna o DataFrame principal com todas as colunas.
-    try:
-        # NOTE: Use 'carregar_dados()' ou 'carregar_dados_alunos()', dependendo de qual função
-        # traz o DataFrame completo necessário para obter 'Sala' e 'Aluno'.
-        df = carregar_dados() 
-    except Exception as e:
-        print(f"Erro ao carregar dados: {e}")
-        # Retorna uma página de erro ou uma mensagem simples em caso de falha de dados
-        return render_template("erro.html", mensagem="Erro ao carregar dados para o relatório.")
+    sala = request.args.get("sala")
+    aluno = request.args.get("aluno")
 
-    # Obter parâmetros de filtro da URL
-    sala_sel = request.args.get("sala", "")
-    aluno_sel = request.args.get("aluno", "")
+    supabase = conectar_supabase()
+    if not supabase:
+        flash("Erro ao conectar ao banco de dados.", "danger")
+        return redirect(url_for("index"))
 
-    # 2. Puxar salas e alunos disponíveis
-    # O .tolist() é importante para passar listas para o Jinja
-    salas = sorted(df["Sala"].dropna().unique().tolist())
-    
-    # Filtra alunos com base na sala selecionada
-    if sala_sel:
-        alunos = sorted(df[df["Sala"] == sala_sel]["Aluno"].dropna().unique().tolist())
-    else:
-        # Se nenhuma sala for selecionada, lista todos os alunos (ou ajuste para: alunos = [])
-        alunos = sorted(df["Aluno"].dropna().unique().tolist())
+    response = supabase.table("ocorrencias").select("*") \
+        .eq("SALA", sala).eq("ALUNO", aluno).execute()
 
-    # 3. Filtrar ocorrências
-    ocorrencias = []
-    if sala_sel and aluno_sel:
-        # Filtra o DataFrame pelas seleções
-        # Converte para lista de dicionários para uso fácil no Jinja
-        ocorrencias = df[(df["Sala"] == sala_sel) & (df["Aluno"] == aluno_sel)].to_dict("records")
+    ocorrencias = pd.DataFrame(response.data)
 
-    # 4. Retornar Template HTML (CORREÇÃO DE LÓGICA)
-    # Este bloco retorna a visualização HTML do relatório, com os dados filtrados.
+    if ocorrencias.empty:
+        flash("Nenhuma ocorrência encontrada para este aluno.", "info")
+        return redirect(url_for("index"))
+
+    # 🔹 Renomear apenas para exibição no template
+    ocorrencias = ocorrencias.rename(columns={"ID": "Nº Ocorrência"})
+
     return render_template(
         "relatorio_aluno.html",
-        salas=salas,
-        alunos=alunos,
-        sala_sel=sala_sel,
-        aluno_sel=aluno_sel,
-        ocorrencias=ocorrencias
+        sala=sala,
+        aluno=aluno,
+        ocorrencias=ocorrencias.to_dict(orient="records")
     )
-
-    # 5. NOTA: O código de atualização de status e o retorno de PDF (c.save(), pdf_output.seek(0), 
-    # return send_file(...)) foram removidos daqui, pois esta é uma rota GET para visualização
-    # HTML. O código de PDF deve estar em uma rota POST separada, como /gerar_pdf_aluno.
 
 def gerar_relatorio_geral_data(start_date_str, end_date_str):
     df = carregar_dados() # Assume-se que a função de carregar dados existe e funciona
@@ -895,6 +873,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
