@@ -753,7 +753,6 @@ def relatorio_aluno():
     sala_sel=sala_sel,
     aluno_sel=aluno_sel,
     ocorrencias=ocorrencias
-)
 
 # LINHAS REMOVIDAS:
 # # --- atualizar status local ---
@@ -929,6 +928,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
