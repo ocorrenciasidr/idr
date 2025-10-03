@@ -582,45 +582,52 @@ def _adicionar_ocorrencia_ao_pdf(pdf, ocorrencia):
 def gerar_pdf_aluno():
     aluno = request.form.get("aluno")
     sala = request.form.get("sala")
-    ocorrencias_ids = request.form.getlist("ocorrencias[]")  # pega lista
-    
-    if not ocorrencias_ids:
-        flash("Nenhuma ocorrência selecionada!", "warning")
+    selecionadas = request.form.getlist("ocorrencias")
+
+    if not selecionadas:
+        flash("Nenhuma ocorrência selecionada para gerar PDF.", "warning")
         return redirect(url_for("relatorio_aluno", sala=sala, aluno=aluno))
 
-    # 🔹 Buscar do Supabase só as ocorrências selecionadas
-    ocorrencias = supabase.table("ocorrencias") \
-        .select("*") \
-        .in_("Numero", ocorrencias_ids) \
-        .execute()
-    
-    dados = ocorrencias.data
+    # --- Buscar ocorrências selecionadas ---
+    df = carregar_dados()  # sua função que pega os dados
+    ocorrencias = df[df["Nº Ocorrência"].astype(str).isin(selecionadas)]
 
-    # 🔹 Gera PDF
-    from fpdf import FPDF
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-    
-    pdf.cell(200, 10, f"Relatório de Ocorrências - {aluno} ({sala})", ln=True, align="C")
-    pdf.ln(10)
+    # --- Atualizar status para ASSINADA ---
+    for numero in selecionadas:
+        df.loc[df["Nº Ocorrência"].astype(str) == numero, "Status"] = "ASSINADA"
+    salvar_dados(df)  # precisa implementar, salvando no Supabase
 
-    for o in dados:
-        pdf.multi_cell(0, 10, f"Nº: {o['Numero']} - Data: {o['DCO']} - Status: {o['Status']}")
-        pdf.multi_cell(0, 10, f"Descrição: {o['Descricao']}")
-        pdf.ln(5)
+    # --- Gerar PDF ---
+    pdf_buffer = BytesIO()
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfgen import canvas
 
-        # 🔹 Atualizar status para ASSINADA
-        supabase.table("ocorrencias").update({"Status": "ASSINADA"}).eq("Numero", o["Numero"]).execute()
+    c = canvas.Canvas(pdf_buffer, pagesize=A4)
+    largura, altura = A4
 
-    # 🔹 Retornar PDF
-    pdf_output = BytesIO()
-    pdf_bytes = pdf.output(dest="S").encode("latin1")
-    pdf_output.write(pdf_bytes)
-    pdf_output.seek(0)
+    c.setFont("Helvetica-Bold", 14)
+    c.drawCentredString(largura/2, altura-50, "RELATÓRIO DE OCORRÊNCIAS")
 
-    return send_file(pdf_output, download_name=f"ocorrencias_{aluno}.pdf", as_attachment=True)
+    c.setFont("Helvetica", 12)
+    c.drawString(50, altura-100, f"Aluno: {aluno} - Sala: {sala}")
 
+    y = altura-140
+    for _, row in ocorrencias.iterrows():
+        texto = f"Nº {row['Nº Ocorrência']} - {row['DCO']} - {row['Descrição da Ocorrência']} (Status: {row['Status']})"
+        c.drawString(50, y, texto[:120])  # corta linha longa
+        y -= 20
+
+    c.showPage()
+    c.save()
+
+    pdf_buffer.seek(0)
+
+    return send_file(
+        pdf_buffer,
+        as_attachment=True,
+        download_name=f"Relatorio_{aluno}.pdf",
+        mimetype="application/pdf"
+    )
 # ... (restante do seu código app.py) ...
 @app.route('/editar/<int:oid>', methods=['GET', 'POST'])
 def editar(oid):
@@ -916,6 +923,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
