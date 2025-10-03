@@ -139,6 +139,80 @@ def carregar_professores():
         print(f"Erro ao ler a tabela 'Professores' no Supabase: {e}")
         return []
 
+import pandas as pd
+from flask import request, render_template
+
+# --- Funções de carregamento de dados (assumidas como existentes) ---
+# def carregar_dados(): ... 
+# def carregar_dados_alunos(): ... 
+# ----------------------------------------------------------------------
+
+def calcular_relatorio_tutor_ocorrencias():
+    """
+    Calcula a quantidade de ocorrências por aluno, agrupando o resultado por Tutor.
+    
+    Retorna:
+        dict: Um dicionário onde a chave é o nome do Tutor e o valor é uma lista 
+              de dicionários de alunos [{'Aluno': '...', 'Ocorrencias': N, 'Sala': '...'}]
+    """
+    try:
+        # Tenta carregar dados específicos de alunos (com Tutor/Sala)
+        df_alunos = carregar_dados_alunos()
+    except Exception:
+        # Fallback: Se a função não existir, usa o DF principal e tenta extrair
+        df_completo = carregar_dados()
+        df_alunos = df_completo[['Tutor', 'Aluno', 'Sala']].drop_duplicates().dropna(subset=['Tutor', 'Aluno'])
+        
+    df_ocorrencias = carregar_dados() # DataFrame que contém as ocorrências
+    
+    if df_alunos.empty:
+        return {}
+
+    # 1. Limpeza e Contagem de Ocorrências
+    df_ocorrencias['Aluno'] = df_ocorrencias['Aluno'].str.strip()
+    
+    # Conta quantas ocorrências cada aluno teve
+    ocorrencias_por_aluno = df_ocorrencias.groupby('Aluno').size().reset_index(name='Quantidade Ocorrências')
+
+    # 2. Preparação dos dados de Tutorados
+    alunos_e_tutores = df_alunos[['Tutor', 'Aluno', 'Sala']].drop_duplicates(subset=['Aluno']).dropna(subset=['Tutor', 'Aluno'])
+    
+    # 3. Merge: Garante que TODOS os alunos sejam incluídos (left merge)
+    relatorio_df = pd.merge(
+        alunos_e_tutores,
+        ocorrencias_por_aluno,
+        on='Aluno',
+        how='left'
+    )
+    
+    # Preenche NaN (alunos sem ocorrências) com 0
+    relatorio_df['Quantidade Ocorrências'] = relatorio_df['Quantidade Ocorrências'].fillna(0).astype(int)
+    
+    # 4. Estruturar os dados por Tutor
+    relatorio_final = {}
+    for tutor, group in relatorio_df.groupby('Tutor'):
+        # Ordenar os alunos pelo nome para melhor visualização
+        alunos_data = group.sort_values(by='Aluno').to_dict('records')
+        
+        relatorio_final[tutor] = [
+            {'Aluno': row['Aluno'], 'Sala': row['Sala'], 'Quantidade Ocorrências': row['Quantidade Ocorrências']}
+            for row in alunos_data
+        ]
+        
+    return relatorio_final
+
+@app.route("/relatorio_alunos_tutor")
+def relatorio_alunos_tutor():
+    """Rota para gerar o relatório de alunos e suas ocorrências agrupado por tutor."""
+    dados_relatorio = calcular_relatorio_tutor_ocorrencias()
+    
+    # Você pode querer adicionar um link no seu relatorio_inicial para esta nova rota
+    return render_template(
+        "relatorio_tutor_ocorrencias.html",
+        dados=dados_relatorio
+    )
+
+
 def carregar_salas():
     global _salas_cache
     if _salas_cache is not None:
@@ -865,6 +939,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
