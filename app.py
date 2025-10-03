@@ -277,6 +277,10 @@ def home():
 def relatorio_inicial():
     return render_template("relatorio_inicial.html")
 
+@app.route("/relatorio_tutoraluno", methods=["GET", "POST"])
+def relatorio_tutoraluno():
+    return render_template("relatorio_tutoraluno.html")
+
 @app.route("/index")
 def index():
     df = carregar_dados()
@@ -933,6 +937,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
