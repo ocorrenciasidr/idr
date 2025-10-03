@@ -12,6 +12,7 @@ from flask import request, render_template, redirect, url_for, send_file, flash
 from io import BytesIO
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
+from fpdf import FPDF
 
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file, abort
 import pandas as pd
@@ -586,48 +587,44 @@ def _adicionar_ocorrencia_ao_pdf(pdf, ocorrencia):
 def gerar_pdf_aluno():
     aluno = request.form.get("aluno")
     sala = request.form.get("sala")
-    selecionadas = request.form.getlist("ocorrencias")
+    selecionadas = request.form.getlist("ocorrencias[]")
 
     if not selecionadas:
-        flash("Nenhuma ocorrência selecionada para gerar PDF.", "warning")
+        flash("Nenhuma ocorrência selecionada.", "warning")
         return redirect(url_for("relatorio_aluno", sala=sala, aluno=aluno))
 
-    # --- Buscar ocorrências selecionadas ---
-    df = carregar_dados()  # sua função que pega os dados
-    ocorrencias = df[df["Nº Ocorrência"].astype(str).isin(selecionadas)]
+    selecionadas = [int(x) for x in selecionadas]
+    ocorrencias = df[df["Nº Ocorrência"].isin(selecionadas)]
 
-    # --- Atualizar status para ASSINADA ---
-    for numero in selecionadas:
-        df.loc[df["Nº Ocorrência"].astype(str) == numero, "Status"] = "ASSINADA"
-    salvar_dados(df)  # precisa implementar, salvando no Supabase
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 10, "RELATÓRIO DE OCORRÊNCIAS", ln=True, align="C")
+    pdf.ln(10)
+    pdf.set_font("Arial", "", 12)
+    pdf.cell(0, 10, f"Aluno: {aluno}  Sala: {sala}", ln=True)
+    pdf.ln(5)
 
-    # --- Gerar PDF ---
-    pdf_buffer = BytesIO()
-    from reportlab.lib.pagesizes import A4
-    from reportlab.pdfgen import canvas
-
-    c = canvas.Canvas(pdf_buffer, pagesize=A4)
-    largura, altura = A4
-
-    c.setFont("Helvetica-Bold", 14)
-    c.drawCentredString(largura/2, altura-50, "RELATÓRIO DE OCORRÊNCIAS")
-
-    c.setFont("Helvetica", 12)
-    c.drawString(50, altura-100, f"Aluno: {aluno} - Sala: {sala}")
-
-    y = altura-140
     for _, row in ocorrencias.iterrows():
-        texto = f"Nº {row['Nº Ocorrência']} - {row['DCO']} - {row['Descrição da Ocorrência']} (Status: {row['Status']})"
-        c.drawString(50, y, texto[:120])  # corta linha longa
-        y -= 20
+        pdf.set_font("Arial", "B", 11)
+        pdf.cell(0, 10, f"Ocorrência Nº {row['Nº Ocorrência']} - {row['DCO']} {row['HCO']}", ln=True)
+        pdf.set_font("Arial", "", 11)
+        pdf.multi_cell(0, 8, row["Descrição da Ocorrência"])
+        pdf.ln(5)
 
-    c.showPage()
-    c.save()
+        # Atualizar no DataFrame
+        df.loc[df["Nº Ocorrência"] == row["Nº Ocorrência"], "Status"] = "ASSINADA"
 
-    pdf_buffer.seek(0)
+        # Atualizar no Supabase
+        supabase.table("ocorrencias").update({"Status": "ASSINADA"}) \
+            .eq("Nº Ocorrência", row["Nº Ocorrência"]).execute()
+
+    pdf_output = BytesIO()
+    pdf.output(pdf_output)
+    pdf_output.seek(0)
 
     return send_file(
-        pdf_buffer,
+        pdf_output,
         as_attachment=True,
         download_name=f"Relatorio_{aluno}.pdf",
         mimetype="application/pdf"
@@ -759,49 +756,6 @@ def relatorio_aluno():
         ocorrencias=ocorrencias
     )
 
-
-@app.route("/gerar_pdf_aluno", methods=["POST"])
-def gerar_pdf_aluno():
-    aluno = request.form.get("aluno")
-    sala = request.form.get("sala")
-    selecionadas = request.form.getlist("ocorrencias[]")
-
-    if not selecionadas:
-        flash("Nenhuma ocorrência selecionada.", "warning")
-        return redirect(url_for("relatorio_aluno", sala=sala, aluno=aluno))
-
-    # --- filtrar registros ---
-    selecionadas = [int(x) for x in selecionadas]
-    ocorrencias = df[df["Nº Ocorrência"].isin(selecionadas)]
-
-    # --- gerar PDF ---
-    pdf_output = BytesIO()
-    c = canvas.Canvas(pdf_output, pagesize=A4)
-    largura, altura = A4
-    y = altura - 50
-
-    c.setFont("Helvetica-Bold", 14)
-    c.drawCentredString(largura / 2, y, "RELATÓRIO DE OCORRÊNCIAS")
-    y -= 40
-
-    c.setFont("Helvetica", 12)
-    c.drawString(50, y, f"Aluno: {aluno}   Sala: {sala}")
-    y -= 30
-
-    for _, row in ocorrencias.iterrows():
-        c.setFont("Helvetica-Bold", 11)
-        c.drawString(50, y, f"Ocorrência Nº {row['Nº Ocorrência']} - {row['DCO']} {row['HCO']}")
-        y -= 20
-        c.setFont("Helvetica", 11)
-        text = c.beginText(50, y)
-        text.setFont("Helvetica", 11)
-        for linha in row["Descrição da Ocorrência"].split("\n"):
-            text.textLine(linha)
-        c.drawText(text)
-        y -= 40
-        if y < 100:
-            c.showPage()
-            y = altura - 50
 
         # --- atualizar status local ---
         df.loc[df["Nº Ocorrência"] == row["Nº Ocorrência"], "Status"] = "ASSINADA"
@@ -977,6 +931,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
