@@ -13,6 +13,8 @@ from io import BytesIO
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from fpdf import FPDF
+from datetime import datetime
+import pytz
 
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file, abort
 import pandas as pd
@@ -989,6 +991,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
