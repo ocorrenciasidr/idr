@@ -729,71 +729,66 @@ def gerar_pdf_aluno():
 # ... (restante do seu código app.py) ...
 @app.route("/editar/<int:oid>", methods=["GET", "POST"])
 def editar(oid):
-    papel = request.args.get("papel", "visualizacao")  # 'ft', 'fc', 'fg', 'ver', 'editar'
     supabase = conectar_supabase()
     if not supabase:
         flash("Erro ao conectar ao banco de dados.", "danger")
         return redirect(url_for("index"))
 
-    # POST → salvar alterações
+    papel = request.args.get("papel", "ver").lower()  # 'ver', 'editar', 'ft', 'fc', 'fg'
+
+    # Buscar ocorrência
+    response = supabase.table("ocorrencias").select("*").eq("ID", oid).execute()
+    if not response.data or len(response.data) == 0:
+        flash("Ocorrência não encontrada.", "danger")
+        return redirect(url_for("index"))
+
+    ocorrencia = response.data[0]
+
+    # GET → montar permissões
+    permissoes = {
+        "editar_descricao": papel == "editar",
+        "editar_atp": papel == "editar",
+        "editar_att": papel in ["editar", "ft"] and ocorrencia.get("FT") == "SIM",
+        "editar_atc": papel in ["editar", "fc"] and ocorrencia.get("FC") == "SIM",
+        "editar_atg": papel in ["editar", "fg"] and ocorrencia.get("FG") == "SIM",
+    }
+
     if request.method == "POST":
         data = request.form
         update_data = {}
 
-        permissoes = {
-            "editar_descricao": papel == "editar",
-            "editar_atp": papel == "editar",
-            "editar_att": papel == "editar" or papel == "ft",
-            "editar_atc": papel == "editar" or papel == "fc",
-            "editar_atg": papel == "editar" or papel == "fg",
-        }
-
-        now_local = datetime.now(TZ_SAO)
-
-        if permissoes["editar_att"]:
-            update_data["ATT"] = data.get("ATT", "").strip()
-            update_data["DT"] = now_local.isoformat()
-            if papel == "ft":  # FT pendente → resolvido
-                update_data["FT"] = "NÃO"
-
-        if permissoes["editar_atc"]:
-            update_data["ATC"] = data.get("ATC", "").strip()
-            update_data["DC"] = now_local.isoformat()
-            if papel == "fc":
-                update_data["FC"] = "NÃO"
-
-        if permissoes["editar_atg"]:
-            update_data["ATG"] = data.get("ATG", "").strip()
-            update_data["DG"] = now_local.isoformat()
-            if papel == "fg":
-                update_data["FG"] = "NÃO"
-
+        # Campos editáveis
         if permissoes["editar_descricao"]:
             update_data["DESCRICAO"] = data.get("DESCRICAO", "").strip()
         if permissoes["editar_atp"]:
             update_data["ATP"] = data.get("ATP", "").strip()
+        if permissoes["editar_att"]:
+            update_data["ATT"] = data.get("ATT", "").strip()
+            update_data["DT"] = datetime.now(TZ_SAO).isoformat()
+            if papel == "ft":
+                update_data["FT"] = "NÃO"
+        if permissoes["editar_atc"]:
+            update_data["ATC"] = data.get("ATC", "").strip()
+            update_data["DC"] = datetime.now(TZ_SAO).isoformat()
+            if papel == "fc":
+                update_data["FC"] = "NÃO"
+        if permissoes["editar_atg"]:
+            update_data["ATG"] = data.get("ATG", "").strip()
+            update_data["DG"] = datetime.now(TZ_SAO).isoformat()
+            if papel == "fg":
+                update_data["FG"] = "NÃO"
 
         try:
-            supabase.table("ocorrencias").update(update_data).eq("ID", oid).execute()
-            limpar_caches()
-            flash("Ocorrência atualizada com sucesso!", "success")
+            if update_data:
+                supabase.table("ocorrencias").update(update_data).eq("ID", oid).execute()
+                limpar_caches()
+                flash("Ocorrência atualizada com sucesso!", "success")
+            else:
+                flash("Nenhum campo para atualizar.", "info")
         except Exception as e:
             flash(f"Erro ao salvar atualização: {e}", "danger")
 
         return redirect(url_for("index"))
-
-    # GET → carregar ocorrência
-    response = supabase.table("ocorrencias").select("*").eq("ID", oid).execute()
-    ocorrencia = response.data[0] if response.data else None
-
-    # Permissões para o template
-    permissoes = {
-        "editar_descricao": papel == "editar",
-        "editar_atp": papel == "editar",
-        "editar_att": papel == "editar" or papel == "ft",
-        "editar_atc": papel == "editar" or papel == "fc",
-        "editar_atg": papel == "editar" or papel == "fg",
-    }
 
     return render_template("editar.html", ocorrencia=ocorrencia, permissoes=permissoes, papel=papel)
 
@@ -986,6 +981,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
