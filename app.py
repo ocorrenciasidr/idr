@@ -714,7 +714,6 @@ def gerar_pdf_aluno():
         mimetype="application/pdf"
     )
 
-# ... (restante do seu código app.py) ...
 @app.route("/editar/<int:oid>", methods=["GET", "POST"])
 def editar(oid):
     supabase = conectar_supabase()
@@ -722,58 +721,76 @@ def editar(oid):
         flash("Erro ao conectar ao banco de dados.", "danger")
         return redirect(url_for("index"))
 
+    # Carrega a ocorrência do Supabase
+    response = supabase.table('ocorrencias').select("*").eq("ID", oid).execute()
+    if not response.data or len(response.data) == 0:
+        flash(f"Ocorrência Nº {oid} não encontrada.", "danger")
+        return redirect(url_for("index"))
+
+    ocorrencia = response.data[0]
+
     if request.method == "POST":
         data = request.form
+
+        # Atualiza os campos somente permitidos
         update_data = {}
-
-        # Permissões de edição de acordo com FT, FC, FG
-        permissoes = {
-            "editar_att": data.get("FT") == "SIM",
-            "editar_atc": data.get("FC") == "SIM",
-            "editar_atg": data.get("FG") == "SIM",
-        }
-
         now_local = datetime.now(TZ_SAO)
-        data_str = now_local.strftime("%Y-%m-%d %H:%M:%S")
 
-        # Atualizações
-        if permissoes["editar_att"] and data.get("ATT"):
-            update_data["ATT"] = data.get("ATT").strip()
+        # FT → ATT, FC → ATC, FG → ATG
+        if ocorrencia["FT"] == "SIM":
+            update_data["ATT"] = data.get("ATT", ocorrencia.get("ATT", ""))
             update_data["FT"] = "NÃO"
-            update_data["DT"] = data_str
-
-        if permissoes["editar_atc"] and data.get("ATC"):
-            update_data["ATC"] = data.get("ATC").strip()
+            update_data["DT"] = now_local.isoformat()
+        if ocorrencia["FC"] == "SIM":
+            update_data["ATC"] = data.get("ATC", ocorrencia.get("ATC", ""))
             update_data["FC"] = "NÃO"
-            update_data["DC"] = data_str
-
-        if permissoes["editar_atg"] and data.get("ATG"):
-            update_data["ATG"] = data.get("ATG").strip()
+            update_data["DC"] = now_local.isoformat()
+        if ocorrencia["FG"] == "SIM":
+            update_data["ATG"] = data.get("ATG", ocorrencia.get("ATG", ""))
             update_data["FG"] = "NÃO"
-            update_data["DG"] = data_str
+            update_data["DG"] = now_local.isoformat()
+
+        # Campos comuns liberados para edição
+        update_data["DESCRICAO"] = data.get("DESCRICAO", ocorrencia.get("DESCRICAO", ""))
+        update_data["ATP"] = data.get("ATP", ocorrencia.get("ATP", ""))
+
+        # Atualiza status automaticamente
+        if update_data.get("FT", ocorrencia["FT"]) == "SIM" or \
+           update_data.get("FC", ocorrencia["FC"]) == "SIM" or \
+           update_data.get("FG", ocorrencia["FG"]) == "SIM":
+            update_data["STATUS"] = "ATENDIMENTO"
+        else:
+            update_data["STATUS"] = "FINALIZADA"
 
         try:
-            # Atualiza dados principais
-            supabase.table("ocorrencias").update(update_data).eq("ID", oid).execute()
-
-            # Revalidar status após atualizar
-            resp = supabase.table("ocorrencias").select("FT,FC,FG").eq("ID", oid).execute()
-            if resp.data:
-                ft, fc, fg = resp.data[0]["FT"], resp.data[0]["FC"], resp.data[0]["FG"]
-                novo_status = "FINALIZADA" if (ft == "NÃO" and fc == "NÃO" and fg == "NÃO") else "ATENDIMENTO"
-                supabase.table("ocorrencias").update({"STATUS": novo_status}).eq("ID", oid).execute()
-
-            limpar_caches()
-            flash("Ocorrência atualizada com sucesso!", "success")
+            supabase.table('ocorrencias').update(update_data).eq("ID", oid).execute()
+            flash(f"Ocorrência Nº {oid} atualizada com sucesso!", "success")
         except Exception as e:
-            flash(f"Erro ao salvar atualização: {e}", "danger")
+            flash(f"Erro ao atualizar ocorrência: {e}", "danger")
 
         return redirect(url_for("index"))
 
-    # GET → carregar ocorrência para exibir no editar
-    response = supabase.table("ocorrencias").select("*").eq("ID", oid).execute()
-    ocorrencia = response.data[0] if response.data else None
-    return render_template("editar.html", ocorrencia=ocorrencia)
+    # Define quais campos serão apenas visualizados ou editáveis
+    campos_editaveis = {
+        "DESCRICAO": True,
+        "ATP": True,
+        "ATT": ocorrencia["FT"] == "SIM",
+        "ATC": ocorrencia["FC"] == "SIM",
+        "ATG": ocorrencia["FG"] == "SIM"
+    }
+
+    # Verifica papel (ver ou editar)
+    papel = request.args.get("papel", "ver")
+    if papel == "ver":
+        # Tudo readonly no template
+        for key in campos_editaveis:
+            campos_editaveis[key] = False
+        modo = "view"
+    else:
+        modo = "edit"
+
+    return render_template("editar.html", ocorrencia=ocorrencia,
+                           campos_editaveis=campos_editaveis, modo=modo)
 
 @app.route("/relatorios")
 def relatorios():
@@ -982,6 +999,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
