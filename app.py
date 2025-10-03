@@ -737,39 +737,89 @@ def relatorios():
 
 # ... (restante do app.py)
 
-@app.route("/relatorio_aluno", methods=['GET', 'POST'])
+@app.route("/relatorio_aluno", methods=["GET"])
 def relatorio_aluno():
-    df = carregar_dados() # DataFrame com todas as ocorrências
-    
-    # 1. Filtro Sala: Salas que possuem ocorrências.
-    salas = sorted(df['Sala'].unique().tolist())
-    
-    alunos = []
-    ocorrencias = []
-    sala_sel = request.args.get('sala')
-    aluno_sel = request.args.get('aluno')
-    
-    # DataFrame filtrado pela Sala selecionada
-    df_sala = df[df['Sala'] == sala_sel] if sala_sel else df
-    
-    if sala_sel:
-        # 2. Filtro Aluno: Apenas alunos DA SALA SELECIONADA que possuem ocorrências.
-        # Usa o dataframe filtrado df_sala para obter apenas os alunos relevantes
-        alunos = sorted(df_sala['Aluno'].unique().tolist())
-        
-    if aluno_sel and sala_sel:
-        # Ocorrências específicas do aluno
-        ocorrencias = df_sala[df_sala['Aluno'] == aluno_sel]
-        
-        # Formatação para o template (Garantindo que a coluna 'Descrição da Ocorrência' seja referenciada corretamente)
-        ocorrencias = ocorrencias.rename(columns={'Nº Ocorrência': 'ID', 'Descrição da Ocorrência': 'Descrição'}).to_dict('records')
+    sala_sel = request.args.get("sala", "")
+    aluno_sel = request.args.get("aluno", "")
 
-    return render_template("relatorio_aluno.html", 
-                           salas=salas, 
-                           alunos=alunos, 
-                           sala_sel=sala_sel, 
-                           aluno_sel=aluno_sel, 
-                           ocorrencias=ocorrencias)
+    # puxar salas e alunos disponíveis
+    salas = sorted(df["Sala"].dropna().unique())
+    alunos = sorted(df[df["Sala"] == sala_sel]["Aluno"].dropna().unique()) if sala_sel else []
+
+    ocorrencias = []
+    if sala_sel and aluno_sel:
+        ocorrencias = df[(df["Sala"] == sala_sel) & (df["Aluno"] == aluno_sel)].to_dict("records")
+
+    return render_template(
+        "relatorio_aluno.html",
+        salas=salas,
+        alunos=alunos,
+        sala_sel=sala_sel,
+        aluno_sel=aluno_sel,
+        ocorrencias=ocorrencias
+    )
+
+
+@app.route("/gerar_pdf_aluno", methods=["POST"])
+def gerar_pdf_aluno():
+    aluno = request.form.get("aluno")
+    sala = request.form.get("sala")
+    selecionadas = request.form.getlist("ocorrencias[]")
+
+    if not selecionadas:
+        flash("Nenhuma ocorrência selecionada.", "warning")
+        return redirect(url_for("relatorio_aluno", sala=sala, aluno=aluno))
+
+    # --- filtrar registros ---
+    selecionadas = [int(x) for x in selecionadas]
+    ocorrencias = df[df["Nº Ocorrência"].isin(selecionadas)]
+
+    # --- gerar PDF ---
+    pdf_output = BytesIO()
+    c = canvas.Canvas(pdf_output, pagesize=A4)
+    largura, altura = A4
+    y = altura - 50
+
+    c.setFont("Helvetica-Bold", 14)
+    c.drawCentredString(largura / 2, y, "RELATÓRIO DE OCORRÊNCIAS")
+    y -= 40
+
+    c.setFont("Helvetica", 12)
+    c.drawString(50, y, f"Aluno: {aluno}   Sala: {sala}")
+    y -= 30
+
+    for _, row in ocorrencias.iterrows():
+        c.setFont("Helvetica-Bold", 11)
+        c.drawString(50, y, f"Ocorrência Nº {row['Nº Ocorrência']} - {row['DCO']} {row['HCO']}")
+        y -= 20
+        c.setFont("Helvetica", 11)
+        text = c.beginText(50, y)
+        text.setFont("Helvetica", 11)
+        for linha in row["Descrição da Ocorrência"].split("\n"):
+            text.textLine(linha)
+        c.drawText(text)
+        y -= 40
+        if y < 100:
+            c.showPage()
+            y = altura - 50
+
+        # --- atualizar status local ---
+        df.loc[df["Nº Ocorrência"] == row["Nº Ocorrência"], "Status"] = "ASSINADA"
+
+        # --- atualizar no Supabase ---
+        supabase.table("ocorrencias").update({"Status": "ASSINADA"}) \
+            .eq("Nº Ocorrência", row["Nº Ocorrência"]).execute()
+
+    c.save()
+    pdf_output.seek(0)
+
+    # retorna PDF direto
+    return send_file(
+        pdf_output,
+        as_attachment=True,
+        download_name=f"Relatorio_{aluno}.pdf",
+        mimetype="application/pdf"
+    )
 
 def gerar_relatorio_geral_data(start_date_str, end_date_str):
     df = carregar_dados() # Assume-se que a função de carregar dados existe e funciona
@@ -927,6 +977,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
