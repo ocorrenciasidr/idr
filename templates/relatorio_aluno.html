@@ -70,7 +70,7 @@
             <tr>
               <td>
                 <div class="d-flex align-items-center justify-content-center gap-2">
-                  <input type="checkbox" name="ocorrencias[]" value="{{ o['Nº Ocorrência'] }}"
+                  <input type="checkbox" name="ocorrencias[]" value="{{ o['ID'] }}"
                     {% if o['Status'] == 'ASSINADA' %} disabled {% endif %}>
                   <span>{{ o['Nº Ocorrência'] }}</span>
                 </div>
