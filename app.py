@@ -194,10 +194,10 @@ def index():
     # Gestão de Ocorrências
     return render_template("index.html")
 
-@app.route("/relatorios_inicial")
-def relatorios_inicial():
+@app.route("/relatorio_inicial")
+def relatorio_inicial():
     # Gestão de Relatórios
-    return render_template("relatorios_inicial.html")
+    return render_template("relatorio_inicial.html")
 
 @app.route("/nova", methods=["GET", "POST"])
 def nova():
@@ -349,6 +349,7 @@ def relatorio_tutor():
 # -------------------------- RUN --------------------------
 if __name__=="__main__":
     app.run(debug=True, port=int(os.environ.get("PORT",5000)))
+
 
 
 
