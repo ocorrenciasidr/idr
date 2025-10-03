@@ -981,13 +981,49 @@ def relatorio_tutor():
                            start=start_date_str,
                            end=end_date_str)
 
-@app.route("/relatorio_tutoraluno")
-def relatorio_tutoraluno():
+@app.route("/relatorio_aluno", methods=['GET', 'POST'])
+def relatorio_aluno():
+    # 1. Carrega os dados necessários
     df_alunos = carregar_dados_alunos()
+    df_ocorrencias = carregar_dados()
     
-    dados_agrupados = df_alunos.groupby('Tutor').apply(lambda x: x[['Aluno', 'Sala']].to_dict('records')).to_dict()
+    # Lista de todos os alunos (para o dropdown de seleção)
+    alunos_disp = sorted(df_alunos['Aluno'].unique().tolist())
     
-    return render_template("relatorio_tutoraluno.html", dados=dados_agrupados)
+    ocorrencias_filtradas_lista = []
+    aluno_selecionado = request.form.get('aluno_selecionado') or request.args.get('aluno_selecionado')
+    
+    if request.method == 'POST' and aluno_selecionado:
+        # Se for um POST com aluno selecionado, ou se veio via GET
+        if aluno_selecionado:
+            # 2. Encontra a sala (para exibição)
+            sala_selecionada = df_alunos[df_alunos['Aluno'] == aluno_selecionado]['Sala'].iloc[0] if not df_alunos.empty else 'N/D'
+            
+            # 3. Filtra as ocorrências do aluno
+            df_filtrado = df_ocorrencias[df_ocorrencias['Aluno'] == aluno_selecionado]
+            
+            # Aplica a lógica dinâmica de status para exibição
+            if not df_filtrado.empty:
+                df_filtrado = df_filtrado.apply(calculate_display_status_and_color, axis=1)
+                
+                # Ordena pela mais antiga para a mais recente (ID ascendente para o PDF)
+                ocorrencias_filtradas_lista = df_filtrado.sort_values(by='Nº Ocorrência', ascending=True).to_dict('records')
+            
+            return render_template("relatorio_aluno.html",
+                                   alunos_disp=alunos_disp,
+                                   aluno_sel=aluno_selecionado,
+                                   sala_sel=sala_selecionada,
+                                   ocorrencias=ocorrencias_filtradas_lista)
+    
+    # Rota GET inicial ou POST sem aluno
+    return render_template("relatorio_aluno.html",
+                           alunos_disp=alunos_disp,
+                           aluno_sel=aluno_selecionado,
+                           ocorrencias=ocorrencias_filtradas_lista)
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
 
 
 @app.route("/tutoria")
@@ -996,13 +1032,3 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
-
-
-
-
-
-
-
-
-
-
