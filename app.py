@@ -747,22 +747,20 @@ def relatorio_aluno():
     if sala_sel and aluno_sel:
         ocorrencias = df[(df["Sala"] == sala_sel) & (df["Aluno"] == aluno_sel)].to_dict("records")
 
-    return render_template(
-        "relatorio_aluno.html",
-        salas=salas,
-        alunos=alunos,
-        sala_sel=sala_sel,
-        aluno_sel=aluno_sel,
-        ocorrencias=ocorrencias
-    )
+    "relatorio_aluno.html",
+    salas=salas,
+    alunos=alunos,
+    sala_sel=sala_sel,
+    aluno_sel=aluno_sel,
+    ocorrencias=ocorrencias
+)
 
-
-        # --- atualizar status local ---
-        df.loc[df["Nº Ocorrência"] == row["Nº Ocorrência"], "Status"] = "ASSINADA"
-
-        # --- atualizar no Supabase ---
-        supabase.table("ocorrencias").update({"Status": "ASSINADA"}) \
-            .eq("Nº Ocorrência", row["Nº Ocorrência"]).execute()
+# LINHAS REMOVIDAS:
+# # --- atualizar status local ---
+# df.loc[df["Nº Ocorrência"] == row["Nº Ocorrência"], "Status"] = "ASSINADA"
+# # --- atualizar no Supabase ---
+# supabase.table("ocorrencias").update({"Status": "ASSINADA"}) \
+#     .eq("Nº Ocorrência", row["Nº Ocorrência"]).execute()
 
     c.save()
     pdf_output.seek(0)
@@ -931,6 +929,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
