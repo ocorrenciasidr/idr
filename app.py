@@ -470,8 +470,8 @@ def nova():
 
     if request.method == "POST":
         data = request.form
-        
         supabase = conectar_supabase()
+
         if not supabase:
             flash("Erro ao conectar ao banco de dados.", "danger")
             return redirect(url_for("nova"))
@@ -479,11 +479,12 @@ def nova():
         try:
             next_id = get_proximo_id_supabase(supabase)
             now_local = datetime.now(TZ_SAO)
-            
-            dco_iso = now_local.isoformat()
-            hco_str = now_local.strftime('%H:%M:%S')
 
-            # FT, FC, FG conforme checkbox (SIM se marcada)
+            # Salva em formato seguro para o Supabase
+            dco_iso = now_local.date().isoformat()   # '2025-10-03'
+            hco_str = now_local.strftime('%H:%M')    # '13:20'
+
+            # FT, FC, FG conforme checkbox
             ft_solicitado = 'SIM' if data.get('FT') == 'on' else 'NÃO'
             fc_solicitado = 'SIM' if data.get('FC') == 'on' else 'NÃO'
             fg_solicitado = 'SIM' if data.get('FG') == 'on' else 'NÃO'
@@ -503,7 +504,7 @@ def nova():
                 "FG": fg_solicitado,
                 "ATT": '', "ATC": '', "ATG": '',
                 "DT": None, "DC": None, "DG": None,
-                "STATUS": 'Aberta'
+                "STATUS": "ABERTA"
             }
 
             # Ajusta status automaticamente
@@ -526,7 +527,12 @@ def nova():
 
         return redirect(url_for("index"))
 
-    return render_template("nova.html", salas_disp=salas_unicas, professores_disp=professores_unicos, tutores_disp=tutores_unicos)
+    return render_template(
+        "nova.html", 
+        salas_disp=salas_unicas, 
+        professores_disp=professores_unicos, 
+        tutores_disp=tutores_unicos
+    )
 
 # -------------------- Rota de Geração de PDF do Aluno (Ajustes de PDF e Status) --------------------
 
@@ -985,6 +991,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
