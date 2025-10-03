@@ -1,39 +1,71 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8">
-  <title>SGCE - LISTA TUTOR / TUTORADOS</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <meta charset="UTF-8">
+    <title>SGCE - RELATÓRIO DE ALUNOS POR TUTOR</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <style>
+        /* CSS para forçar a quebra de página a cada seção de tutor (útil para PDF/impressão) */
+        @media print {
+            .tutor-section {
+                page-break-after: always;
+            }
+            /* Esconde o botão de voltar na impressão */
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
 </head>
-<body class="bg-light">
-<div class="container mt-4">
-  <h2 class="mb-4 text-center">SISTEMA DE GESTÃO DE CONVIVÊNCIA ESCOLAR <br> LISTA TUTOR / TUTORADOS</h2>
+<body class="bg-light p-4">
+    <div class="container mt-4">
+        
+        <div class="d-flex justify-content-between align-items-center mb-4 no-print">
+            <a href="{{ url_for('relatorio_inicial') }}" class="btn btn-secondary">⬅️ Voltar aos Relatórios</a>
+            <!-- Botão de impressão, útil para exportar para PDF com a quebra de página -->
+            <button onclick="window.print()" class="btn btn-primary">🖨️ Imprimir/Exportar PDF</button>
+        </div>
 
-  {% for tutor, alunos in dados.items() %}
-  <div class="card shadow p-4 mb-4">
-    <h4 class="mb-3">{{ tutor }}</h4>
-    <table class="table table-striped">
-      <thead class="table-dark">
-        <tr>
-          <th>Aluno</th>
-          <th>Sala</th>
-	  </tr>
-      </thead>
-      <tbody>
-        {% for a in alunos %}
-        <tr>
-          <td>{{ a.Aluno }}</td>
-          <td>{{ a.Sala }}</td>
-        </tr>
+        <h2 class="mb-4 text-center">SISTEMA DE GESTÃO DE CONVIVÊNCIA ESCOLAR</h2>
+        <h3 class="mb-5 text-center"><strong>RELATÓRIO DE ALUNOS POR TUTOR</strong></h3>
+
+        {% for tutor, alunos in dados.items() %}
+        <!-- Div para o tutor, com quebra de página após (regra 'one tutor per page') -->
+        <div class="card shadow p-4 mb-5 tutor-section">
+            
+            <!-- Nome do Tutor (linha abaixo do título) -->
+            <h4 class="mb-3 text-primary">{{ tutor }}</h4>
+            
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Aluno</th>
+                            <th>Sala</th>
+                            <th class="text-center">Quantidade Ocorrências</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for a in alunos %}
+                        <tr>
+                            <td>{{ a.Aluno }}</td>
+                            <td>{{ a.Sala }}</td>
+                            <td class="text-center">{{ a['Quantidade Ocorrências'] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+        </div>
         {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% endfor %}
-</div>
-<!-- Rodapé -->
+
+    </div>
+    
+    <!-- Rodapé -->
     <footer class="text-center mt-5 mb-3">
         <small>Desenvolvido: Marcelo André Nogueira Cardes <br> Licenciado: EE PEI Profª Irene Dias Ribeiro</small>
     </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
