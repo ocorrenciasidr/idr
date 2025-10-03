@@ -98,82 +98,6 @@ from flask import request, render_template
 
 # PRAZO_MAXIMO_DIAS = 7 # Garanta que este valor esteja definido no seu app.py
 
-def calcular_relatorio_estatistico_tutor(df_completo, data_inicio_str, data_fim_str):
-    """
-    Calcula as métricas de resposta (No Prazo, Fora do Prazo, Não Respondido) 
-    exclusivamente para o fluxo do Tutor (FT='SIM').
-    """
-    
-    # Replicando a função de filtro de período (se estiver no mesmo arquivo)
-    def filtrar_df_por_periodo(df, data_inicio_str, data_fim_str):
-        if df.empty: return df
-        df_filtered = df.copy()
-        if 'DCO' not in df.columns or not pd.api.types.is_datetime64_any_dtype(df['DCO']):
-            df_filtered['DCO'] = pd.to_datetime(df_filtered['DCO'], errors='coerce', utc=True).dt.tz_convert(TZ_SAO)
-        data_inicio, data_fim = None, None
-        try:
-            if data_inicio_str:
-                data_inicio = datetime.strptime(data_inicio_str, '%Y-%m-%d').replace(tzinfo=TZ_SAO)
-            if data_fim_str:
-                data_fim = datetime.strptime(data_fim_str, '%Y-%m-%d').replace(tzinfo=TZ_SAO) + timedelta(days=1, microseconds=-1)
-        except ValueError:
-            return pd.DataFrame() 
-        if data_inicio:
-            df_filtered = df_filtered[df_filtered['DCO'] >= data_inicio]
-        if data_fim:
-            df_filtered = df_filtered[df_filtered['DCO'] <= data_fim]
-        return df_filtered.dropna(subset=['DCO'])
-
-
-    df_filtrado = filtrar_df_por_periodo(df_completo, data_inicio_str, data_fim_str)
-    
-    if df_filtrado.empty:
-        return {}
-
-    # 1. Filtra apenas ocorrências que DEVEM ser respondidas pelo Tutor (Tutor vinculado e FT='SIM')
-    # Assumimos que a coluna 'Tutor' está no df_filtrado (via carregar_dados() ou merge anterior)
-    df_tutor = df_filtrado[
-        (df_filtrado['FT'] == 'SIM') & 
-        df_filtrado['Tutor'].notna()
-    ].copy()
-
-    if df_tutor.empty:
-        return {}
-
-    # 2. Converte as datas de resposta do Tutor (DT)
-    # Tenta garantir que DT é datetime
-    if 'DT' not in df_tutor.columns or not pd.api.types.is_datetime64_any_dtype(df_tutor['DT']):
-        df_tutor['DT'] = pd.to_datetime(df_tutor['DT'], errors='coerce', utc=True).dt.tz_convert(TZ_SAO)
-
-    # 3. Calcula a diferença de tempo (DT - DCO)
-    df_tutor['Diferenca_Dias'] = (df_tutor['DT'] - df_tutor['DCO']).dt.days
-
-    relatorio = {}
-    
-    for tutor, group in df_tutor.groupby('Tutor'):
-        total_ocorrencias = group.shape[0]
-        
-        # Ocorrências Respondidas (DT não é nulo)
-        respondidas = group[group['DT'].notna()]
-        
-        # No Prazo (DT - DCO <= 7 dias)
-        no_prazo = respondidas[respondidas['Diferenca_Dias'] <= PRAZO_MAXIMO_DIAS].shape[0]
-        
-        # Fora do Prazo (DT - DCO > 7 dias)
-        fora_prazo = respondidas[respondidas['Diferenca_Dias'] > PRAZO_MAXIMO_DIAS].shape[0]
-        
-        # Não Respondido (DT é nulo, mas FT='SIM')
-        nao_respondido = group[group['DT'].isna()].shape[0]
-
-        relatorio[tutor] = {
-            'total': total_ocorrencias,
-            'prazo': no_prazo,
-            'fora': fora_prazo,
-            'nao': nao_respondido
-        }
-        
-    return relatorio
-
 
 @app.route("/relatorio_estatistica_tutor", methods=["GET"])
 def relatorio_estatistica_tutor():
@@ -1048,6 +972,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
