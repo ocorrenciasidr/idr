@@ -5,8 +5,7 @@
     <title>Lista de Ocorrências</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
 </head>
-<body class="bg-dark text-light">
-<body class="p-4">
+<body class="bg-dark text-light p-4">
 
 {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
@@ -23,7 +22,6 @@
 
 <form method="GET" action="{{ url_for('index') }}" class="mb-4">
     <div class="row g-3">
-
         <!-- Filtro Tutor -->
         <div class="col-md-3">
             <label class="form-label">Tutor:</label>
@@ -35,7 +33,7 @@
             </select>
         </div>
 
-        <!-- Filtro Status fixo -->
+        <!-- Filtro Status -->
         <div class="col-md-3">
             <label class="form-label">Status:</label>
             <select class="form-select" name="status" onchange="this.form.submit()">
@@ -81,23 +79,23 @@
 
             <td>
                 {% if d.FT == 'SIM' %}
-                <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='ft') }}" class="badge bg-danger text-white text-decoration-none">SIM</a>
+                    <span class="badge bg-danger text-white">SIM</span>
                 {% else %}
-                <span class="badge bg-success">NÃO</span>
+                    <span class="badge bg-success">NÃO</span>
                 {% endif %}
             </td>
             <td>
                 {% if d.FC == 'SIM' %}
-                <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='fc') }}" class="badge bg-danger text-white text-decoration-none">SIM</a>
+                    <span class="badge bg-danger text-white">SIM</span>
                 {% else %}
-                <span class="badge bg-success">NÃO</span>
+                    <span class="badge bg-success">NÃO</span>
                 {% endif %}
             </td>
             <td>
                 {% if d.FG == 'SIM' %}
-                <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='fg') }}" class="badge bg-danger text-white text-decoration-none">SIM</a>
+                    <span class="badge bg-danger text-white">SIM</span>
                 {% else %}
-                <span class="badge bg-success">NÃO</span>
+                    <span class="badge bg-success">NÃO</span>
                 {% endif %}
             </td>
 
@@ -106,8 +104,11 @@
             </td>
 
             <td>
-                <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='lupa') }}" class="btn btn-sm btn-info">Ver</a>
-                <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='lapis') }}" class="btn btn-sm btn-primary">Editar</a>
+                <!-- Botão Ver (modo visualização) -->
+                <a href="{{ url_for('editar', oid=d['Nº Ocorrência'], papel='ver') }}" class="btn btn-sm btn-info">Ver</a>
+
+                <!-- Botão Editar (com modal de senha) -->
+                <button type="button" class="btn btn-sm btn-primary editar-btn" data-oid="{{ d['Nº Ocorrência'] }}">Editar</button>
             </td>
         </tr>
         {% else %}
@@ -117,19 +118,44 @@
         {% endfor %}
     </tbody>
 </table>
+
+<!-- Modal Senha -->
+<div class="modal fade" id="senhaModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title">Acesso Restrito</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <p>Esta área requer uma senha de acesso:</p>
+        <input type="password" id="senhaInput" class="form-control" placeholder="Senha">
+        <div id="senhaErro" class="text-danger mt-2" style="display:none;">Senha incorreta!</div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btnAcessar">Acessar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-const senhaCorreta = "SUA_SENHA_DO_SISTEMA";
+const senhaCorreta = "SUA_SENHA_DO_SISTEMA"; // coloque a senha real
 let oidSelecionado = null;
 
-document.querySelectorAll('a[href*="editar"]').forEach(btn => {
-    btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        oidSelecionado = this.getAttribute('href').split('/').pop().split('?')[0];
-        new bootstrap.Modal(document.getElementById('senhaModal')).show();
+// Abre modal ao clicar no botão Editar
+document.querySelectorAll('.editar-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        oidSelecionado = this.getAttribute('data-oid');
+        const modal = new bootstrap.Modal(document.getElementById('senhaModal'));
+        modal.show();
     });
 });
 
-function validarSenha() {
+// Valida senha e redireciona para editar
+document.getElementById('btnAcessar').addEventListener('click', function() {
     const senhaDigitada = document.getElementById('senhaInput').value;
     const erro = document.getElementById('senhaErro');
 
@@ -139,8 +165,7 @@ function validarSenha() {
     } else {
         erro.style.display = 'block';
     }
-}
+});
 </script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
