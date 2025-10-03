@@ -1,6 +1,7 @@
 Flask
 pandas
 supabase
+reportlab
 fpdf
 matplotlib
 gunicorn  
