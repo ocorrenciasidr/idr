@@ -729,35 +729,49 @@ def gerar_pdf_aluno():
 # ... (restante do seu código app.py) ...
 @app.route("/editar/<int:oid>", methods=["GET", "POST"])
 def editar(oid):
+    papel = request.args.get("papel", "visualizacao")  # 'ft', 'fc', 'fg', 'ver', 'editar'
     supabase = conectar_supabase()
     if not supabase:
         flash("Erro ao conectar ao banco de dados.", "danger")
         return redirect(url_for("index"))
 
+    # POST → salvar alterações
     if request.method == "POST":
         data = request.form
         update_data = {}
 
-        # Definir permissões no POST
         permissoes = {
-            "editar_att": data.get("FT") == "SIM",
-            "editar_atc": data.get("FC") == "SIM",
-            "editar_atg": data.get("FG") == "SIM",
-            "editar_descricao": False,  # altere para True se quiser permitir edição da descrição
-            "editar_atp": False,        # altere para True se quiser permitir edição do ATP
+            "editar_descricao": papel == "editar",
+            "editar_atp": papel == "editar",
+            "editar_att": papel == "editar" or papel == "ft",
+            "editar_atc": papel == "editar" or papel == "fc",
+            "editar_atg": papel == "editar" or papel == "fg",
         }
+
+        now_local = datetime.now(TZ_SAO)
 
         if permissoes["editar_att"]:
             update_data["ATT"] = data.get("ATT", "").strip()
-            update_data["DT"] = datetime.now(TZ_SAO).isoformat()
+            update_data["DT"] = now_local.isoformat()
+            if papel == "ft":  # FT pendente → resolvido
+                update_data["FT"] = "NÃO"
 
         if permissoes["editar_atc"]:
             update_data["ATC"] = data.get("ATC", "").strip()
-            update_data["DC"] = datetime.now(TZ_SAO).isoformat()
+            update_data["DC"] = now_local.isoformat()
+            if papel == "fc":
+                update_data["FC"] = "NÃO"
 
         if permissoes["editar_atg"]:
             update_data["ATG"] = data.get("ATG", "").strip()
-            update_data["DG"] = datetime.now(TZ_SAO).isoformat()
+            update_data["DG"] = now_local.isoformat()
+            if papel == "fg":
+                update_data["FG"] = "NÃO"
+
+        if permissoes["editar_descricao"]:
+            update_data["DESCRICAO"] = data.get("DESCRICAO", "").strip()
+        if permissoes["editar_atp"]:
+            update_data["ATP"] = data.get("ATP", "").strip()
 
         try:
             supabase.table("ocorrencias").update(update_data).eq("ID", oid).execute()
@@ -772,21 +786,16 @@ def editar(oid):
     response = supabase.table("ocorrencias").select("*").eq("ID", oid).execute()
     ocorrencia = response.data[0] if response.data else None
 
-    # Definir permissões para o template no GET
+    # Permissões para o template
     permissoes = {
-        "editar_descricao": False,  # ou True se quiser liberar edição da descrição
-        "editar_atp": False,        # ou True se quiser liberar edição do ATP
-        "editar_att": ocorrencia.get("FT") == "SIM" if ocorrencia else False,
-        "editar_atc": ocorrencia.get("FC") == "SIM" if ocorrencia else False,
-        "editar_atg": ocorrencia.get("FG") == "SIM" if ocorrencia else False,
+        "editar_descricao": papel == "editar",
+        "editar_atp": papel == "editar",
+        "editar_att": papel == "editar" or papel == "ft",
+        "editar_atc": papel == "editar" or papel == "fc",
+        "editar_atg": papel == "editar" or papel == "fg",
     }
 
-    return render_template(
-        "editar.html",
-        ocorrencia=ocorrencia,
-        permissoes=permissoes,
-        papel=request.args.get("papel")
-    )
+    return render_template("editar.html", ocorrencia=ocorrencia, permissoes=permissoes, papel=papel)
 
 @app.route("/relatorios")
 def relatorios():
@@ -977,6 +986,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
