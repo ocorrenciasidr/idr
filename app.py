@@ -795,8 +795,6 @@ def editar(oid):
         return redirect(url_for('index'))
 
     return render_template("editar.html", ocorrencia=ocorrencia, permissoes=permissoes, papel=papel)
-""Rota para carregar o modal de senha antes de acessar o menu de relatórios."""
-    return render_template("relatorio_inicial.html")
 
 @app.route("/relatorios")
 def relatorios():
@@ -998,6 +996,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
