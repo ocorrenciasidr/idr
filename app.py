@@ -595,15 +595,18 @@ def gerar_pdf_aluno():
 
     selecionadas = [int(x) for x in selecionadas]
 
-    # 🔹 Buscar do Supabase em vez de usar df "mágico"
-    response = supabase.table("ocorrencias").select("*").in_("Nº Ocorrência", selecionadas).execute()
+    supabase = conectar_supabase()
+    if not supabase:
+        flash("Erro ao conectar ao banco de dados.", "danger")
+        return redirect(url_for("relatorio_aluno", sala=sala, aluno=aluno))
+
+    response = supabase.table("ocorrencias").select("*").in_("ID", selecionadas).execute()
     ocorrencias = pd.DataFrame(response.data)
 
     if ocorrencias.empty:
         flash("Não foram encontradas ocorrências selecionadas.", "danger")
         return redirect(url_for("relatorio_aluno", sala=sala, aluno=aluno))
 
-    # 🔹 Criar o PDF
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 14)
@@ -615,16 +618,14 @@ def gerar_pdf_aluno():
 
     for _, row in ocorrencias.iterrows():
         pdf.set_font("Arial", "B", 11)
-        pdf.cell(0, 10, f"Ocorrência Nº {row['Nº Ocorrência']} - {row['DCO']} {row['HCO']}", ln=True)
+        pdf.cell(0, 10, f"Ocorrência Nº {row['ID']} - {row['DCO']} {row['HCO']}", ln=True)
         pdf.set_font("Arial", "", 11)
         pdf.multi_cell(0, 8, row["Descrição da Ocorrência"])
         pdf.ln(5)
 
-        # Atualizar no Supabase diretamente
-        supabase.table("ocorrencias").update({"Status": "ASSINADA"}) \
-            .eq("Nº Ocorrência", row["Nº Ocorrência"]).execute()
+        # Atualizar status no Supabase
+        supabase.table("ocorrencias").update({"Status": "ASSINADA"}).eq("ID", row["ID"]).execute()
 
-    # 🔹 Retornar o PDF
     pdf_output = BytesIO()
     pdf.output(pdf_output)
     pdf_output.seek(0)
@@ -894,6 +895,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
