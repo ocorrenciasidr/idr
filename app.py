@@ -458,7 +458,7 @@ def alunos_por_sala(sala):
 
 @app.route("/nova", methods=["GET", "POST"])
 def nova():
-    # ... (carregar_salas, carregar_professores, etc. - Mantido)
+    # Carregar listas de salas, professores e tutores
     salas_unicas = carregar_salas()
     professores_unicos = carregar_professores()
     df_alunos = carregar_dados_alunos()
@@ -471,69 +471,55 @@ def nova():
         if not supabase:
             flash("Erro ao conectar ao banco de dados.", "danger")
             return redirect(url_for("nova"))
-            
+        
         try:
             next_id = get_proximo_id_supabase(supabase)
             now_local = datetime.now(TZ_SAO)
             
-            dco_iso = now_local.isoformat() 
+            dco_iso = now_local.isoformat()
             hco_str = now_local.strftime('%H:%M:%S')
 
-            # NOVO: LÓGICA CORRIGIDA para FT, FC, FG (Se marcada é SIM/Pendente, se NÃO marcada é NÃO/Feito)
-            # O link de "Ação Rápida" no Index é para quando a ação está PENDENTE, ou seja, FT/FC/FG é 'SIM'.
-            # Se a checkbox for marcada no formulário, a ação é solicitada (SIM).
-            
-            # ATENÇÃO: Se a sua lógica original era que NÃO marcado = Pendente, e MARCADo = Resolvido, 
-            # você deve manter o código anterior, mas a regra do link no INDEX (SIM = Pendente) exige
-            # que a checkbox MARCADA gere 'SIM'.
-            # Vamos seguir a regra lógica comum: Checkbox MARCADAS = Ação Solicitada (SIM)
-            
+            # FT, FC, FG conforme checkbox (SIM se marcada)
             ft_solicitado = 'SIM' if data.get('FT') == 'on' else 'NÃO'
             fc_solicitado = 'SIM' if data.get('FC') == 'on' else 'NÃO'
             fg_solicitado = 'SIM' if data.get('FG') == 'on' else 'NÃO'
 
             dados_insercao = {
-                "ID": next_id, 
-                "DCO": dco_iso, 
+                "ID": next_id,
+                "DCO": dco_iso,
                 "HCO": hco_str,
-                
                 "PROFESSOR": data.get('PROFESSOR', '').strip(),
                 "SALA": data.get('SALA', '').strip(),
                 "ALUNO": data.get('ALUNO', '').strip(),
                 "TUTOR": data.get('TUTOR', '').strip(),
                 "DESCRICAO": data.get('DESCRICAO', '').strip(),
-                
-                "ATP": data.get('ATP', '').strip(), 
-                
-                "FT": ft_solicitado, # SIM se a ação do Tutor é solicitada (pendente)
-                "FC": fc_solicitado, # SIM se a ação da Coordenação é solicitada (pendente)
-                "FG": fg_solicitado, # SIM se a ação da Gestão é solicitada (pendente)
-                
-                "ATT": '', "ATC": '', "ATG": '', 
-                "DT": None, "DC": None, "DG": None, 
+                "ATP": data.get('ATP', '').strip(),
+                "FT": ft_solicitado,
+                "FC": fc_solicitado,
+                "FG": fg_solicitado,
+                "ATT": '', "ATC": '', "ATG": '',
+                "DT": None, "DC": None, "DG": None,
                 "STATUS": 'Aberta'
             }
 
-            # Lógica de status para ATENDIMENTO
-            # Se alguma ação for solicitada (FT='SIM' ou FC='SIM' ou FG='SIM'), o status é ATENDIMENTO
+            # Ajusta status automaticamente
             if dados_insercao["FT"] == "SIM" or dados_insercao["FC"] == "SIM" or dados_insercao["FG"] == "SIM":
-                 dados_insercao["STATUS"] = "ATENDIMENTO"
+                dados_insercao["STATUS"] = "ATENDIMENTO"
             else:
-                 dados_insercao["STATUS"] = "ABERTA" # Nenhuma ação solicitada, mas ainda não é ASSINADA
+                dados_insercao["STATUS"] = "ABERTA"
 
-            # Executa a inserção no Supabase (Mantido)
+            # Inserir no Supabase
             response = supabase.table('ocorrencias').insert(dados_insercao).execute()
-            
             if response.data is None or len(response.data) == 0:
-                 raise Exception(f"Resposta Supabase vazia. Erro: {response.error}")
-                 
-            
+                raise Exception(f"Resposta Supabase vazia. Erro: {response.error}")
+
             limpar_caches()
             flash(f"Ocorrência Nº {next_id} registrada com sucesso!", "success")
+
         except Exception as e:
             flash(f"Erro ao salvar a ocorrência. Verifique os logs do servidor: {e}", "danger")
             print(f"Erro no POST /nova: {e}")
-        
+
         return redirect(url_for("index"))
 
     return render_template("nova.html", salas_disp=salas_unicas, professores_disp=professores_unicos, tutores_disp=tutores_unicos)
@@ -991,6 +977,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
