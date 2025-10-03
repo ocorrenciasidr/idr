@@ -593,19 +593,12 @@ def gerar_pdf_aluno():
         flash("Nenhuma ocorrência selecionada.", "warning")
         return redirect(url_for("relatorio_aluno", sala=sala, aluno=aluno))
 
+    # Converte para inteiros (IDs do Supabase)
     selecionadas = [int(x) for x in selecionadas]
 
-    supabase = conectar_supabase()
-    if not supabase:
-        flash("Erro ao conectar ao banco de dados.", "danger")
-        return redirect(url_for("relatorio_aluno", sala=sala, aluno=aluno))
-
+    # Busca no Supabase as ocorrências selecionadas
     response = supabase.table("ocorrencias").select("*").in_("ID", selecionadas).execute()
-    ocorrencias = pd.DataFrame(response.data)
-
-    if ocorrencias.empty:
-        flash("Não foram encontradas ocorrências selecionadas.", "danger")
-        return redirect(url_for("relatorio_aluno", sala=sala, aluno=aluno))
+    ocorrencias = response.data
 
     pdf = FPDF()
     pdf.add_page()
@@ -616,7 +609,7 @@ def gerar_pdf_aluno():
     pdf.cell(0, 10, f"Aluno: {aluno}  Sala: {sala}", ln=True)
     pdf.ln(5)
 
-    for _, row in ocorrencias.iterrows():
+    for row in ocorrencias:
         pdf.set_font("Arial", "B", 11)
         pdf.cell(0, 10, f"Ocorrência Nº {row['ID']} - {row['DCO']} {row['HCO']}", ln=True)
         pdf.set_font("Arial", "", 11)
@@ -624,7 +617,8 @@ def gerar_pdf_aluno():
         pdf.ln(5)
 
         # Atualizar status no Supabase
-        supabase.table("ocorrencias").update({"Status": "ASSINADA"}).eq("ID", row["ID"]).execute()
+        supabase.table("ocorrencias").update({"Status": "ASSINADA"}) \
+            .eq("ID", row["ID"]).execute()
 
     pdf_output = BytesIO()
     pdf.output(pdf_output)
@@ -873,6 +867,7 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
 
