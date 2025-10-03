@@ -66,19 +66,31 @@
     </div>
 
     <div class="mb-3">
-        <label class="form-label">Atendimento Tutor (ATT) - FT: {{ ocorrencia.FT | default('N/D') }} | DT: {{ ocorrencia.DT | default('N/D') }}:</label>
+        <label class="form-label">
+            Atendimento Tutor (ATT) 
+            <span class="badge bg-{{ 'danger' if ocorrencia.FT == 'SIM' else 'success' }}">{{ ocorrencia.FT | default('N/D') }}</span> 
+            | DT: {{ ocorrencia.DT | default('N/D') }}
+        </label>
         <textarea class="form-control" name="ATT" rows="2" 
             {% if not campos_editaveis.ATT %}readonly{% endif %}>{{ ocorrencia.ATT | default('') }}</textarea>
     </div>
 
     <div class="mb-3">
-        <label class="form-label">Atendimento Coordenação (ATC) - FC: {{ ocorrencia.FC | default('N/D') }} | DC: {{ ocorrencia.DC | default('N/D') }}:</label>
+        <label class="form-label">
+            Atendimento Coordenação (ATC) 
+            <span class="badge bg-{{ 'danger' if ocorrencia.FC == 'SIM' else 'success' }}">{{ ocorrencia.FC | default('N/D') }}</span> 
+            | DC: {{ ocorrencia.DC | default('N/D') }}
+        </label>
         <textarea class="form-control" name="ATC" rows="2" 
             {% if not campos_editaveis.ATC %}readonly{% endif %}>{{ ocorrencia.ATC | default('') }}</textarea>
     </div>
 
     <div class="mb-3">
-        <label class="form-label">Atendimento Gestão (ATG) - FG: {{ ocorrencia.FG | default('N/D') }} | DG: {{ ocorrencia.DG | default('N/D') }}:</label>
+        <label class="form-label">
+            Atendimento Gestão (ATG) 
+            <span class="badge bg-{{ 'danger' if ocorrencia.FG == 'SIM' else 'success' }}">{{ ocorrencia.FG | default('N/D') }}</span> 
+            | DG: {{ ocorrencia.DG | default('N/D') }}
+        </label>
         <textarea class="form-control" name="ATG" rows="2" 
             {% if not campos_editaveis.ATG %}readonly{% endif %}>{{ ocorrencia.ATG | default('') }}</textarea>
     </div>
