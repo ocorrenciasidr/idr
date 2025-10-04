@@ -110,13 +110,31 @@ def _adicionar_ocorrencia_ao_pdf(pdf, ocorrencia):
 def carregar_dados():
     supabase = conectar_supabase()
     if not supabase:
+        print("❌ Supabase não conectado.")
         return pd.DataFrame()
+
     try:
         response = supabase.table("ocorrencias").select("*").execute()
         df = pd.DataFrame(response.data)
+
+        if df.empty:
+            print("⚠️ Nenhum dado retornado da tabela 'ocorrencias'.")
+            return df
+
+        # Padroniza colunas para MAIÚSCULAS
+        df.columns = [c.upper() for c in df.columns]
+
+        # Garante colunas essenciais mesmo se não existirem
+        for col in ["ID","DCO","HCO","ALUNO","SALA","PROFESSOR","TUTOR","STATUS","FT","FC","FG"]:
+            if col not in df.columns:
+                df[col] = None
+
         return df
-    except:
+
+    except Exception as e:
+        print("❌ Erro ao carregar dados:", e)
         return pd.DataFrame()
+
 
 def calcular_status_prazo(row):
     status = {}
@@ -349,6 +367,7 @@ def relatorio_tutor():
 # -------------------------- RUN --------------------------
 if __name__=="__main__":
     app.run(debug=True, port=int(os.environ.get("PORT",5000)))
+
 
 
 
