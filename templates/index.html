@@ -97,6 +97,26 @@
         {% endfor %}
       </tbody>
     </table>
+  </div
+            <span class="badge bg-{% if d['STATUS'] == 'ABERTA' %}danger{% elif d['STATUS'] == 'ATENDIMENTO' %}warning{% else %}success{% endif %}">
+              {{ d["STATUS"] }}
+            </span>
+          </td>
+
+          <!-- AÇÕES -->
+          <td>
+            <a href="{{ url_for('editar', oid=d['ID'], papel='ver') }}" class="btn btn-sm btn-info">Ver</a>
+            <a href="#" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#senhaModal"
+               onclick="setEditarOid({{ d['ID'] }}, 'editar')">Editar</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="12" class="text-center">Nenhuma ocorrência encontrada.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
 </div>
 
