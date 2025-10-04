@@ -212,81 +212,6 @@ def index():
     # Gestão de Ocorrências
     return render_template("index.html")
 
-
-
-ChatGPT
-Você disse:
-werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'relatorio_inicial'. Did you mean 'relatorio_aluno' instead?
-127.0.0.1 - - [02/Oct/2025:20:50:36 +0000] "GET / HTTP/1.1" 500 265 "-" "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36"
-O ChatGPT disse:
-Esse erro do Flask significa que você está tentando gerar uma URL (url_for) para um endpoint chamado relatorio_inicial, mas esse endpoint não existe.
-
-O próprio Flask sugeriu que talvez você queria usar relatorio_aluno, que é um endpoint já definido no seu app.py.
-
-Onde isso acontece
-Provavelmente em algum url_for('relatorio_inicial') no seu código:
-
-Pode estar em um template HTML (ex: href="{{ url_for('relatorio_inicial') }}")
-
-Ou em algum redirect no app.py (ex: redirect(url_for('relatorio_inicial')))
-
-Como corrigir
-Você tem duas opções:
-
-Corrigir o nome do endpoint usado
-
-Se o correto era chamar o relatório de aluno:
-
-return redirect(url_for('relatorio_aluno'))
-ou no HTML:
-
-<a href="{{ url_for('relatorio_aluno') }}">Relatório</a>
-Criar o endpoint relatorio_inicial
-
-Caso realmente exista um relatório inicial que você queria acessar:
-
-@app.route('/relatorio_inicial')
-def relatorio_inicial():
-    return render_template("relatorio_inicial.html")
-👉 Se você me mostrar o trecho do index.html (ou outro template) onde aparece url_for('relatorio_inicial'), eu consigo ajustar exatamente para o endpoint correto.
-
-Quer que eu procure no seu index.html onde está chamando esse relatorio_inicial?
-
-Você disse:
-Meu dados naos estão carregando do supabaee 
-import os
-import json
-from datetime import datetime, timedelta, timezone
-from io import BytesIO
-from dateutil import parser as date_parser
-
-import pandas as pd
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file
-from datetime import datetime
-from fpdf import FPDF
-
-# Supabase
-from supabase import create_client, Client
-
-# -------------------------- CONFIGURAÇÃO --------------------------
-app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "supersecret")
-
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
-PRAZO_DIAS = 7  # Prazo para classificar atendimento como no prazo
-SETORES_ATENDIMENTO = ["Tutor", "Coordenação", "Gestão"]
-
-TZ_SAO = timezone(timedelta(hours=-3))  # São Paulo UTC-3
-
-def conectar_supabase() -> Client:
-    try:
-        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-        return supabase
-    except Exception as e:
-        print(f"Erro ao conectar ao Supabase: {e}")
-        return None
-
 # -------------------------- PDF --------------------------
 class PDF(FPDF):
     def header(self):
@@ -1584,6 +1509,7 @@ def relatorio_tutor():
 # -------------------------- RUN --------------------------
 if __name__=="__main__":
     app.run(debug=True, port=int(os.environ.get("PORT",5000)))
+
 
 
 
