@@ -230,8 +230,177 @@ def index():
         filtro_status_sel=filtro_status
     )
     
+# app.py
+
+# ... (coloque antes da rota editar)
+
+@app.route("/atendimento/<int:oid>/<tipo_acao>", methods=["GET", "POST"])
+def atendimento(oid, tipo_acao):
+    # Tipos válidos de ação/setor: F=Tutor, C=Coordenação, G=Gestão
+    if tipo_acao not in ["FT", "FC", "FG"]:
+        flash("Ação inválida.", "danger")
+        return redirect(url_for("index"))
+
+    supabase = conectar_supabase()
+    if not supabase:
+        flash("Erro de conexão com o banco.", "danger")
+        return redirect(url_for("index"))
+
+    # 1. Busca a ocorrência
+    try:
+        resp = supabase.table("ocorrencias").select("*").eq("ID", oid).execute()
+        data = resp.data or []
+        if not data:
+            flash("Ocorrência não encontrada.", "danger")
+            return redirect(url_for("index"))
+        ocorr = upperize_row_keys(data[0])
+    except Exception as e:
+        print("Erro ao buscar ocorrência para atendimento:", e)
+        flash("Erro ao buscar ocorrência.", "danger")
+        return redirect(url_for("index"))
+    
+    # 2. Se GET (apenas visualiza a tela de edição)
+    if request.method == "GET":
+        # Passa a ocorrência e o modo (ATT, ATC ou ATG) para o template
+        # O modo ATENDIMENTO só permite edição do campo de atendimento correspondente
+        return render_template("editar.html", ocorrencia=ocorr, modo="ATENDIMENTO", tipo_acao=tipo_acao)
+
+    # 3. Se POST (salva o atendimento)
+    form = request.form
+    campo_atendimento = tipo_acao[0] + "TT" # FT -> ATT, FC -> ATC, FG -> ATG
+    campo_data = tipo_acao[0] + "T"        # FT -> DT, FC -> DC, FG -> DG
+    
+    # Obtém o conteúdo do atendimento
+    atendimento_texto = form.get(campo_atendimento)
+    
+    if not atendimento_texto:
+        flash("O campo de atendimento não pode estar vazio.", "danger")
+        return redirect(url_for("atendimento", oid=oid, tipo_acao=tipo_acao))
+        
+    # a) Gera a data atual
+    now_iso = datetime.now(TZ_SAO).date().isoformat()
+    
+    update = {}
+    update[campo_atendimento] = atendimento_texto
+    update[campo_data] = now_iso # b) Grava a data
+    update[tipo_acao] = "NÃO"    # c) Muda o FT/FC/FG para NÃO
+    
+    # Ajusta o STATUS (se todas as FT/FC/FG forem 'NÃO', muda para FINALIZADA)
+    # Pega os valores atuais (priorizando o update atual)
+    ft = update.get("FT") if tipo_acao == "FT" else ocorr.get("FT", "NÃO")
+    fc = update.get("FC") if tipo_acao == "FC" else ocorr.get("FC", "NÃO")
+    fg = update.get("FG") if tipo_acao == "FG" else ocorr.get("FG", "NÃO")
+    
+    if "SIM" not in (ft, fc, fg):
+        update["STATUS"] = "FINALIZADA"
+        
+    # d) Armazena os dados na tabela ocorrencias
+    try:
+        supabase.table("ocorrencias").update(update).eq("ID", oid).execute()
+        flash(f"Atendimento {tipo_acao} registrado e ocorrência atualizada.", "success")
+    except Exception as e:
+        print(f"Erro ao salvar atendimento {tipo_acao}:", e)
+        flash("Erro ao salvar o atendimento.", "danger")
+        
+    return redirect(url_for("index"))
+
+# app.py
+
+# ... (código anterior)
+
+# Nova rota de edição completa (usada apenas após senha)
+@app.route("/editar_completo/<int:oid>", methods=["GET", "POST"])
+def editar_completo(oid):
+    if request.method == "POST":
+        senha = request.form.get("senha")
+        # Senha hardcoded (idealmente, use autenticação de usuário/hash)
+        if senha != "idrgestao":
+            flash("Senha incorreta para edição completa.", "danger")
+            return redirect(url_for("index"))
+            
+    # O restante da lógica de GET e POST do antigo /editar deve vir aqui
+    # (Com exceção da parte de atendimento FT/FC/FG, que foi para a nova rota /atendimento)
+
+    # Busca ocorrência (código copiado do antigo /editar)
+    supabase = conectar_supabase()
+    # ... (código de busca da ocorrência por ID)
+    try:
+        resp = supabase.table("ocorrencias").select("*").eq("ID", oid).execute()
+        data = resp.data or []
+        if not data:
+            flash("Ocorrência não encontrada.", "danger")
+            return redirect(url_for("index"))
+        ocorr = upperize_row_keys(data[0])
+    except Exception as e:
+        print("Erro ao buscar ocorrências:", e)
+        flash("Erro ao buscar ocorrências.", "danger")
+        return redirect(url_for("index"))
+        
+    professores = carregar_lookup("Professores", column="Professor")
+    salas = carregar_lookup("Salas", column="Sala")
+
+    if request.method == "GET":
+        # Modo 'EDITAR' permite edição restrita, fundo branco
+        return render_template("editar.html", ocorrencia=ocorr, professores_disp=professores, salas_disp=salas, modo="EDITAR")
+
+    # POST: atualizar registro
+    form = request.form
+    update = {}
+    
+    # CAMPOS PERMITIDOS PARA EDIÇÃO COMPLETA:
+    # Professor, Sala, Aluno, Tutor, FT, FC, FG, Status, Assinada
+    update["PROFESSOR"] = form.get("PROFESSOR", ocorr.get("PROFESSOR", ""))
+    update["SALA"] = form.get("SALA", ocorr.get("SALA", ""))
+    update["ALUNO"] = form.get("ALUNO", ocorr.get("ALUNO", ""))
+    update["TUTOR"] = form.get("TUTOR", ocorr.get("TUTOR", ""))
+    update["FT"] = normalize_checkbox(form.get("FT"))
+    update["FC"] = normalize_checkbox(form.get("FC"))
+    update["FG"] = normalize_checkbox(form.get("FG"))
+    update["STATUS"] = form.get("STATUS", ocorr.get("STATUS", "ATENDIMENTO"))
+    update["ASSINADA"] = normalize_checkbox(form.get("ASSINADA")) # Assumindo que você tem um campo ASSINADA
+    
+    # Campos que NÃO PODEM SER EDITADOS (exceto se for primeira vez, o que não é o caso aqui):
+    # DESCRICAO, ATP, ATT, ATC, ATG
+    
+    try:
+        supabase.table("ocorrencias").update(update).eq("ID", oid).execute()
+        flash("Ocorrência editada com sucesso. (Modo Completo)", "success")
+    except Exception as e:
+        print("Erro ao atualizar ocorrência:", e)
+        flash("Erro ao atualizar ocorrência.", "danger")
+        
+    return redirect(url_for("index"))
+
+
+# Refatorar o antigo /editar para ser o modo 'VER'
+@app.route("/editar/<int:oid>", methods=["GET"])
+def editar(oid):
+    supabase = conectar_supabase()
+    if not supabase:
+        flash("Erro de conexão com o banco.", "danger")
+        return redirect(url_for("index"))
+
+    # buscar ocorrência
+    try:
+        resp = supabase.table("ocorrencias").select("*").eq("ID", oid).execute()
+        data = resp.data or []
+        if not data:
+            flash("Ocorrência não encontrada.", "danger")
+            return redirect(url_for("index"))
+        ocorr = upperize_row_keys(data[0])
+    except Exception as e:
+        print("Erro ao buscar ocorrências:", e)
+        flash("Erro ao buscar ocorrências.", "danger")
+        return redirect(url_for("index"))
+
+    professores = carregar_lookup("Professores", column="Professor")
+    salas = carregar_lookup("Salas", column="Sala")
+    
+    # Modo 'VER' (apenas visualização de todos os campos)
+    return render_template("editar.html", ocorrencia=ocorr, professores_disp=professores, salas_disp=salas, modo="VER")
+    
 # ... (restante do código)
-# --- Nova ocorrência ---
+
 @app.route("/nova", methods=["GET", "POST"])
 def nova():
     supabase = conectar_supabase()
@@ -642,5 +811,6 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("FLASK_DEBUG", "1") == "1"
     app.run(host="0.0.0.0", port=port, debug=debug)
+
 
 
