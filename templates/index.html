@@ -105,7 +105,8 @@
 <div class="modal fade" id="senhaModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <form method="post" action="{{ url_for('editar', oid=0) }}">
+      <!-- O action pode apontar para a rota 'editar' sem oid, que será passado pelo hidden -->
+      <form method="post" action="{{ url_for('editar', oid=0) }}" id="senhaForm">
         <div class="modal-header">
           <h5 class="modal-title text-dark">Acesso Restrito</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -126,6 +127,7 @@
     </div>
   </div>
 </div>
+
 
 <script>
 function setEditarOid(oid) { 
