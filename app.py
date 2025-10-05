@@ -210,29 +210,16 @@ def home():
 
 @app.route("/index", methods=["GET"])
 def index():
+    supabase = conectar_supabase()   # ✅ cria a conexão antes de usar
+    if not supabase:
+        flash("Erro de conexão com o banco.", "danger")
+        return redirect(url_for("home"))
+
     filtro_tutor = request.args.get("tutor_filtro")
     filtro_status = request.args.get("status_filtro")
 
     registros = carregar_dados_ocorrencias(filtro_tutor, filtro_status)
 
-    # CORREÇÃO AQUI: chamada .select("*").execute()
-    try:
-        tutores_data = supabase.table("ocorrencias").select("TUTOR").execute().data or []
-        tutores_disp = sorted(list({r.get("TUTOR") for r in tutores_data if r.get("TUTOR")}))
-    except Exception as e:
-        print("Erro ao carregar tutores:", e)
-        tutores_disp = []
-
-    status_disp = ["ATENDIMENTO", "FINALIZADA", "ASSINADA"]
-
-    return render_template(
-        "index.html",
-        registros=registros,
-        tutores_disp=["Todos"] + tutores_disp,
-        status_disp=["Todos"] + status_disp,
-        filtro_tutor_sel=filtro_tutor,
-        filtro_status_sel=filtro_status
-    )
 
 
 # ... (coloque antes da rota editar)
@@ -788,6 +775,7 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("FLASK_DEBUG", "1") == "1"
     app.run(host="0.0.0.0", port=port, debug=debug)
+
 
 
 
