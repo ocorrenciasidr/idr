@@ -5,30 +5,12 @@
   <title>SGCE - Ocorrências</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    body {
-      padding: 20px;
-      background-color: #f8f9fa;
-    }
-    table {
-      font-size: 0.85rem;
-    }
-    th, td {
-      vertical-align: middle !important;
-      text-align: center;
-    }
-    .btn-small {
-      padding: 0.25rem 0.5rem;
-      font-size: 0.75rem;
-    }
-    .filter-label {
-      font-weight: bold;
-      margin-right: 10px;
-    }
-    .filter-select {
-      max-width: 200px;
-      margin-right: 15px;
-      display: inline-block;
-    }
+    body { padding: 20px; background-color: #f8f9fa; }
+    table { font-size: 0.85rem; }
+    th, td { vertical-align: middle !important; text-align: center; }
+    .btn-small { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
+    .filter-label { font-weight: bold; margin-right: 10px; }
+    .filter-select { max-width: 200px; margin-right: 15px; display: inline-block; }
     .status-atendimento { background-color: #f8d7da; color: #721c24; }
     .status-finalizada { background-color: #fff3cd; color: #856404; }
     .status-assinada { background-color: #d4edda; color: #155724; }
@@ -36,129 +18,119 @@
   </style>
 </head>
 <body>
-  <div class="container">
-    <h3 class="mb-3 text-center">Sistema de Gestão de Convivência Escolar</h3>
+<div class="container">
+  <h3 class="mb-3 text-center">Sistema de Gestão de Convivência Escolar</h3>
 
-    <div class="mb-3">
-      <label class="filter-label">Tutor:</label>
-      <select class="form-select filter-select" id="filterTutor">
-        <option value="">Todos</option>
-      </select>
+  <div class="mb-3">
+    <label class="filter-label">Tutor:</label>
+    <select class="form-select filter-select" id="filterTutor">
+      <option value="">Todos</option>
+    </select>
 
-      <label class="filter-label">Status:</label>
-      <select class="form-select filter-select" id="filterStatus">
-        <option value="">Todos</option>
-        <option value="ATENDIMENTO">ATENDIMENTO</option>
-        <option value="FINALIZADA">FINALIZADA</option>
-        <option value="ASSINADA">ASSINADA</option>
-      </select>
+    <label class="filter-label">Status:</label>
+    <select class="form-select filter-select" id="filterStatus">
+      <option value="">Todos</option>
+      <option value="ATENDIMENTO">ATENDIMENTO</option>
+      <option value="FINALIZADA">FINALIZADA</option>
+      <option value="ASSINADA">ASSINADA</option>
+    </select>
 
-      <button class="btn btn-primary btn-small" onclick="applyFilters()">Filtrar</button>
-      <button class="btn btn-success btn-small" onclick="resetFilters()">Limpar</button>
-      <button class="btn btn-secondary btn-small" onclick="window.location.href='home.html'">Tela Inicial</button>
-    </div>
-
-    <table class="table table-bordered table-hover table-striped">
-      <thead class="table-dark">
-        <tr>
-          <th>ID</th>
-          <th>Data</th>
-          <th>Hora</th>
-          <th>Aluno</th>
-          <th>Sala</th>
-          <th>Professor</th>
-          <th>Tutor</th>
-          <th>FT</th>
-          <th>FC</th>
-          <th>FG</th>
-          <th>Status</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody id="tabelaOcorrencias"></tbody>
-    </table>
+    <button class="btn btn-primary btn-small" onclick="applyFilters()">Filtrar</button>
+    <button class="btn btn-success btn-small" onclick="resetFilters()">Limpar</button>
+    <button class="btn btn-secondary btn-small" onclick="window.location.href='home.html'">Tela Inicial</button>
   </div>
 
-  <script>
-    const dados = [
-      {ID:8, Data:'2025-10-03', Hora:'15:01', Aluno:'YASMIN MACHADO MARQUES', Sala:'7º ANO A', Professor:'JERONIMO', Tutor:'MARCOS RODRIGUES', FT:'⚠️', FC:'✔️', FG:'✔️', Status:'ATENDIMENTO'},
-      {ID:6, Data:'2025-10-03', Hora:'13:33', Aluno:'DAVI LUCCA MOURA GOMES', Sala:'7º ANO B', Professor:'MARCELO', Tutor:'GRAZIELLE', FT:'⚠️', FC:'✔️', FG:'⚠️', Status:'ATENDIMENTO'},
-      {ID:5, Data:'2025-10-03', Hora:'13:32', Aluno:'ANA LAURA RUIZ SILVA', Sala:'7º ANO B', Professor:'MARCELO', Tutor:'GRAZIELLE', FT:'⚠️', FC:'✔️', FG:'⚠️', Status:'ATENDIMENTO'},
-      {ID:10, Data:'2025-10-03', Hora:'15:21', Aluno:'NICOLLY JÔVANA DE SOUZA DIAS', Sala:'6º ANO A', Professor:'IVAN', Tutor:'IVAN', FT:'✔️', FC:'✔️', FG:'⚠️', Status:'ATENDIMENTO'},
-      {ID:11, Data:'2025-10-03', Hora:'16:03', Aluno:'GUILHERME SANTOS LEAL', Sala:'8º ANO B', Professor:'CAIO', Tutor:'GIOVANNA', FT:'⚠️', FC:'✔️', FG:'⚠️', Status:'ATENDIMENTO'}
-    ];
+  <table class="table table-bordered table-hover table-striped">
+    <thead class="table-dark">
+      <tr>
+        <th>ID</th>
+        <th>Data</th>
+        <th>Hora</th>
+        <th>Aluno</th>
+        <th>Sala</th>
+        <th>Professor</th>
+        <th>Tutor</th>
+        <th>FT</th>
+        <th>FC</th>
+        <th>FG</th>
+        <th>Status</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody id="tabelaOcorrencias"></tbody>
+  </table>
+</div>
 
-    // Preencher filtro de Tutor com quem tem ocorrências
-    const tutors = [...new Set(dados.map(d => d.Tutor))];
-    const filterTutor = document.getElementById('filterTutor');
-    tutors.forEach(t => {
-      const opt = document.createElement('option');
-      opt.value = t; opt.textContent = t;
-      filterTutor.appendChild(opt);
-    });
+<script>
+let dados = JSON.parse(localStorage.getItem('ocorrencias')) || [
+  {ID:8, Data:'2025-10-03', Hora:'15:01', Aluno:'YASMIN', Sala:'7º ANO A', Professor:'JERONIMO', Tutor:'MARCOS', FT:'✔️', FC:'✔️', FG:'✔️', Status:'ATENDIMENTO'},
+  {ID:6, Data:'2025-10-03', Hora:'13:33', Aluno:'DAVI', Sala:'7º ANO B', Professor:'MARCELO', Tutor:'GRAZIELLE', FT:'✔️', FC:'✔️', FG:'⚠️', Status:'ATENDIMENTO'}
+];
 
-    function renderTable(data) {
-      data.sort((a,b) => b.ID - a.ID); // ordenar por ID decrescente
-      const tbody = document.getElementById('tabelaOcorrencias');
-      tbody.innerHTML = '';
-      data.forEach(row => {
-        let statusClass = '';
-        if(row.Status === 'ATENDIMENTO') statusClass = 'status-atendimento';
-        else if(row.Status === 'FINALIZADA') statusClass = 'status-finalizada';
-        else if(row.Status === 'ASSINADA') statusClass = 'status-assinada';
+// Preenche filtro Tutor
+const tutors = [...new Set(dados.map(d => d.Tutor))];
+const filterTutor = document.getElementById('filterTutor');
+tutors.forEach(t => { const opt = document.createElement('option'); opt.value=t; opt.textContent=t; filterTutor.appendChild(opt); });
 
-        tbody.innerHTML += `<tr>
-          <td>${row.ID}</td>
-          <td>${row.Data}</td>
-          <td>${row.Hora}</td>
-          <td>${row.Aluno}</td>
-          <td>${row.Sala}</td>
-          <td>${row.Professor}</td>
-          <td>${row.Tutor}</td>
-          <td class="icon-button" onclick="abrirEditar(${row.ID}, 'FT')">${row.FT}</td>
-          <td class="icon-button" onclick="abrirEditar(${row.ID}, 'FC')">${row.FC}</td>
-          <td class="icon-button" onclick="abrirEditar(${row.ID}, 'FG')">${row.FG}</td>
-          <td class="${statusClass}">${row.Status}</td>
-          <td>
-            <button class="btn btn-info btn-small" onclick="verOcorrencia(${row.ID})">Ver</button>
-            <button class="btn btn-primary btn-small" onclick="editarOcorrencia(${row.ID})">Editar</button>
-          </td>
-        </tr>`;
-      });
-    }
+// Função para renderizar tabela
+function renderTable(data){
+  data.sort((a,b)=>b.ID - a.ID); // ID decrescente
+  const tbody = document.getElementById('tabelaOcorrencias');
+  tbody.innerHTML = '';
+  data.forEach(row => {
+    let statusClass = row.Status==='ATENDIMENTO'?'status-atendimento':row.Status==='FINALIZADA'?'status-finalizada':'status-assinada';
+    tbody.innerHTML += `<tr>
+      <td>${row.ID}</td>
+      <td>${row.Data}</td>
+      <td>${row.Hora}</td>
+      <td>${row.Aluno}</td>
+      <td>${row.Sala}</td>
+      <td>${row.Professor}</td>
+      <td>${row.Tutor}</td>
+      <td class="icon-button" onclick="abrirEditar(${row.ID},'FT')">${row.FT}</td>
+      <td class="icon-button" onclick="abrirEditar(${row.ID},'FC')">${row.FC}</td>
+      <td class="icon-button" onclick="abrirEditar(${row.ID},'FG')">${row.FG}</td>
+      <td class="${statusClass}">${row.Status}</td>
+      <td>
+        <button class="btn btn-info btn-small" onclick="verOcorrencia(${row.ID})">Ver</button>
+        <button class="btn btn-primary btn-small" onclick="editarOcorrencia(${row.ID})">Editar</button>
+      </td>
+    </tr>`;
+  });
+}
 
-    function applyFilters() {
-      const tutor = filterTutor.value;
-      const status = document.getElementById('filterStatus').value;
-      let filtered = dados;
-      if(tutor) filtered = filtered.filter(d => d.Tutor === tutor);
-      if(status) filtered = filtered.filter(d => d.Status === status);
-      renderTable(filtered);
-    }
+// Filtros
+function applyFilters(){
+  const tutor = filterTutor.value;
+  const status = document.getElementById('filterStatus').value;
+  let filtered = dados;
+  if(tutor) filtered = filtered.filter(d => d.Tutor === tutor);
+  if(status) filtered = filtered.filter(d => d.Status === status);
+  renderTable(filtered);
+}
+function resetFilters(){ filterTutor.value=''; document.getElementById('filterStatus').value=''; renderTable(dados); }
 
-    function resetFilters() {
-      filterTutor.value = '';
-      document.getElementById('filterStatus').value = '';
-      renderTable(dados);
-    }
+// Abrir editar.html passando ID e campo
+function abrirEditar(id,campo){ window.location.href=`editar.html?id=${id}&campo=${campo}`; }
+function verOcorrencia(id){ window.location.href=`editar.html?id=${id}&modo=ver&id=${id}`; }
+function editarOcorrencia(id){
+  const senha = prompt("Digite a senha para edição:");
+  if(senha==='idrgestao') window.location.href=`editar.html?id=${id}&modo=editar`;
+  else alert('Senha incorreta!');
+}
 
-    function abrirEditar(id, campo) {
-      // Redireciona para editar.html passando ID e campo para lógica de edição
-      window.location.href = `editar.html?id=${id}&campo=${campo}`;
-    }
+// Atualizar tabela quando voltar de editar.html
+window.addEventListener('focus', ()=>{
+  dados = JSON.parse(localStorage.getItem('ocorrencias')) || dados;
+  // Atualiza status automaticamente
+  dados.forEach(r=>{
+    r.Status = (r.FT==='✔️'||r.FC==='✔️'||r.FG==='✔️')?'ATENDIMENTO':'FINALIZADA';
+  });
+  renderTable(dados);
+});
 
-    function verOcorrencia(id) {
-      window.location.href = `editar.html?id=${id}&modo=ver`;
-    }
-
-    function editarOcorrencia(id) {
-      const senha = prompt("Digite a senha para edição:");
-      if(senha === 'idrgestao') {
-        window.location.href = `editar.html?id=${id}&modo=editar`;
-      } else alert('Senha incorreta!');
-    }
-
-    renderTable(dados);
-  </script>
+// Render inicial
+renderTable(dados);
+</script>
 </body>
 </html>
