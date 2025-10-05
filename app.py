@@ -372,33 +372,6 @@ def editar_completo(oid):
     return redirect(url_for("index"))
 
 
-# Refatorar o antigo /editar para ser o modo 'VER'
-@app.route("/editar/<int:oid>", methods=["GET"])
-def editar(oid):
-    supabase = conectar_supabase()
-    if not supabase:
-        flash("Erro de conexão com o banco.", "danger")
-        return redirect(url_for("index"))
-
-    # buscar ocorrência
-    try:
-        resp = supabase.table("ocorrencias").select("*").eq("ID", oid).execute()
-        data = resp.data or []
-        if not data:
-            flash("Ocorrência não encontrada.", "danger")
-            return redirect(url_for("index"))
-        ocorr = upperize_row_keys(data[0])
-    except Exception as e:
-        print("Erro ao buscar ocorrências:", e)
-        flash("Erro ao buscar ocorrências.", "danger")
-        return redirect(url_for("index"))
-
-    professores = carregar_lookup("Professores", column="Professor")
-    salas = carregar_lookup("Salas", column="Sala")
-    
-    # Modo 'VER' (apenas visualização de todos os campos)
-    return render_template("editar.html", ocorrencia=ocorr, professores_disp=professores, salas_disp=salas, modo="VER")
-    
 # ... (restante do código)
 
 @app.route("/nova", methods=["GET", "POST"])
@@ -811,6 +784,7 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("FLASK_DEBUG", "1") == "1"
     app.run(host="0.0.0.0", port=port, debug=debug)
+
 
 
 
