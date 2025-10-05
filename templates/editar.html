@@ -1,153 +1,108 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-<meta charset="UTF-8">
-<title>SGCE - Visualizar/Editar Ocorrência</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<style>
-    body { background-color: #121212; color: #f1f1f1; }
-    h1 { text-align: center; margin-bottom: 30px; }
-    .form-label { font-weight: 500; }
-    .btn-success { background-color: #28a745; border: none; }
-    .btn-success:hover { background-color: #218838; }
-    .btn-warning { background-color: #ffc107; border: none; }
-    .btn-warning:hover { background-color: #e0a800; }
-    .card { background-color: #1e1e1e; border: none; }
-    
-    /* Estilo padrão para leitura (fundo escuro) */
-    .form-control, .form-select { 
-        background-color: #2c2c2c; 
-        color: #f1f1f1; 
-        border: 1px solid #444; 
-    }
-    .form-control:focus, .form-select:focus { background-color: #2c2c2c; color: #f1f1f1; border-color: #28a745; }
-    
-    /* Estilo para campos editáveis (fundo branco) */
-    .form-control.editable, .form-select.editable {
-        background-color: #fff !important;
-        color: #000 !important;
-    }
-</style>
+  <meta charset="UTF-8">
+  <title>Editar Ocorrência</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { padding: 20px; background-color: #f8f9fa; }
+    .readonly { background-color: #e9ecef; }
+  </style>
 </head>
-<body class="p-4">
-<div class="container">
-    <h1>
-        {% if modo == "VER" %}Visualizar Ocorrência{% elif modo == "ATENDIMENTO" %}Atendimento ({{ tipo_acao }}){% else %}Editar Ocorrência{% endif %}
-        #{{ ocorrencia['ID'] }}
-    </h1>
-    <div class="card shadow p-4">
-        <form method="POST" action="
-            {% if modo == 'ATENDIMENTO' %}
-                {{ url_for('atendimento', oid=ocorrencia['ID'], tipo_acao=tipo_acao) }}
-            {% else %}
-                {{ url_for('editar_completo', oid=ocorrencia['ID']) }}
-            {% endif %}
-        ">
-            {% set is_view_only = modo == 'VER' %}
-            {% set is_atendimento = modo == 'ATENDIMENTO' %}
-            {% set is_edit_completo = modo == 'EDITAR' %}
-            {% set campo_atendimento = tipo_acao[0] + 'TT' if is_atendimento else '' %} {% macro is_editable(field_name) %}
-                {{ is_atendimento and field_name == campo_atendimento or (is_edit_completo and field_name not in ['DESCRICAO', 'ATP', 'ATT', 'ATC', 'ATG']) }}
-            {% endmacro %}
+<body>
+  <div class="container">
+    <h3 class="mb-3 text-center">Editar Ocorrência</h3>
+    <form id="formOcorrencia">
+      <div class="mb-2"><label>ID:</label> <span id="campoID"></span></div>
+      <div class="mb-2"><label>Aluno:</label> <input type="text" id="campoAluno" class="form-control"></div>
+      <div class="mb-2"><label>Sala:</label> <input type="text" id="campoSala" class="form-control"></div>
+      <div class="mb-2"><label>Professor:</label> <input type="text" id="campoProfessor" class="form-control"></div>
+      <div class="mb-2"><label>Tutor:</label> <input type="text" id="campoTutor" class="form-control"></div>
+      <div class="mb-2"><label>FT:</label> <input type="text" id="campoFT" class="form-control"></div>
+      <div class="mb-2"><label>FC:</label> <input type="text" id="campoFC" class="form-control"></div>
+      <div class="mb-2"><label>FG:</label> <input type="text" id="campoFG" class="form-control"></div>
+      <div class="mb-2"><label>Status:</label> 
+        <select id="campoStatus" class="form-select">
+          <option value="ATENDIMENTO">ATENDIMENTO</option>
+          <option value="FINALIZADA">FINALIZADA</option>
+          <option value="ASSINADA">ASSINADA</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-success">Salvar</button>
+      <button type="button" class="btn btn-secondary" onclick="window.history.back()">Voltar</button>
+    </form>
+  </div>
 
+  <script>
+    // Dados simulados
+    const dados = JSON.parse(localStorage.getItem('ocorrencias')) || [
+      {ID:8, Data:'2025-10-03', Hora:'15:01', Aluno:'YASMIN', Sala:'7º ANO A', Professor:'JERONIMO', Tutor:'MARCOS', FT:'✔️', FC:'✔️', FG:'✔️', Status:'ATENDIMENTO'},
+      {ID:6, Data:'2025-10-03', Hora:'13:33', Aluno:'DAVI', Sala:'7º ANO B', Professor:'MARCELO', Tutor:'GRAZIELLE', FT:'✔️', FC:'✔️', FG:'⚠️', Status:'ATENDIMENTO'}
+    ];
 
-            <fieldset {% if is_view_only %}disabled{% endif %}>
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Professor:</label>
-                        <select class="form-select {% if is_editable('PROFESSOR') %}editable{% endif %}" name="PROFESSOR" {% if not is_editable('PROFESSOR') %}disabled{% endif %} required>
-                            <option value="">Selecione um Professor</option>
-                            {% for prof in professores_disp %}
-                                <option value="{{ prof }}" {% if ocorrencia['PROFESSOR'] == prof %}selected{% endif %}>{{ prof }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Sala:</label>
-                        <select class="form-select {% if is_editable('SALA') %}editable{% endif %}" name="SALA" id="sala-select" {% if not is_editable('SALA') %}disabled{% endif %} required onchange="carregarAlunos()">
-                            <option value="">Selecione uma Sala</option>
-                            {% for sala in salas_disp %}
-                                <option value="{{ sala }}" {% if ocorrencia['SALA'] == sala %}selected{% endif %}>{{ sala }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </div>
+    // Capturando parâmetros da URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const id = parseInt(urlParams.get('id'));
+    const campo = urlParams.get('campo'); // FT, FC, FG
+    const modo = urlParams.get('modo');   // ver ou editar
 
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Aluno:</label>
-                        <select class="form-select {% if is_editable('ALUNO') %}editable{% endif %}" name="ALUNO" id="aluno-select" {% if not is_editable('ALUNO') %}disabled{% endif %} required onchange="selecionarTutor()">
-                            <option value="{{ ocorrencia['ALUNO'] }}" selected>{{ ocorrencia['ALUNO'] }}</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Tutor:</label>
-                        <input type="text" class="form-control" name="TUTOR" id="tutor-input" value="{{ ocorrencia['TUTOR'] }}" readonly required>
-                    </div>
-                </div>
+    const registro = dados.find(d => d.ID === id);
+    if(!registro){ alert('Registro não encontrado!'); history.back(); }
 
-                <div class="mb-3">
-                    <label class="form-label">Descrição da Ocorrência:</label>
-                    <textarea class="form-control" name="DESCRICAO" rows="3" readonly required>{{ ocorrencia['DESCRICAO'] }}</textarea>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">ATP (Atendimento Professor):</label>
-                    <textarea class="form-control" name="ATP" rows="2" readonly>{{ ocorrencia['ATP'] }}</textarea>
-                </div>
+    // Preencher campos
+    document.getElementById('campoID').textContent = registro.ID;
+    document.getElementById('campoAluno').value = registro.Aluno;
+    document.getElementById('campoSala').value = registro.Sala;
+    document.getElementById('campoProfessor').value = registro.Professor;
+    document.getElementById('campoTutor').value = registro.Tutor;
+    document.getElementById('campoFT').value = registro.FT;
+    document.getElementById('campoFC').value = registro.FC;
+    document.getElementById('campoFG').value = registro.FG;
+    document.getElementById('campoStatus').value = registro.Status;
 
-                <div class="mb-3">
-                    <label class="form-label">ATT (Atendimento Tutor):</label>
-                    <textarea class="form-control {% if is_editable('ATT') %}editable{% endif %}" name="ATT" rows="2" {% if not is_editable('ATT') %}readonly{% endif %}>{{ ocorrencia['ATT'] }}</textarea>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">ATC (Atendimento Coordenação):</label>
-                    <textarea class="form-control {% if is_editable('ATC') %}editable{% endif %}" name="ATC" rows="2" {% if not is_editable('ATC') %}readonly{% endif %}>{{ ocorrencia['ATC'] }}</textarea>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">ATG (Atendimento Gestão):</label>
-                    <textarea class="form-control {% if is_editable('ATG') %}editable{% endif %}" name="ATG" rows="2" {% if not is_editable('ATG') %}readonly{% endif %}>{{ ocorrencia['ATG'] }}</textarea>
-                </div>
-                
-                {% if is_edit_completo %}
-                    <div class="mb-3">
-                        <label class="form-label">Solicitar Ações:</label>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="FT" id="checkFT" value="SIM" {% if ocorrencia['FT'] == 'SIM' %}checked{% endif %}>
-                                    <label class="form-check-label" for="checkFT">Atendimento Tutor (FT)</label>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="FC" id="checkFC" value="SIM" {% if ocorrencia['FC'] == 'SIM' %}checked{% endif %}>
-                                    <label class="form-check-label" for="checkFC">Atendimento Coordenação (FC)</label>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="FG" id="checkFG" value="SIM" {% if ocorrencia['FG'] == 'SIM' %}checked{% endif %}>
-                                    <label class="form-check-label" for="checkFG">Atendimento Gestão (FG)</label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                {% endif %}
+    // Tornar todos campos readonly
+    const inputs = document.querySelectorAll('#formOcorrencia input, #formOcorrencia select');
+    inputs.forEach(inp => inp.readOnly = true);
+    inputs.forEach(inp => inp.classList.add('readonly'));
 
-            </fieldset>
+    // Map de campos para edição
+    const campoMap = { FT: 'ATT', FC: 'ATC', FG: 'ATG' };
+    const dataMap = { FT: 'DT', FC: 'DC', FG: 'DG' };
 
-            <div class="d-flex justify-content-between mt-4">
-                {% if is_view_only %}
-                    <a href="{{ url_for('index') }}" class="btn btn-warning">Voltar</a>
-                {% else %}
-                    <button type="submit" class="btn btn-success">Salvar Alterações</button>
-                    <a href="{{ url_for('index') }}" class="btn btn-warning">Cancelar</a>
-                {% endif %}
-            </div>
-        </form>
-    </div>
-</div>
+    // Se for edição de FT, FC ou FG e modo editar
+    if(campo && modo !== 'ver'){
+      const campoEdit = document.getElementById('campo'+campo);
+      campoEdit.readOnly = false;
+      campoEdit.classList.remove('readonly');
+    }
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    // Submit
+    document.getElementById('formOcorrencia').addEventListener('submit', function(e){
+      e.preventDefault();
+
+      if(campo){
+        // Atualiza campo específico Sim -> Não
+        registro[campo] = registro[campo] === '✔️' ? '⚠️' : '✔️';
+
+        // Atualiza data do dia no campo correspondente
+        registro[dataMap[campo]] = new Date().toISOString().split('T')[0];
+
+        // Atualiza campo ATT, ATC, ATG
+        registro[campoMap[campo]] = document.getElementById('campo'+campo).value;
+      }
+
+      // Atualiza campos gerais
+      registro.Aluno = document.getElementById('campoAluno').value;
+      registro.Sala = document.getElementById('campoSala').value;
+      registro.Professor = document.getElementById('campoProfessor').value;
+      registro.Tutor = document.getElementById('campoTutor').value;
+      registro.Status = document.getElementById('campoStatus').value;
+
+      // Salvar no localStorage simulando planilha ocorrencia
+      localStorage.setItem('ocorrencias', JSON.stringify(dados));
+      alert('Registro atualizado com sucesso!');
+      window.history.back();
+    });
+  </script>
 </body>
 </html>
