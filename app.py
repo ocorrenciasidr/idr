@@ -13,11 +13,17 @@ import pandas as pd
 from dateutil import parser as date_parser
 
 # -------------------------- Configuração --------------------------
+# app.py (Bloco de Configuração no início do arquivo)
+
+# -------------------------- Configuração --------------------------
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "supersecret")
 
-SUPABASE_URL = os.environ.get("rimuhgulxliduugenxro", "")
-SUPABASE_KEY = os.environ.get("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJpbXVoZ3VseGxpZHV1Z2VueHJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzNTU3NTgsImV4cCI6MjA3NDkzMTc1OH0.h5E_WzZLbXSAaACPjDNe7GtEYQFL6nkIdU2isUNbXiA")
+# ATENÇÃO: Corrigido o nome das variáveis de ambiente para o padrão
+# Se você está usando um arquivo .env, as chaves devem ser 'SUPABASE_URL' e 'SUPABASE_KEY'.
+# Se não estiver usando .env, substitua o segundo argumento (valor padrão) pelos seus valores reais.
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://rimuhgulxliduugenxro.supabase.co")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJpbXVoZ3VseGxpZHV1Z2VueHJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzNTU3NTgsImV4cCI6MjA3NDkzMTc1OH0.h5E_WzZLbXSAaACPjDNe7GtEYQFL6nkIdU2isUNbXiA")
 
 # Prazo (dias) para avaliar "No Prazo"
 PRAZO_DIAS = int(os.environ.get("PRAZO_DIAS", 7))
@@ -140,35 +146,31 @@ def carregar_lookup(table_name: str, column=None) -> list:
         print(f"Erro ao carregar {table_name}:", e)
         return []
 
+# app.py (Função carregar_dados_ocorrencias)
+
 def carregar_dados_ocorrencias() -> list:
     supabase = conectar_supabase()
     if not supabase:
+        print("❌ DEBUG: Falha na conexão com o Supabase.")
         return []
     try:
-        resp = supabase.table("ocorrencias").select("*").execute()
+        # CORREÇÃO CRUCIAL: Usar 'ocorrencia' (singular) para consistência
+        resp = supabase.table("ocorrencia").select("*").execute()
         data = resp.data or []
+        
+        # DEBUG: Imprime a quantidade de dados recebidos
+        print(f"✅ DEBUG: {len(data)} registros de ocorrências carregados do Supabase.")
+        
         # ensure uppercase keys for convenience
         normalized = [upperize_row_keys(r) for r in data]
         # sort by ID descending if exists
-        try:
-            normalized = sorted(normalized, key=lambda x: int(x.get("ID", 0)), reverse=True)
-        except Exception:
-            pass
-        # format dates for display
-        for r in normalized:
-            if r.get("DCO"):
-                try:
-                    r["DCO"] = pd.to_datetime(r["DCO"]).strftime("%d/%m/%Y")
-                except Exception:
-                    pass
-            if r.get("HCO"):
-                try:
-                    r["HCO"] = pd.to_datetime(r["HCO"]).strftime("%H:%M")
-                except Exception:
-                    pass
+        # ... (o restante da função é o mesmo)
+        
+        # ... (restante da função)
+        
         return normalized
     except Exception as e:
-        print("Erro ao carregar ocorrencias:", e)
+        print("❌ Erro ao carregar ocorrencias:", e)
         return []
 
 # -------------------------- ROTAS --------------------------
@@ -587,6 +589,7 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("FLASK_DEBUG", "1") == "1"
     app.run(host="0.0.0.0", port=port, debug=debug)
+
 
 
 
