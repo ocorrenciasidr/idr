@@ -155,7 +155,7 @@ def carregar_dados_ocorrencias() -> list:
         return []
     try:
         # CORREÇÃO CRUCIAL: Usar 'ocorrencia' (singular) para consistência
-        resp = supabase.table("ocorrencia").select("*").execute()
+        resp = supabase.table("ocorrencias").select("*").execute()
         data = resp.data or []
         
         # DEBUG: Imprime a quantidade de dados recebidos
@@ -222,14 +222,14 @@ def nova():
     }
 
     try:
-        resp = supabase.table("ocorrencia").insert(payload).execute()
+        resp = supabase.table("ocorrencias").insert(payload).execute()
         if resp.error:
-            flash("Erro ao inserir ocorrência.", "danger")
+            flash("Erro ao inserir ocorrências.", "danger")
         else:
             flash("Ocorrência registrada com sucesso.", "success")
     except Exception as e:
-        print("Erro ao inserir ocorrência:", e)
-        flash("Erro ao gravar ocorrência.", "danger")
+        print("Erro ao inserir ocorrências:", e)
+        flash("Erro ao gravar ocorrências.", "danger")
 
     return redirect(url_for("index"))
 
@@ -256,22 +256,22 @@ def editar(oid):
 
     # buscar ocorrência
     try:
-        resp = supabase.table("ocorrencia").select("*").eq("ID", oid).execute()
+        resp = supabase.table("ocorrencias").select("*").eq("ID", oid).execute()
         data = resp.data or []
         if not data:
             flash("Ocorrência não encontrada.", "danger")
             return redirect(url_for("index"))
         ocorr = upperize_row_keys(data[0])
     except Exception as e:
-        print("Erro ao buscar ocorrência:", e)
-        flash("Erro ao buscar ocorrência.", "danger")
+        print("Erro ao buscar ocorrências:", e)
+        flash("Erro ao buscar ocorrências.", "danger")
         return redirect(url_for("index"))
 
     professores = carregar_lookup("Professores", column="Professor")
     salas = carregar_lookup("Salas", column="Sala")
 
     if request.method == "GET":
-        return render_template("editar.html", ocorrencia=ocorr, professores_disp=professores, salas_disp=salas)
+        return render_template("editar.html", ocorrencias=ocorr, professores_disp=professores, salas_disp=salas)
 
     # POST: atualizar registro (sem senha)
     form = request.form
@@ -589,9 +589,3 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("FLASK_DEBUG", "1") == "1"
     app.run(host="0.0.0.0", port=port, debug=debug)
-
-
-
-
-
-
