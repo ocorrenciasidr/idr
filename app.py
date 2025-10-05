@@ -521,16 +521,26 @@ def relatorio_tutor():
     start_date_str = request.args.get('start')
     end_date_str = request.args.get('end')
     df = carregar_dados()
+
     # Lógica simplificada de tutor
     relatorio = {}
-    for tutor in df["TUTOR"].dropna().unique().tolist() if "TUTOR" in df else []:
-        
-relatorio[tutor] = {'total':0,'prazo':0,'fora':0,'nao':0}
-    return render_template("relatorio_tutor.html", relatorio=relatorio, start=start_date_str, end=end_date_str)
+
+    if "TUTOR" in df:
+        for tutor in df["TUTOR"].dropna().unique().tolist():
+            relatorio[tutor] = {'total': 0, 'prazo': 0, 'fora': 0, 'nao': 0}
+
+    return render_template(
+        "relatorio_tutor.html",
+        relatorio=relatorio,
+        start=start_date_str,
+        end=end_date_str
+    )
+
 
 # -------------------------- RUN --------------------------
 if __name__=="__main__":
     app.run(debug=True, port=int(os.environ.get("PORT",5000)))
+
 
 
 
