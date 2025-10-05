@@ -1,159 +1,229 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SGCE - Ocorrências</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <style>
-        /* ... (CSS anterior) ... */
-
-        /* NOVAS CORES DE STATUS */
-        .badge-status-atendimento { background-color: #dc3545 !important; color: #fff !important; } /* ATENDIMENTO: VERMELHA */
-        .badge-status-finalizada { background-color: #ffc107 !important; color: #212529 !important; } /* FINALIZADA: AMARELA */
-        .badge-status-assinada { background-color: #28a745 !important; color: #fff !important; } /* ASSINADA: VERDE */
-        
-        .badge-pendente { background-color: #ffc107!important; color: #212529!important; font-size: 10px; padding: 3px 5px; cursor: pointer; } /* ADICIONAR CURSOR POINTER */
-        .badge-ok { background-color: #28a745!important; font-size: 10px; padding: 3px 5px; }
-
-        /* ... (CSS anterior) ... */
+        .container-fluid {
+            padding-top: 20px;
+        }
+        .header-title {
+            color: #003366; /* Azul Escuro */
+            font-weight: bold;
+            border-bottom: 2px solid #003366;
+            padding-bottom: 5px;
+            margin-bottom: 20px;
+        }
+        .status-atendimento { background-color: #fff3cd; color: #664d03; } /* Amarelo Claro */
+        .status-finalizada { background-color: #d1e7dd; color: #0f5132; } /* Verde Claro */
+        .status-assinada { background-color: #cff4fc; color: #055160; } /* Azul Claro (Ciano) */
+        .status-naopendente { background-color: #f8d7da; color: #842029; } /* Vermelho Claro */
+        .badge-ft { background-color: #dc3545; } /* Vermelho */
+        .badge-fc { background-color: #ffc107; color: #212529; } /* Amarelo */
+        .badge-fg { background-color: #0d6efd; } /* Azul */
+        .badge-status { font-size: 0.85em; }
+        .table-responsive {
+            max-height: 80vh; /* Limita a altura da tabela para melhor visualização em telas pequenas */
+            overflow-y: auto;
+        }
     </style>
 </head>
 <body>
-<div class="container mt-3">
-    <h2>Sistema de Gestão de Convivência Escolar</h2>
-
-    <div class="d-flex justify-content-between mb-2">
-        <a href="{{ url_for('home') }}" class="btn btn-secondary btn-sm">Tela Inicial</a>
-        <a href="{{ url_for('nova') }}" class="btn btn-primary btn-sm">Nova Ocorrência</a>
-    </div>
-
-    <form method="GET" action="{{ url_for('index') }}" class="row g-2 mb-3 align-items-center bg-dark p-2 rounded">
-        <div class="col-md-4">
-            <label for="tutor_filtro" class="form-label text-white-50">Filtrar por Tutor:</label>
-            <select name="tutor_filtro" id="tutor_filtro" class="form-select form-select-sm">
-                {% for t in tutores_disp %}
-                    <option value="{{ t }}" {% if filtro_tutor_sel == t %}selected{% endif %}>{{ t }}</option>
-                {% endfor %}
-            </select>
+    <nav class="navbar navbar-expand-lg navbar-dark" style="background-color: #003366;">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('home') }}">SGCE</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link active" aria-current="page" href="{{ url_for('index') }}">Ocorrências</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('nova') }}">Nova Ocorrência</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownRelatorios" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Relatórios
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="navbarDropdownRelatorios">
+                            <li><a class="dropdown-item" href="{{ url_for('relatorio_aluno') }}">Por Aluno</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('relatorio_geral') }}">Geral</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('relatorio_tutor') }}">Por Tutor</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
         </div>
-        <div class="col-md-4">
-            <label for="status_filtro" class="form-label text-white-50">Filtrar por Status:</label>
-            <select name="status_filtro" id="status_filtro" class="form-select form-select-sm">
-                {% for s in status_disp %}
-                    <option value="{{ s }}" {% if filtro_status_sel == s %}selected{% endif %}>{{ s }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-2 mt-md-auto">
-            <button type="submit" class="btn btn-info btn-sm w-100">Aplicar Filtros</button>
-        </div>
-        <div class="col-md-2 mt-md-auto">
-             <a href="{{ url_for('index') }}" class="btn btn-warning btn-sm w-100">Limpar Filtros</a>
-        </div>
-    </form>
-    <div class="table-responsive">
-        <table class="table table-dark table-striped table-bordered text-center align-middle">
-            <thead>
-                <tr>
-                    <th>ID</th><th>Data</th><th>Hora</th><th>Aluno</th><th>Sala</th>
-                    <th>Professor</th><th>Tutor</th><th>FT</th><th>FC</th><th>FG</th>
-                    <th>Status</th><th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-            {% for r in registros %}
-                <tr class="
-                    {% if r.STATUS=='ATENDIMENTO' %}table-danger text-dark{% elif r.STATUS=='FINALIZADA' %}table-warning text-dark{% elif r.STATUS=='ASSINADA' %}table-success text-dark{% endif %}
-                ">
-                    <td>{{ r.ID }}</td>
-                    <td>{{ r.DCO }}</td>
-                    <td>{{ r.HCO }}</td>
-                    <td>{{ r.ALUNO }}</td>
-                    <td>{{ r.SALA }}</td>
-                    <td>{{ r.PROFESSOR }}</td>
-                    <td>{{ r.TUTOR }}</td>
-                    
-                    <td>
-                        {% if r.FT=='SIM' %}
-                            <a href="{{ url_for('atendimento', oid=r.ID, tipo_acao='FT') }}" class="badge badge-pendente">⚠️</a>
-                        {% else %}
-                            <span class="badge badge-ok">✔️</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if r.FC=='SIM' %}
-                            <a href="{{ url_for('atendimento', oid=r.ID, tipo_acao='FC') }}" class="badge badge-pendente">⚠️</a>
-                        {% else %}
-                            <span class="badge badge-ok">✔️</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if r.FG=='SIM' %}
-                            <a href="{{ url_for('atendimento', oid=r.ID, tipo_acao='FG') }}" class="badge badge-pendente">⚠️</a>
-                        {% else %}
-                            <span class="badge badge-ok">✔️</span>
-                        {% endif %}
-                    </td>
+    </nav>
 
-                    <td>
-                        {% if r.STATUS=='ATENDIMENTO' %}
-                            <span class="badge badge-status-atendimento">{{ r.STATUS }}</span>
-                        {% elif r.STATUS=='FINALIZADA' %}
-                            <span class="badge badge-status-finalizada">{{ r.STATUS }}</span>
-                        {% elif r.STATUS=='ASSINADA' %}
-                            <span class="badge badge-status-assinada">{{ r.STATUS }}</span>
-                        {% else %}
-                            <span class="badge bg-secondary">{{ r.STATUS }}</span>
-                        {% endif %}
-                    </td>
-
-                    <td>
-                        <a href="{{ url_for('editar', oid=r.ID) }}" class="btn btn-info btn-sm btn-action">Ver</a>
-                        <a href="#" class="btn btn-primary btn-sm btn-action" data-bs-toggle="modal" data-bs-target="#senhaModal"
-                            onclick="setEditarOid({{ r.ID }})">Editar</a>
-                    </td>
-                </tr>
-            {% else %}
-                <tr><td colspan="12" class="text-center">Nenhuma ocorrência encontrada.</td></tr>
-            {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<div class="modal fade" id="senhaModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <form method="post" id="formSenhaEditar" action="{{ url_for('editar_completo', oid=0) }}"> 
-                <div class="modal-header">
-                    <h5 class="modal-title text-dark">Acesso Restrito - Edição Completa</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body text-dark">
-                    <input type="hidden" name="oid" id="editarOid">
-                    <div class="mb-3">
-                        <label for="senha" class="form-label">Digite a senha:</label>
-                        <input type="password" class="form-control" name="senha" id="senha" required>
+    <div class="container-fluid">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="row">
+                    <div class="col-12">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}" role="alert">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
                     </div>
-                    <div id="senhaErro" class="text-danger" style="display:none;">Senha incorreta!</div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Confirmar</button>
+            {% endif %}
+        {% endwith %}
+
+        <h2 class="header-title">Registro de Ocorrências</h2>
+
+        <div class="mb-3 p-3 border rounded shadow-sm bg-light">
+            <form method="GET" action="{{ url_for('index') }}" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="tutor_filtro" class="form-label">Filtrar por Tutor</label>
+                    <select class="form-select" id="tutor_filtro" name="tutor_filtro">
+                        <option value="Todos" {% if filtro_tutor_sel == 'Todos' %}selected{% endif %}>Todos</option>
+                        {% for tutor in tutores_disp %}
+                        <option value="{{ tutor }}" {% if filtro_tutor_sel == tutor %}selected{% endif %}>{{ tutor }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="status_filtro" class="form-label">Filtrar por Status</label>
+                    <select class="form-select" id="status_filtro" name="status_filtro">
+                        <option value="Todos" {% if filtro_status_sel == 'Todos' %}selected{% endif %}>Todos</option>
+                        {% for status in status_disp %}
+                        <option value="{{ status }}" {% if filtro_status_sel == status %}selected{% endif %}>{{ status }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">Aplicar Filtros</button>
+                </div>
+                <div class="col-md-2 text-md-end">
+                    <button type="button" class="btn btn-warning w-100" data-bs-toggle="modal" data-bs-target="#senhaModal">
+                        Editar Completo (Senha)
+                    </button>
                 </div>
             </form>
         </div>
+        
+        <div class="modal fade" id="senhaModal" tabindex="-1" aria-labelledby="senhaModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form id="form_edicao_completa" method="POST">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="senhaModalLabel">Confirmação de Edição Completa</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Para entrar no modo de edição completa de uma ocorrência (alterar campos de descrição, aluno, etc.), insira a senha de gestão.</p>
+                            <div class="mb-3">
+                                <label for="senha_input" class="form-label">Senha</label>
+                                <input type="password" class="form-control" id="senha_input" name="senha" required>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-warning" id="btn_confirmar_senha">Confirmar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover table-sm caption-top">
+                <caption>Total de Ocorrências: **{{ registros|length }}**</caption>
+                <thead class="sticky-top" style="background-color: #f8f9fa;">
+                    <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Data</th>
+                        <th scope="col">Aluno</th>
+                        <th scope="col">Sala</th>
+                        <th scope="col">Tutor</th>
+                        <th scope="col">Solicitações</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for registro in registros %}
+                    <tr class="
+                        {% if registro.STATUS == 'ATENDIMENTO' %}status-atendimento{% endif %}
+                        {% if registro.STATUS == 'FINALIZADA' %}status-finalizada{% endif %}
+                        {% if registro.STATUS == 'ASSINADA' %}status-assinada{% endif %}
+                    ">
+                        <td class="align-middle">{{ registro.ID }}</td>
+                        <td class="align-middle">{{ registro.DCO }}</td>
+                        <td class="align-middle">{{ registro.ALUNO }}</td>
+                        <td class="align-middle">{{ registro.SALA }}</td>
+                        <td class="align-middle">{{ registro.TUTOR }}</td>
+                        <td class="align-middle">
+                            {% if registro.FT == 'SIM' %}
+                                <span class="badge badge-status badge-ft">FT</span>
+                            {% endif %}
+                            {% if registro.FC == 'SIM' %}
+                                <span class="badge badge-status badge-fc">FC</span>
+                            {% endif %}
+                            {% if registro.FG == 'SIM' %}
+                                <span class="badge badge-status badge-fg">FG</span>
+                            {% endif %}
+                        </td>
+                        <td class="align-middle">{{ registro.STATUS }}</td>
+                        <td class="align-middle text-nowrap">
+                            <a href="{{ url_for('editar', oid=registro.ID) }}" class="btn btn-sm btn-info text-white me-1">Ver</a>
+                            
+                            {% if registro.FT == 'SIM' and not registro.ATT %}
+                                <a href="{{ url_for('atendimento', oid=registro.ID, tipo_acao='FT') }}" class="btn btn-sm btn-danger me-1">At. Tutor</a>
+                            {% endif %}
+                            {% if registro.FC == 'SIM' and not registro.ATC %}
+                                <a href="{{ url_for('atendimento', oid=registro.ID, tipo_acao='FC') }}" class="btn btn-sm btn-warning me-1">At. Coord.</a>
+                            {% endif %}
+                            {% if registro.FG == 'SIM' and not registro.ATG %}
+                                <a href="{{ url_for('atendimento', oid=registro.ID, tipo_acao='FG') }}" class="btn btn-sm btn-primary me-1">At. Gestão</a>
+                            {% endif %}
+                            
+                            <button type="button" class="btn btn-sm btn-warning btn_editar_completo" data-oid="{{ registro.ID }}">Editar</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
-</div>
 
-<script>
-function setEditarOid(oid) { 
-    document.getElementById('editarOid').value = oid; 
-    // Atualiza a action do formulário para a rota editar_completo
-    const form = document.getElementById('formSenhaEditar');
-    if (form) {
-        form.action = "{{ url_for('editar_completo', oid=0) }}".replace('/0', '/' + oid);
-    }
-}
-</script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const senhaModal = document.getElementById('senhaModal');
+            const formEdicaoCompleta = document.getElementById('form_edicao_completa');
+            let ocorrenciaIdParaEdicao = null;
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+            // 1. Capturar o ID da ocorrência ao clicar no botão "Editar"
+            document.querySelectorAll('.btn_editar_completo').forEach(button => {
+                button.addEventListener('click', function() {
+                    ocorrenciaIdParaEdicao = this.getAttribute('data-oid');
+                    const modal = new bootstrap.Modal(senhaModal);
+                    modal.show();
+                });
+            });
+
+            // 2. Definir a action do formulário modal ao confirmar a senha
+            formEdicaoCompleta.addEventListener('submit', function(e) {
+                // A URL correta é para a nova rota que lida com o POST da senha
+                if (ocorrenciaIdParaEdicao) {
+                    formEdicaoCompleta.action = `/editar_completo/${ocorrenciaIdParaEdicao}`;
+                }
+                // O formulário será submetido normalmente após isso
+            });
+
+            // 3. Limpar a senha e o ID ao fechar o modal (opcional, mas bom)
+            senhaModal.addEventListener('hidden.bs.modal', function () {
+                document.getElementById('senha_input').value = '';
+                ocorrenciaIdParaEdicao = null;
+            });
+        });
+    </script>
 </body>
 </html>
