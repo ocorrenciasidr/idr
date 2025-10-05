@@ -2,108 +2,53 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SGCE - Sistema de Gestão de Convivência Escolar</title>
+    <title>SGCE - Home</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
-            background-color: #121212;
-            color: #f1f1f1;
-            font-family: Arial, sans-serif;
+            background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
+            color: #f8f9fa;
         }
-        .header {
-            padding: 2rem 0;
-            text-align: center;
-        }
-        .header h1 {
-            font-size: 2.2rem;
-            font-weight: bold;
-            color: #ffffff;
-        }
-        .header p {
-            font-size: 1rem;
-            color: #cccccc;
-        }
-        .card-custom {
-            background-color: #1e1e1e;
-            border: 1px solid #333;
+        .container { margin-top: 100px; }
+        h1 { font-weight: 700; margin-bottom: 60px; text-shadow: 2px 2px 6px #000; }
+        .btn-home {
+            font-size: 1.3rem;
+            padding: 1.2rem;
             border-radius: 12px;
-            padding: 2rem;
-            transition: transform 0.2s;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
-        .card-custom:hover {
-            transform: scale(1.02);
+        .btn-home:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.4);
         }
-        .btn-custom {
-            width: 100%;
-            padding: 1rem;
-            font-size: 1.2rem;
-            border-radius: 8px;
-        }
-        footer {
-            margin-top: 3rem;
-            padding: 1rem;
-            text-align: center;
-            color: #888;
-            font-size: 0.9rem;
-        }
+        footer { margin-top: 80px; }
     </style>
 </head>
 <body>
-
-    <div class="container">
-        <!-- Cabeçalho -->
-        <div class="header">
-            <h1>SGCE - Sistema de Gestão de Convivência Escolar</h1>
-            <p>Bem-vindo! Escolha abaixo a área desejada:</p>
-        </div>
-
-        <!-- Botões principais -->
-        <div class="row justify-content-center">
-            <div class="col-md-5 mb-3">
-                <div class="card-custom text-center">
-                    <h3 class="mb-3">Gestão de Ocorrências</h3>
-                    <a href="{{ url_for('index') }}" class="btn btn-primary btn-custom">
-                        Acessar
-                    </a>
-                </div>
+    <div class="container text-center">
+        <h1>SGCE - Sistema de Gestão Escolar</h1>
+        <div class="row g-4 justify-content-center">
+            <div class="col-md-5">
+                <a href="{{ url_for('index') }}" class="btn btn-primary w-100 btn-home">📋 GESTÃO DE OCORRÊNCIAS</a>
             </div>
-            <div class="col-md-5 mb-3">
-                <div class="card-custom text-center">
-                    <h3 class="mb-3">Gestão de Relatórios</h3>
-                    <a href="{{ url_for('relatorio_inicial') }}" class="btn btn-secondary btn-custom">
-                        Acessar
-                    </a>
-                </div>
+            <div class="col-md-5">
+                <a href="{{ url_for('relatorio_inicial') }}" class="btn btn-success w-100 btn-home">📊 GESTÃO DE RELATÓRIOS</a>
             </div>
-
-            <!-- Novos botões desabilitados -->
-            <div class="col-md-5 mb-3">
-                <div class="card-custom text-center">
-                    <h3 class="mb-3">Gestão da Tutoria</h3>
-                    <button class="btn btn-dark btn-custom" disabled title="Em breve">
-                        Em breve
-                    </button>
-                </div>
+            <div class="col-md-5">
+                <a href="{{ url_for('gestao_tutoria') }}" class="btn btn-warning w-100 btn-home">👨‍🏫 GESTÃO DE TUTORIA</a>
             </div>
-            <div class="col-md-5 mb-3">
-                <div class="card-custom text-center">
-                    <h3 class="mb-3">Registro de Frequência</h3>
-                    <button class="btn btn-dark btn-custom" disabled title="Em breve">
-                        Em breve
-                    </button>
-                </div>
+            <div class="col-md-5">
+                <a href="{{ url_for('gestao_frequencia') }}" class="btn btn-info w-100 btn-home">🗓️ GESTÃO DE FREQUÊNCIA</a>
             </div>
         </div>
 
-        <!-- Rodapé -->
-        <footer>
-            &copy; {{ ano }} - SGCE | Desenvolvido: Marcelo André Nogueira Cardes <br> 
-            Licenciado: E. E. PEI ESCOLA PROFESSORA IRENE DIAS RIBEIRO
+        <footer class="text-center mt-5">
+            <small>
+                Desenvolvido: Marcelo André Nogueira Cardes <br>
+                Licenciado: EE PEI Profª Irene Dias Ribeiro
+            </small>
         </footer>
     </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-
