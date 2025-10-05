@@ -13,15 +13,9 @@ import pandas as pd
 from dateutil import parser as date_parser
 
 # -------------------------- Configuração --------------------------
-# app.py (Bloco de Configuração no início do arquivo)
-
-# -------------------------- Configuração --------------------------
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "supersecret")
 
-# ATENÇÃO: Corrigido o nome das variáveis de ambiente para o padrão
-# Se você está usando um arquivo .env, as chaves devem ser 'SUPABASE_URL' e 'SUPABASE_KEY'.
-# Se não estiver usando .env, substitua o segundo argumento (valor padrão) pelos seus valores reais.
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://rimuhgulxliduugenxro.supabase.co")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJpbXVoZ3VseGxpZHV1Z2VueHJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzNTU3NTgsImV4cCI6MjA3NDkzMTc1OH0.h5E_WzZLbXSAaACPjDNe7GtEYQFL6nkIdU2isUNbXiA")
 
@@ -123,7 +117,7 @@ def adicionar_ocorrencia_ao_pdf(pdf: PDF, o: dict):
     pdf.ln(8)
     pdf.set_font('Arial', 'B', 10)
     pdf.cell(100, 7, 'Assinatura Responsável:', 0, 0, 'L')
-    pdf.cell(0, 7, 'Data:       /       /       ', 0, 1, 'L')
+    pdf.cell(0, 7, 'Data:        /        /        ', 0, 1, 'L')
     pdf.ln(5)
     pdf.set_font('Arial', 'I', 8)
     pdf.cell(0, 5, 'Ocorrência registrada no SGCE.', 0, 1, 'R')
@@ -146,7 +140,6 @@ def carregar_lookup(table_name: str, column=None) -> list:
         print(f"Erro ao carregar {table_name}:", e)
         return []
 
-# app.py (Função carregar_dados_ocorrencias)
 
 def carregar_dados_ocorrencias() -> list:
     supabase = conectar_supabase()
@@ -154,7 +147,7 @@ def carregar_dados_ocorrencias() -> list:
         print("❌ DEBUG: Falha na conexão com o Supabase.")
         return []
     try:
-        # CORREÇÃO CRUCIAL: Usar 'ocorrencia' (singular) para consistência
+        # CORREÇÃO APLICADA: 'ocorrencias' (PLURAL)
         resp = supabase.table("ocorrencias").select("*").execute()
         data = resp.data or []
         
@@ -164,8 +157,6 @@ def carregar_dados_ocorrencias() -> list:
         # ensure uppercase keys for convenience
         normalized = [upperize_row_keys(r) for r in data]
         # sort by ID descending if exists
-        # ... (o restante da função é o mesmo)
-        
         # ... (restante da função)
         
         return normalized
@@ -203,7 +194,7 @@ def nova():
 
     form = request.form
     payload = {
-        # mantém a convenção de colunas MAIÚSCULAS em 'ocorrencia'
+        # mantém a convenção de colunas MAIÚSCULAS em 'ocorrencias'
         "DCO": datetime.now(TZ_SAO).date().isoformat(),
         "HCO": datetime.now(TZ_SAO).strftime("%H:%M"),
         "ALUNO": form.get("ALUNO", ""),
@@ -222,6 +213,7 @@ def nova():
     }
 
     try:
+        # CORREÇÃO APLICADA: 'ocorrencias' (PLURAL)
         resp = supabase.table("ocorrencias").insert(payload).execute()
         if resp.error:
             flash("Erro ao inserir ocorrências.", "danger")
@@ -256,6 +248,7 @@ def editar(oid):
 
     # buscar ocorrência
     try:
+        # CORREÇÃO APLICADA: 'ocorrencias' (PLURAL)
         resp = supabase.table("ocorrencias").select("*").eq("ID", oid).execute()
         data = resp.data or []
         if not data:
@@ -300,8 +293,6 @@ def editar(oid):
 
     # Se o checkbox FT/FC/FG ainda for SIM no banco e o form trouxe texto de atendimento,
     # consideramos que a solicitação foi atendida — atualizamos a flag para 'NÃO' e guardamos DT/DC/DG.
-    # Caso queira outro comportamento, avise.
-    # Nota: a UI enviará FT/FC/FG como checkbox quando estiver presente; aqui só ajustamos baseado no conteúdo.
     if ocorr.get("FT") == "SIM" and update.get("ATT"):
         update["FT"] = "NÃO"
         update["DT"] = now_iso
@@ -323,7 +314,8 @@ def editar(oid):
         update["STATUS"] = "FINALIZADA"
 
     try:
-        supabase.table("ocorrencia").update(update).eq("ID", oid).execute()
+        # CORREÇÃO APLICADA: 'ocorrencias' (PLURAL)
+        supabase.table("ocorrencias").update(update).eq("ID", oid).execute()
         flash("Ocorrência atualizada com sucesso.", "success")
     except Exception as e:
         print("Erro ao atualizar ocorrência:", e)
@@ -348,7 +340,8 @@ def relatorio_aluno():
     ocorrencias = []
     if aluno_sel:
         try:
-            q = supabase.table("ocorrencia").select("*").eq("ALUNO", aluno_sel)
+            # CORREÇÃO APLICADA: 'ocorrencias' (PLURAL)
+            q = supabase.table("ocorrencias").select("*").eq("ALUNO", aluno_sel)
             if sala_sel:
                 q = q.eq("SALA", sala_sel)
             resp = q.execute()
@@ -392,7 +385,8 @@ def gerar_pdf_aluno():
         return redirect(url_for("relatorio_aluno"))
 
     try:
-        resp = supabase.table("ocorrencia").select("*").in_("ID", ids).execute()
+        # CORREÇÃO APLICADA: 'ocorrencias' (PLURAL)
+        resp = supabase.table("ocorrencias").select("*").in_("ID", ids).execute()
         ocorrs = [upperize_row_keys(o) for o in (resp.data or [])]
     except Exception as e:
         print("Erro buscar ocorrencias para PDF:", e)
@@ -406,7 +400,8 @@ def gerar_pdf_aluno():
     for o in ocorrs:
         adicionar_ocorrencia_ao_pdf(pdf, o)
         try:
-            supabase.table("ocorrencia").update({"STATUS": "ASSINADA", "ASSINADA": True}).eq("ID", o.get("ID")).execute()
+            # CORREÇÃO APLICADA: 'ocorrencias' (PLURAL)
+            supabase.table("ocorrencias").update({"STATUS": "ASSINADA", "ASSINADA": True}).eq("ID", o.get("ID")).execute()
         except Exception:
             pass
 
@@ -423,7 +418,8 @@ def relatorio_geral():
     data_inicio = request.args.get("data_inicio")
     data_fim = request.args.get("data_fim")
     # pega todas as ocorrencias e processa localmente
-    resp = supabase.table("ocorrencia").select("*").execute()
+    # CORREÇÃO APLICADA: 'ocorrencias' (PLURAL)
+    resp = supabase.table("ocorrencias").select("*").execute()
     data = resp.data or []
     df = pd.DataFrame([upperize_row_keys(r) for r in data])
     # garante colunas
@@ -453,7 +449,8 @@ def relatorio_tutor():
     start = request.args.get("start")
     end = request.args.get("end")
     # pega ocorrências FT == 'SIM' ou FT == 'SIM'/'NÃO' dependendo de sua lógica
-    resp = supabase.table("ocorrencia").select("*").execute()
+    # CORREÇÃO APLICADA: 'ocorrencias' (PLURAL)
+    resp = supabase.table("ocorrencias").select("*").execute()
     data = resp.data or []
     df = pd.DataFrame([upperize_row_keys(r) for r in data])
     if df.empty:
@@ -505,7 +502,8 @@ def relatorio_tutoraluno():
         tutor = a.get("Tutor", "SEM TUTOR")
         if tutor not in dados:
             dados[tutor] = []
-        qtd = len(supabase.table("ocorrencia").select("*").eq("ALUNO", a.get("Aluno")).execute().data or [])
+        # CORREÇÃO APLICADA: 'ocorrencias' (PLURAL)
+        qtd = len(supabase.table("ocorrencias").select("*").eq("ALUNO", a.get("Aluno")).execute().data or [])
         dados[tutor].append({"Aluno": a.get("Aluno"), "Sala": a.get("Sala"), "Quantidade Ocorrências": qtd})
     return render_template("relatorio_tutoraluno.html", dados=dados)
 
