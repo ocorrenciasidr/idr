@@ -132,12 +132,11 @@
 <script>
 function setEditarOid(oid) { 
   document.getElementById('editarOid').value = oid; 
-  const form = document.querySelector('#senhaModal form');
-  if (form) {
-    form.action = "{{ url_for('editar', oid=0) }}".replace('/0', '/' + oid);
-  }
+  const form = document.getElementById('senhaForm');
+  form.action = "{{ url_for('editar', oid=0) }}".replace('/0', '/' + oid);
 }
 </script>
+
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
