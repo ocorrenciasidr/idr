@@ -1,70 +1,71 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8">
-  <title>SGCE - ESTATÍSTICA TUTOR DE OCORRÊNCIAS</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+<meta charset="UTF-8">
+<title>SGCE - ESTATÍSTICA POR TUTOR</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+<style>
+  body { background-color: #121212; color: #f5f5f5; }
+  .card { background: #1e1e1e; border: none; border-radius: 15px; }
+</style>
 </head>
-<body class="bg-light p-4">
+<body class="p-4">
+
 <div class="container mt-4">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-        <a href="{{ url_for('relatorio_inicial') }}" class="btn btn-secondary">⬅️ Voltar aos Relatórios</a>
-        <h2 class="text-center flex-grow-1 m-0">SISTEMA DE GESTÃO DE CONVIVÊNCIA ESCOLAR <br> ESTATÍSTICA TUTOR DE OCORRÊNCIAS</h2>
-        <button onclick="window.print()" class="btn btn-info ms-3">🖨️ Imprimir/Exportar</button>
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <a href="{{ url_for('relatorio_inicial') }}" class="btn btn-secondary">⬅ Voltar</a>
+    <h3 class="text-center flex-grow-1 m-0">ESTATÍSTICA DE OCORRÊNCIAS POR TUTOR</h3>
+    <button onclick="window.print()" class="btn btn-info">🖨️ Imprimir</button>
+  </div>
+
+  <form method="get" class="row g-3 mb-4">
+    <div class="col-md-4">
+      <label for="start" class="form-label">Data Inicial:</label>
+      <input type="date" name="start" id="start" class="form-control bg-dark text-light" value="{{ start }}">
     </div>
+    <div class="col-md-4">
+      <label for="end" class="form-label">Data Final:</label>
+      <input type="date" name="end" id="end" class="form-control bg-dark text-light" value="{{ end }}">
+    </div>
+    <div class="col-md-4 d-flex align-items-end">
+      <button type="submit" class="btn btn-primary w-100">📊 Gerar</button>
+    </div>
+  </form>
 
-  <form method="get" action="{{ url_for('relatorio_estatistica_tutor') }}" class="row g-3 mb-4">
-    <div class="col-md-4">
-      <label for="start" class="form-label">Data Inicial:</label>
-      <input type="date" class="form-control" id="start" name="start" value="{{ start if start else '' }}">
-    </div>
-    <div class="col-md-4">
-      <label for="end" class="form-label">Data Final:</label>
-      <input type="date" class="form-control" id="end" name="end" value="{{ end if end else '' }}">
-    </div>
-    <div class="col-md-4 d-flex align-items-end">
-      <button type="submit" class="btn btn-primary w-100">📊 Gerar Relatório</button>
-    </div>
-  </form>
-
-  {% if relatorio %}
-    <div class="card shadow p-4">
-        <h4 class="mb-4 text-primary">Resultados (FT='SIM')</h4>
-        <div class="table-responsive">
-            <table class="table table-bordered table-striped text-center">
-                <thead class="table-dark">
-                    <tr>
-                        <th>Tutor</th>
-                        <th>Total (FT='SIM')</th>
-                        <th class="text-success">No Prazo (DT - DCO $\le$ 7 dias)</th>
-                        <th class="text-warning">Fora do Prazo (DT - DCO $>$ 7 dias)</th>
-                        <th class="text-danger">Não Respondido (DT Vazio)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for tutor, dados in relatorio.items() %}
-                    <tr>
-                        <td class="text-start"><strong>{{ tutor }}</strong></td>
-                        <td>{{ dados.total }}</td>
-                        <td class="text-success">{{ dados.prazo }} ({{ "%.2f"|format((dados.prazo / dados.total) * 100 if dados.total else 0) }}%)</td>
-                        <td class="text-warning">{{ dados.fora }} ({{ "%.2f"|format((dados.fora / dados.total) * 100 if dados.total else 0) }}%)</td>
-                        <td class="text-danger">{{ dados.nao }} ({{ "%.2f"|format((dados.nao / dados.total) * 100 if dados.total else 0) }}%)</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-    {% else %}
-        <div class="alert alert-info text-center mt-4">
-            Nenhuma ocorrência de Tutor (FT='SIM') encontrada para o período selecionado ou as datas não são válidas.
-        </div>
-    {% endif %}
+  {% if relatorio %}
+  <div class="card p-4">
+    <h4 class="text-warning mb-3">📈 Resultados (FT = 'SIM')</h4>
+    <table class="table table-dark table-striped text-center">
+      <thead>
+        <tr>
+          <th>Tutor</th>
+          <th>Total</th>
+          <th class="text-success">No Prazo (≤7 dias)</th>
+          <th class="text-warning">Fora do Prazo (>7 dias)</th>
+          <th class="text-danger">Não Respondido</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tutor, dados in relatorio.items() %}
+        <tr>
+          <td>{{ tutor }}</td>
+          <td>{{ dados.total }}</td>
+          <td class="text-success">{{ dados.prazo }}</td>
+          <td class="text-warning">{{ dados.fora }}</td>
+          <td class="text-danger">{{ dados.nao }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="alert alert-info text-center mt-4">Nenhuma ocorrência encontrada.</div>
+  {% endif %}
 </div>
-<!-- Rodapé -->
-    <footer class="text-center mt-5 mb-3">
-        <small>Desenvolvido: Marcelo André Nogueira Cardes <br> Licenciado: EE PEI Profª Irene Dias Ribeiro</small>
-    </footer>
+
+<footer class="text-center mt-5 mb-3 text-secondary">
+  <small>Desenvolvido: Marcelo André Nogueira Cardes <br> Licenciado: EE PEI Profª Irene Dias Ribeiro</small>
+</footer>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
