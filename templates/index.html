@@ -1,84 +1,88 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8">
-  <title>SGCE - Ocorrências</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    body { padding: 20px; background-color: #f8f9fa; }
-    table { font-size: 0.85rem; }
-    th, td { vertical-align: middle !important; text-align: center; }
-    .btn-small { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
-    .filter-label { font-weight: bold; margin-right: 10px; }
-    .filter-select { max-width: 200px; margin-right: 15px; display: inline-block; }
-    .status-atendimento { background-color: #f8d7da; color: #721c24; }
-    .status-finalizada { background-color: #fff3cd; color: #856404; }
-    .status-assinada { background-color: #d4edda; color: #155724; }
-    .icon-button { cursor: pointer; font-size: 1.2rem; }
-  </style>
+<meta charset="UTF-8">
+<title>SGCE - Ocorrências</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+body { padding: 20px; background-color: #f8f9fa; }
+table { font-size: 0.85rem; }
+th, td { vertical-align: middle !important; text-align: center; }
+.btn-small { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
+.filter-label { font-weight: bold; margin-right: 10px; }
+.filter-select { max-width: 200px; margin-right: 15px; display: inline-block; }
+.status-atendimento { background-color: #f8d7da; color: #721c24; }
+.status-finalizada { background-color: #fff3cd; color: #856404; }
+.status-assinada { background-color: #d4edda; color: #155724; }
+.icon-button { cursor: pointer; font-size: 1.2rem; }
+</style>
 </head>
 <body>
 <div class="container">
-  <h3 class="mb-3 text-center">Sistema de Gestão de Convivência Escolar</h3>
+<h3 class="mb-3 text-center">Sistema de Gestão de Convivência Escolar</h3>
 
-  <div class="mb-3">
-    <label class="filter-label">Tutor:</label>
-    <select class="form-select filter-select" id="filterTutor">
-      <option value="">Todos</option>
-    </select>
+<div class="mb-3">
+  <label class="filter-label">Tutor:</label>
+  <select class="form-select filter-select" id="filterTutor"><option value="">Todos</option></select>
 
-    <label class="filter-label">Status:</label>
-    <select class="form-select filter-select" id="filterStatus">
-      <option value="">Todos</option>
-      <option value="ATENDIMENTO">ATENDIMENTO</option>
-      <option value="FINALIZADA">FINALIZADA</option>
-      <option value="ASSINADA">ASSINADA</option>
-    </select>
+  <label class="filter-label">Status:</label>
+  <select class="form-select filter-select" id="filterStatus">
+    <option value="">Todos</option>
+    <option value="ATENDIMENTO">ATENDIMENTO</option>
+    <option value="FINALIZADA">FINALIZADA</option>
+    <option value="ASSINADA">ASSINADA</option>
+  </select>
 
-    <button class="btn btn-primary btn-small" onclick="applyFilters()">Filtrar</button>
-    <button class="btn btn-success btn-small" onclick="resetFilters()">Limpar</button>
-    <button class="btn btn-secondary btn-small" onclick="window.location.href='home.html'">Tela Inicial</button>
-  </div>
-
-  <table class="table table-bordered table-hover table-striped">
-    <thead class="table-dark">
-      <tr>
-        <th>ID</th>
-        <th>Data</th>
-        <th>Hora</th>
-        <th>Aluno</th>
-        <th>Sala</th>
-        <th>Professor</th>
-        <th>Tutor</th>
-        <th>FT</th>
-        <th>FC</th>
-        <th>FG</th>
-        <th>Status</th>
-        <th>Ações</th>
-      </tr>
-    </thead>
-    <tbody id="tabelaOcorrencias"></tbody>
-  </table>
+  <button class="btn btn-primary btn-small" onclick="applyFilters()">Filtrar</button>
+  <button class="btn btn-success btn-small" onclick="resetFilters()">Limpar</button>
+  <button class="btn btn-secondary btn-small" onclick="window.location.href='home.html'">Tela Inicial</button>
 </div>
 
-<script>
-let dados = JSON.parse(localStorage.getItem('ocorrencias')) || [
-  {ID:8, Data:'2025-10-03', Hora:'15:01', Aluno:'YASMIN', Sala:'7º ANO A', Professor:'JERONIMO', Tutor:'MARCOS', FT:'✔️', FC:'✔️', FG:'✔️', Status:'ATENDIMENTO'},
-  {ID:6, Data:'2025-10-03', Hora:'13:33', Aluno:'DAVI', Sala:'7º ANO B', Professor:'MARCELO', Tutor:'GRAZIELLE', FT:'✔️', FC:'✔️', FG:'⚠️', Status:'ATENDIMENTO'}
-];
+<table class="table table-bordered table-hover table-striped">
+<thead class="table-dark">
+<tr>
+<th>ID</th><th>Data</th><th>Hora</th><th>Aluno</th><th>Sala</th>
+<th>Professor</th><th>Tutor</th><th>FT</th><th>FC</th><th>FG</th>
+<th>Status</th><th>Ações</th>
+</tr>
+</thead>
+<tbody id="tabelaOcorrencias"></tbody>
+</table>
+</div>
 
-// Preenche filtro Tutor
-const tutors = [...new Set(dados.map(d => d.Tutor))];
-const filterTutor = document.getElementById('filterTutor');
-tutors.forEach(t => { const opt = document.createElement('option'); opt.value=t; opt.textContent=t; filterTutor.appendChild(opt); });
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-// Função para renderizar tabela
+const supabaseUrl = 'https://SEU_SUPABASE_URL';
+const supabaseKey = 'SEU_SUPABASE_ANON_KEY';
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+let dados = [];
+
+async function carregarOcorrencias(){
+  const { data, error } = await supabase.from('ocorrencias').select('*').order('ID',{ascending:false});
+  if(error){ alert('Erro ao carregar dados'); console.log(error); return; }
+  dados = data;
+
+  // Preencher filtro Tutor
+  const filterTutor = document.getElementById('filterTutor');
+  filterTutor.innerHTML = '<option value="">Todos</option>';
+  [...new Set(dados.map(d=>d.Tutor))].forEach(t=>{
+    const opt=document.createElement('option'); opt.value=t; opt.textContent=t; filterTutor.appendChild(opt);
+  });
+
+  // Atualiza status automático
+  dados.forEach(r=>{
+    r.Status = (r.FT==='✔️'||r.FC==='✔️'||r.FG==='✔️')?'ATENDIMENTO':'FINALIZADA';
+  });
+
+  renderTable(dados);
+}
+
 function renderTable(data){
-  data.sort((a,b)=>b.ID - a.ID); // ID decrescente
-  const tbody = document.getElementById('tabelaOcorrencias');
-  tbody.innerHTML = '';
-  data.forEach(row => {
-    let statusClass = row.Status==='ATENDIMENTO'?'status-atendimento':row.Status==='FINALIZADA'?'status-finalizada':'status-assinada';
+  const tbody=document.getElementById('tabelaOcorrencias'); tbody.innerHTML='';
+  data.forEach(row=>{
+    const statusClass = row.Status==='ATENDIMENTO'?'status-atendimento':row.Status==='FINALIZADA'?'status-finalizada':'status-assinada';
     tbody.innerHTML += `<tr>
       <td>${row.ID}</td>
       <td>${row.Data}</td>
@@ -101,36 +105,26 @@ function renderTable(data){
 
 // Filtros
 function applyFilters(){
-  const tutor = filterTutor.value;
-  const status = document.getElementById('filterStatus').value;
-  let filtered = dados;
-  if(tutor) filtered = filtered.filter(d => d.Tutor === tutor);
-  if(status) filtered = filtered.filter(d => d.Status === status);
+  const tutor=document.getElementById('filterTutor').value;
+  const status=document.getElementById('filterStatus').value;
+  let filtered=dados;
+  if(tutor) filtered=filtered.filter(d=>d.Tutor===tutor);
+  if(status) filtered=filtered.filter(d=>d.Status===status);
   renderTable(filtered);
 }
-function resetFilters(){ filterTutor.value=''; document.getElementById('filterStatus').value=''; renderTable(dados); }
+function resetFilters(){ document.getElementById('filterTutor').value=''; document.getElementById('filterStatus').value=''; renderTable(dados); }
 
-// Abrir editar.html passando ID e campo
+// Abrir editar.html
 function abrirEditar(id,campo){ window.location.href=`editar.html?id=${id}&campo=${campo}`; }
 function verOcorrencia(id){ window.location.href=`editar.html?id=${id}&modo=ver&id=${id}`; }
 function editarOcorrencia(id){
-  const senha = prompt("Digite a senha para edição:");
+  const senha=prompt("Digite a senha para edição:");
   if(senha==='idrgestao') window.location.href=`editar.html?id=${id}&modo=editar`;
   else alert('Senha incorreta!');
 }
 
-// Atualizar tabela quando voltar de editar.html
-window.addEventListener('focus', ()=>{
-  dados = JSON.parse(localStorage.getItem('ocorrencias')) || dados;
-  // Atualiza status automaticamente
-  dados.forEach(r=>{
-    r.Status = (r.FT==='✔️'||r.FC==='✔️'||r.FG==='✔️')?'ATENDIMENTO':'FINALIZADA';
-  });
-  renderTable(dados);
-});
-
-// Render inicial
-renderTable(dados);
+window.addEventListener('focus', carregarOcorrencias);
+carregarOcorrencias();
 </script>
 </body>
 </html>
