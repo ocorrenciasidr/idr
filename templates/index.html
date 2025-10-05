@@ -103,7 +103,7 @@
 
             <td>
               <!-- Ver: modo visualização -->
-              <a href="{{ url_for('editar') }}?oid={{ r.ID }}&modo=ver" class="btn btn-info btn-sm">Ver</a>
+             <a href="{{ url_for('editar', oid=r.ID) }}?modo=ver" class="btn btn-info btn-sm">Ver</a>
 
               <!-- Editar: solicita senha antes de abrir modo editar completo -->
               <button class="btn btn-primary btn-sm btn-editar" data-oid="{{ r.ID }}">Editar</button>
