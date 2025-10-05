@@ -4,6 +4,7 @@ supabase
 reportlab
 fpdf
 matplotlib
+python-dateutil==2.9.2
 gunicorn  
 python-dotenv  # Sugerido para carregar SUPABASE_URL e SUPABASE_KEY localmente
 requests       # Usada indiretamente por Supabase ou Flask, mas boa prática incluir
