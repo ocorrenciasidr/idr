@@ -212,25 +212,28 @@ def home():
 def index():
     filtro_tutor = request.args.get("tutor_filtro")
     filtro_status = request.args.get("status_filtro")
-    
-    # Passa os filtros para a função de carregamento
+
     registros = carregar_dados_ocorrencias(filtro_tutor, filtro_status)
-    
-    # Carrega tutores para o filtro
-    tutores_disp = carregar_tutores_com_ocorrencias()
-    
+
+    # CORREÇÃO AQUI: chamada .select("*").execute()
+    try:
+        tutores_data = supabase.table("ocorrencias").select("TUTOR").execute().data or []
+        tutores_disp = sorted(list({r.get("TUTOR") for r in tutores_data if r.get("TUTOR")}))
+    except Exception as e:
+        print("Erro ao carregar tutores:", e)
+        tutores_disp = []
+
     status_disp = ["ATENDIMENTO", "FINALIZADA", "ASSINADA"]
-    
+
     return render_template(
-        "index.html", 
-        registros=registros, 
+        "index.html",
+        registros=registros,
         tutores_disp=["Todos"] + tutores_disp,
         status_disp=["Todos"] + status_disp,
         filtro_tutor_sel=filtro_tutor,
         filtro_status_sel=filtro_status
     )
-    
-# app.py
+
 
 # ... (coloque antes da rota editar)
 
@@ -466,9 +469,7 @@ def editar(oid):
         flash("Erro de conexão com o banco.", "danger")
         return redirect(url_for("index"))
 
-    # buscar ocorrência
     try:
-        # CORREÇÃO APLICADA: 'ocorrencias' (PLURAL)
         resp = supabase.table("ocorrencias").select("*").eq("ID", oid).execute()
         data = resp.data or []
         if not data:
@@ -477,20 +478,19 @@ def editar(oid):
         ocorr = upperize_row_keys(data[0])
     except Exception as e:
         print("Erro ao buscar ocorrências:", e)
-        flash("Erro ao buscar ocorrências.", "danger")
+        flash("Erro ao buscar ocorrência.", "danger")
         return redirect(url_for("index"))
 
     professores = carregar_lookup("Professores", column="Professor")
     salas = carregar_lookup("Salas", column="Sala")
 
+    # GET → exibir tela
     if request.method == "GET":
         return render_template("editar.html", ocorrencias=ocorr, professores_disp=professores, salas_disp=salas)
 
-    # POST: atualizar registro (sem senha)
+    # POST → atualizar
     form = request.form
     update = {}
-
-    # atualizar campos livres
     update["DESCRICAO"] = form.get("DESCRICAO", ocorr.get("DESCRICAO", ""))
     update["ATP"] = form.get("ATP", ocorr.get("ATP", ""))
     update["PROFESSOR"] = form.get("PROFESSOR", ocorr.get("PROFESSOR", ""))
@@ -498,43 +498,23 @@ def editar(oid):
     update["ALUNO"] = form.get("ALUNO", ocorr.get("ALUNO", ""))
     update["TUTOR"] = form.get("TUTOR", ocorr.get("TUTOR", ""))
 
-    # Se as ações foram solicitadas (FT/FC/FG) e foram respondidas, gravar ATT/ATC/ATG e marcar DT/DC/DG
     now_iso = datetime.now(TZ_SAO).isoformat()
 
-    # ATT (Tutor)
-    if form.get("ATT") is not None:
-        update["ATT"] = form.get("ATT", ocorr.get("ATT", ""))
-    # ATC (Coordenação)
-    if form.get("ATC") is not None:
-        update["ATC"] = form.get("ATC", ocorr.get("ATC", ""))
-    # ATG (Gestão)
-    if form.get("ATG") is not None:
-        update["ATG"] = form.get("ATG", ocorr.get("ATG", ""))
+    if form.get("ATT"): update["ATT"] = form.get("ATT")
+    if form.get("ATC"): update["ATC"] = form.get("ATC")
+    if form.get("ATG"): update["ATG"] = form.get("ATG")
 
-    # Se o checkbox FT/FC/FG ainda for SIM no banco e o form trouxe texto de atendimento,
-    # consideramos que a solicitação foi atendida — atualizamos a flag para 'NÃO' e guardamos DT/DC/DG.
     if ocorr.get("FT") == "SIM" and update.get("ATT"):
-        update["FT"] = "NÃO"
-        update["DT"] = now_iso
+        update["FT"] = "NÃO"; update["DT"] = now_iso
     if ocorr.get("FC") == "SIM" and update.get("ATC"):
-        update["FC"] = "NÃO"
-        update["DC"] = now_iso
+        update["FC"] = "NÃO"; update["DC"] = now_iso
     if ocorr.get("FG") == "SIM" and update.get("ATG"):
-        update["FG"] = "NÃO"
-        update["DG"] = now_iso
+        update["FG"] = "NÃO"; update["DG"] = now_iso
 
-    # ajustar STATUS: se algum FT/FC/FG ainda for 'SIM' => ATENDIMENTO, senão FINALIZADA
-    # buscamos os valores atuais (priorizar updates)
-    ft = update.get("FT", ocorr.get("FT", "NÃO"))
-    fc = update.get("FC", ocorr.get("FC", "NÃO"))
-    fg = update.get("FG", ocorr.get("FG", "NÃO"))
-    if "SIM" in (ft, fc, fg):
-        update["STATUS"] = "ATENDIMENTO"
-    else:
-        update["STATUS"] = "FINALIZADA"
+    ft, fc, fg = update.get("FT", ocorr.get("FT")), update.get("FC", ocorr.get("FC")), update.get("FG", ocorr.get("FG"))
+    update["STATUS"] = "ATENDIMENTO" if "SIM" in (ft, fc, fg) else "FINALIZADA"
 
     try:
-        # CORREÇÃO APLICADA: 'ocorrencias' (PLURAL)
         supabase.table("ocorrencias").update(update).eq("ID", oid).execute()
         flash("Ocorrência atualizada com sucesso.", "success")
     except Exception as e:
@@ -552,41 +532,33 @@ def relatorio_inicial():
 @app.route("/relatorio_aluno", methods=["GET", "POST"])
 def relatorio_aluno():
     supabase = conectar_supabase()
-    salas = sorted(set([r.get("Sala") for r in (supabase.table("Alunos").select("Sala").execute().data or []) if r.get("Sala")] ))
-    alunos = sorted(set([r.get("Aluno") for r in (supabase.table("Alunos").select("Aluno").execute().data or []) if r.get("Aluno")] ))
+
+    # Carregar salas e alunos
+    salas = sorted({r.get("Sala") for r in (supabase.table("Alunos").select("Sala").execute().data or []) if r.get("Sala")})
+    alunos = sorted({r.get("Aluno") for r in (supabase.table("Alunos").select("Aluno").execute().data or []) if r.get("Aluno")})
+
     sala_sel = request.args.get("sala", "")
     aluno_sel = request.args.get("aluno", "")
-
     ocorrencias = []
+
     if aluno_sel:
         try:
-            # CORREÇÃO APLICADA: 'ocorrencias' (PLURAL)
             q = supabase.table("ocorrencias").select("*").eq("ALUNO", aluno_sel)
             if sala_sel:
                 q = q.eq("SALA", sala_sel)
             resp = q.execute()
-            ocorrencias = resp.data or []
-            # normalize for display keys similar to templates earlier
-            # transform keys to display-friendly names if needed in template
-            # template expects fields like 'Nº Ocorrência', 'DCO', etc.
-            normalized = []
-            for o in ocorrencias:
-                r = upperize_row_keys(o)
-                r_display = {
-                    "ID": r.get("ID"),
-                    "Nº Ocorrência": r.get("ID"),
-                    "DCO": r.get("DCO"),
-                    "HCO": r.get("HCO"),
-                    "Descrição da Ocorrência": r.get("DESCRICAO"),
-                    "Status": r.get("STATUS", ""),
-                }
-                normalized.append(r_display)
-            ocorrencias = normalized
+            ocorrencias = [upperize_row_keys(o) for o in (resp.data or [])]
         except Exception as e:
-            print("Erro ao buscar ocorrencias por aluno:", e)
-            ocorrencias = []
+            print("Erro ao buscar ocorrências do aluno:", e)
 
-    return render_template("relatorio_aluno.html", salas=salas, alunos=alunos, sala_sel=sala_sel, aluno_sel=aluno_sel, ocorrencias=ocorrencias)
+    return render_template(
+        "relatorio_aluno.html",
+        salas=salas,
+        alunos=alunos,
+        sala_sel=sala_sel,
+        aluno_sel=aluno_sel,
+        ocorrencias=ocorrencias
+    )
 
 @app.route("/gerar_pdf_aluno", methods=["POST"])
 def gerar_pdf_aluno():
@@ -631,37 +603,46 @@ def gerar_pdf_aluno():
     filename = f"Relatorio_{aluno or 'Aluno'}.pdf"
     return send_file(out, as_attachment=True, download_name=filename, mimetype="application/pdf")
 
-@app.route("/relatorio_geral")
+@app.route("/relatorio_geral", methods=["GET"])
 def relatorio_geral():
-    # Para exibir: agregue os dados conforme templates
     supabase = conectar_supabase()
     data_inicio = request.args.get("data_inicio")
     data_fim = request.args.get("data_fim")
-    # pega todas as ocorrencias e processa localmente
-    # CORREÇÃO APLICADA: 'ocorrencias' (PLURAL)
+
     resp = supabase.table("ocorrencias").select("*").execute()
     data = resp.data or []
     df = pd.DataFrame([upperize_row_keys(r) for r in data])
-    # garante colunas
+
     if df.empty:
-        rel_sala = []
-        rel_setor = []
+        rel_sala = []; rel_setor = []
     else:
         df = ensure_cols_for_geral(df)
-        # aplicar filtros de data se fornecidos (DCO em iso)
         if data_inicio:
-            try:
-                df = df[pd.to_datetime(df["DCO"], errors="coerce") >= pd.to_datetime(data_inicio)]
-            except Exception:
-                pass
+            df = df[pd.to_datetime(df["DCO"], errors="coerce") >= pd.to_datetime(data_inicio)]
         if data_fim:
-            try:
-                df = df[pd.to_datetime(df["DCO"], errors="coerce") <= pd.to_datetime(data_fim)]
-            except Exception:
-                pass
+            df = df[pd.to_datetime(df["DCO"], errors="coerce") <= pd.to_datetime(data_fim)]
         rel_sala = calcular_relatorio_por_sala_df(df)
         rel_setor = calcular_relatorio_estatistico_df(df)
-    return render_template("relatorio_geral.html", relatorio_sala=rel_sala, relatorio_setor=rel_setor, data_inicio=data_inicio, data_fim=data_fim)
+
+    return render_template(
+        "relatorio_geral.html",
+        relatorio_sala=rel_sala,
+        relatorio_setor=rel_setor,
+        data_inicio=data_inicio,
+        data_fim=data_fim
+    )
+
+
+# --- API auxiliar (usada por JS ou relatórios dinâmicos) ---
+@app.route("/api/ocorrencias")
+def api_ocorrencias():
+    try:
+        data = supabase.table("ocorrencias").select("*").execute().data
+        return jsonify(data)
+    except Exception as e:
+        print("Erro na API /api/ocorrencias:", e)
+        return jsonify({"erro": str(e)}), 500
+
 
 @app.route("/relatorio_tutor")
 def relatorio_tutor():
@@ -807,7 +788,6 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("FLASK_DEBUG", "1") == "1"
     app.run(host="0.0.0.0", port=port, debug=debug)
-
 
 
 
