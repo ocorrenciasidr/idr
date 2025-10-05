@@ -204,11 +204,33 @@ def home():
     ano = datetime.now(TZ_SAO).year
     return render_template("home.html", ano=ano)
 
-@app.route("/index")
-def index():
-    registros = carregar_dados_ocorrencias()
-    return render_template("index.html", registros=registros)
+# app.py
 
+# ... (código anterior)
+
+@app.route("/index", methods=["GET"])
+def index():
+    filtro_tutor = request.args.get("tutor_filtro")
+    filtro_status = request.args.get("status_filtro")
+    
+    # Passa os filtros para a função de carregamento
+    registros = carregar_dados_ocorrencias(filtro_tutor, filtro_status)
+    
+    # Carrega tutores para o filtro
+    tutores_disp = carregar_tutores_com_ocorrencias()
+    
+    status_disp = ["ATENDIMENTO", "FINALIZADA", "ASSINADA"]
+    
+    return render_template(
+        "index.html", 
+        registros=registros, 
+        tutores_disp=["Todos"] + tutores_disp,
+        status_disp=["Todos"] + status_disp,
+        filtro_tutor_sel=filtro_tutor,
+        filtro_status_sel=filtro_status
+    )
+    
+# ... (restante do código)
 # --- Nova ocorrência ---
 @app.route("/nova", methods=["GET", "POST"])
 def nova():
@@ -620,4 +642,5 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("FLASK_DEBUG", "1") == "1"
     app.run(host="0.0.0.0", port=port, debug=debug)
+
 
