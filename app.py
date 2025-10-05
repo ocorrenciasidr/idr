@@ -195,6 +195,14 @@ def carregar_tutores_com_ocorrencias() -> list:
     except Exception as e:
         print("Erro ao carregar tutores:", e)
         return []
+
+function setEditarOid(oid) { 
+  // Define o ID do registro no input hidden do form do modal
+  document.getElementById('editarOid').value = oid; 
+
+  // Atualiza o action do form para enviar para /editar/<oid>
+  document.getElementById('senhaForm').action = "{{ url_for('editar', oid=0) }}".replace('/0', '/' + oid);
+}
         
 # ... (restante do código)
 # -------------------------- ROTAS --------------------------
@@ -795,6 +803,7 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("FLASK_DEBUG", "1") == "1"
     app.run(host="0.0.0.0", port=port, debug=debug)
+
 
 
 
