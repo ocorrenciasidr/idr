@@ -17,7 +17,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "supersecret")
 
 SUPABASE_URL = os.environ.get("rimuhgulxliduugenxro", "")
-SUPABASE_KEY = os.environ.get("sb_secret_k543j2NP_ErAi9Yoyn1Keg_aMyUG4F", "")
+SUPABASE_KEY = os.environ.get("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJpbXVoZ3VseGxpZHV1Z2VueHJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzNTU3NTgsImV4cCI6MjA3NDkzMTc1OH0.h5E_WzZLbXSAaACPjDNe7GtEYQFL6nkIdU2isUNbXiA")
 
 # Prazo (dias) para avaliar "No Prazo"
 PRAZO_DIAS = int(os.environ.get("PRAZO_DIAS", 7))
@@ -585,6 +585,7 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("FLASK_DEBUG", "1") == "1"
     app.run(host="0.0.0.0", port=port, debug=debug)
+
 
 
 
