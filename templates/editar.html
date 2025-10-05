@@ -1,108 +1,118 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8">
-  <title>Editar Ocorrência</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    body { padding: 20px; background-color: #f8f9fa; }
-    .readonly { background-color: #e9ecef; }
-  </style>
+<meta charset="UTF-8">
+<title>Editar Ocorrência</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+body { padding: 20px; background-color: #f8f9fa; }
+.readonly { background-color: #e9ecef; }
+</style>
 </head>
 <body>
-  <div class="container">
-    <h3 class="mb-3 text-center">Editar Ocorrência</h3>
-    <form id="formOcorrencia">
-      <div class="mb-2"><label>ID:</label> <span id="campoID"></span></div>
-      <div class="mb-2"><label>Aluno:</label> <input type="text" id="campoAluno" class="form-control"></div>
-      <div class="mb-2"><label>Sala:</label> <input type="text" id="campoSala" class="form-control"></div>
-      <div class="mb-2"><label>Professor:</label> <input type="text" id="campoProfessor" class="form-control"></div>
-      <div class="mb-2"><label>Tutor:</label> <input type="text" id="campoTutor" class="form-control"></div>
-      <div class="mb-2"><label>FT:</label> <input type="text" id="campoFT" class="form-control"></div>
-      <div class="mb-2"><label>FC:</label> <input type="text" id="campoFC" class="form-control"></div>
-      <div class="mb-2"><label>FG:</label> <input type="text" id="campoFG" class="form-control"></div>
-      <div class="mb-2"><label>Status:</label> 
-        <select id="campoStatus" class="form-select">
-          <option value="ATENDIMENTO">ATENDIMENTO</option>
-          <option value="FINALIZADA">FINALIZADA</option>
-          <option value="ASSINADA">ASSINADA</option>
-        </select>
-      </div>
-      <button type="submit" class="btn btn-success">Salvar</button>
-      <button type="button" class="btn btn-secondary" onclick="window.history.back()">Voltar</button>
-    </form>
-  </div>
+<div class="container">
+<h3 class="mb-3 text-center">Editar Ocorrência</h3>
+<form id="formOcorrencia">
+<div class="mb-2"><label>ID:</label> <span id="campoID"></span></div>
+<div class="mb-2"><label>Aluno:</label> <input type="text" id="campoAluno" class="form-control"></div>
+<div class="mb-2"><label>Sala:</label> <input type="text" id="campoSala" class="form-control"></div>
+<div class="mb-2"><label>Professor:</label> <input type="text" id="campoProfessor" class="form-control"></div>
+<div class="mb-2"><label>Tutor:</label> <input type="text" id="campoTutor" class="form-control"></div>
+<div class="mb-2"><label>FT:</label> <input type="text" id="campoFT" class="form-control"></div>
+<div class="mb-2"><label>FC:</label> <input type="text" id="campoFC" class="form-control"></div>
+<div class="mb-2"><label>FG:</label> <input type="text" id="campoFG" class="form-control"></div>
+<div class="mb-2"><label>Status:</label> 
+  <select id="campoStatus" class="form-select">
+    <option value="ATENDIMENTO">ATENDIMENTO</option>
+    <option value="FINALIZADA">FINALIZADA</option>
+    <option value="ASSINADA">ASSINADA</option>
+  </select>
+</div>
+<button type="submit" class="btn btn-success">Salvar</button>
+<button type="button" class="btn btn-secondary" onclick="window.history.back()">Voltar</button>
+</form>
+</div>
 
-  <script>
-    // Dados simulados
-    const dados = JSON.parse(localStorage.getItem('ocorrencias')) || [
-      {ID:8, Data:'2025-10-03', Hora:'15:01', Aluno:'YASMIN', Sala:'7º ANO A', Professor:'JERONIMO', Tutor:'MARCOS', FT:'✔️', FC:'✔️', FG:'✔️', Status:'ATENDIMENTO'},
-      {ID:6, Data:'2025-10-03', Hora:'13:33', Aluno:'DAVI', Sala:'7º ANO B', Professor:'MARCELO', Tutor:'GRAZIELLE', FT:'✔️', FC:'✔️', FG:'⚠️', Status:'ATENDIMENTO'}
-    ];
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-    // Capturando parâmetros da URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const id = parseInt(urlParams.get('id'));
-    const campo = urlParams.get('campo'); // FT, FC, FG
-    const modo = urlParams.get('modo');   // ver ou editar
+const supabaseUrl = 'https://SEU_SUPABASE_URL';
+const supabaseKey = 'SEU_SUPABASE_ANON_KEY';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const registro = dados.find(d => d.ID === id);
-    if(!registro){ alert('Registro não encontrado!'); history.back(); }
+const urlParams = new URLSearchParams(window.location.search);
+const id = parseInt(urlParams.get('id'));
+const campo = urlParams.get('campo'); // FT, FC, FG
+const modo = urlParams.get('modo');   // ver ou editar
 
-    // Preencher campos
-    document.getElementById('campoID').textContent = registro.ID;
-    document.getElementById('campoAluno').value = registro.Aluno;
-    document.getElementById('campoSala').value = registro.Sala;
-    document.getElementById('campoProfessor').value = registro.Professor;
-    document.getElementById('campoTutor').value = registro.Tutor;
-    document.getElementById('campoFT').value = registro.FT;
-    document.getElementById('campoFC').value = registro.FC;
-    document.getElementById('campoFG').value = registro.FG;
-    document.getElementById('campoStatus').value = registro.Status;
+let registro;
 
-    // Tornar todos campos readonly
-    const inputs = document.querySelectorAll('#formOcorrencia input, #formOcorrencia select');
-    inputs.forEach(inp => inp.readOnly = true);
-    inputs.forEach(inp => inp.classList.add('readonly'));
+// Map campos e datas
+const campoMap = { FT:'ATT', FC:'ATC', FG:'ATG' };
+const dataMap = { FT:'DT', FC:'DC', FG:'DG' };
 
-    // Map de campos para edição
-    const campoMap = { FT: 'ATT', FC: 'ATC', FG: 'ATG' };
-    const dataMap = { FT: 'DT', FC: 'DC', FG: 'DG' };
+// Carregar registro
+async function carregarRegistro(){
+  const { data, error } = await supabase.from('ocorrencias').select('*').eq('ID',id).single();
+  if(error){ alert('Registro não encontrado'); history.back(); return; }
+  registro = data;
+  preencherCampos();
+}
 
-    // Se for edição de FT, FC ou FG e modo editar
-    if(campo && modo !== 'ver'){
-      const campoEdit = document.getElementById('campo'+campo);
-      campoEdit.readOnly = false;
-      campoEdit.classList.remove('readonly');
-    }
+// Preencher campos
+function preencherCampos(){
+  document.getElementById('campoID').textContent=registro.ID;
+  document.getElementById('campoAluno').value=registro.Aluno;
+  document.getElementById('campoSala').value=registro.Sala;
+  document.getElementById('campoProfessor').value=registro.Professor;
+  document.getElementById('campoTutor').value=registro.Tutor;
+  document.getElementById('campoFT').value=registro.FT;
+  document.getElementById('campoFC').value=registro.FC;
+  document.getElementById('campoFG').value=registro.FG;
+  document.getElementById('campoStatus').value=registro.Status;
 
-    // Submit
-    document.getElementById('formOcorrencia').addEventListener('submit', function(e){
-      e.preventDefault();
+  // Todos readonly
+  document.querySelectorAll('#formOcorrencia input, #formOcorrencia select')
+    .forEach(inp=>{ inp.readOnly=true; inp.classList.add('readonly'); });
 
-      if(campo){
-        // Atualiza campo específico Sim -> Não
-        registro[campo] = registro[campo] === '✔️' ? '⚠️' : '✔️';
+  // Libera campo específico se modo editar
+  if(campo && modo!=='ver'){
+    const c=document.getElementById('campo'+campo);
+    c.readOnly=false; c.classList.remove('readonly');
+  }
+}
 
-        // Atualiza data do dia no campo correspondente
-        registro[dataMap[campo]] = new Date().toISOString().split('T')[0];
+// Salvar alterações
+document.getElementById('formOcorrencia').addEventListener('submit', async function(e){
+  e.preventDefault();
+  const dataAtual = new Date().toISOString().split('T')[0];
+  const updateObj = {};
 
-        // Atualiza campo ATT, ATC, ATG
-        registro[campoMap[campo]] = document.getElementById('campo'+campo).value;
-      }
+  if(campo){
+    if(campo==='FT'){ updateObj.FT=registro.FT==='✔️'?'⚠️':'✔️'; updateObj.DT=dataAtual; updateObj.ATT=document.getElementById('campoFT').value; }
+    if(campo==='FC'){ updateObj.FC=registro.FC==='✔️'?'⚠️':'✔️'; updateObj.DC=dataAtual; updateObj.ATC=document.getElementById('campoFC').value; }
+    if(campo==='FG'){ updateObj.FG=registro.FG==='✔️'?'⚠️':'✔️'; updateObj.DG=dataAtual; updateObj.ATG=document.getElementById('campoFG').value; }
+  }
 
-      // Atualiza campos gerais
-      registro.Aluno = document.getElementById('campoAluno').value;
-      registro.Sala = document.getElementById('campoSala').value;
-      registro.Professor = document.getElementById('campoProfessor').value;
-      registro.Tutor = document.getElementById('campoTutor').value;
-      registro.Status = document.getElementById('campoStatus').value;
+  // Status automático
+  const FT=updateObj.FT||registro.FT;
+  const FC=updateObj.FC||registro.FC;
+  const FG=updateObj.FG||registro.FG;
+  updateObj.Status = (FT==='✔️'||FC==='✔️'||FG==='✔️')?'ATENDIMENTO':'FINALIZADA';
 
-      // Salvar no localStorage simulando planilha ocorrencia
-      localStorage.setItem('ocorrencias', JSON.stringify(dados));
-      alert('Registro atualizado com sucesso!');
-      window.history.back();
-    });
-  </script>
+  // Atualiza campos gerais
+  updateObj.Aluno=document.getElementById('campoAluno').value;
+  updateObj.Sala=document.getElementById('campoSala').value;
+  updateObj.Professor=document.getElementById('campoProfessor').value;
+  updateObj.Tutor=document.getElementById('campoTutor').value;
+
+  const { error } = await supabase.from('ocorrencias').update(updateObj).eq('ID',id);
+  if(error){ alert('Erro ao salvar: '+error.message); return; }
+  alert('Registro atualizado com sucesso!');
+  window.history.back();
+});
+
+carregarRegistro();
+</script>
 </body>
 </html>
