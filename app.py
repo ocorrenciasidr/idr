@@ -36,8 +36,10 @@ def conectar_supabase() -> Client | None:
         return None
 
 # -------------------------- Utilitários --------------------------
-def upperize_row_keys(row: dict) -> dict:
-    return {str(k).upper(): v for k, v in (row or {}).items()}
+def upperize_row_keys(row):
+    """Converte todas as chaves do dicionário para MAIÚSCULAS."""
+    return {k.upper(): v for k, v in row.items()}
+
 
 def normalize_checkbox(val) -> str:
     """Return 'SIM' if checked/true-ish, else 'NÃO'."""
@@ -585,6 +587,7 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("FLASK_DEBUG", "1") == "1"
     app.run(host="0.0.0.0", port=port, debug=debug)
+
 
 
 
