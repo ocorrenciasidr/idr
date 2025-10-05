@@ -1,118 +1,142 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-<meta charset="UTF-8">
-<title>Editar Ocorrência</title>
+<meta charset="utf-8" />
+<title>SGCE - Editar Ocorrência</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
-body { padding: 20px; background-color: #f8f9fa; }
-.readonly { background-color: #e9ecef; }
+  body { background:#121212; color:#eaeaea; font-size:12px; }
+  h2 { text-align:center; color:#fff; margin:18px 0; }
+  .card { background:#151515; border:1px solid #2a2a2a; }
+  label { color:#fff; }
+  .form-control, .form-select, textarea { background:#fff; color:#000; border:1px solid #bbb; } /* campos editáveis em branco */
+  .field-view { background:transparent; color:#eaeaea; border:none; }
+  .small-note { font-size:11px; color:#cfcfcf; }
 </style>
 </head>
 <body>
-<div class="container">
-<h3 class="mb-3 text-center">Editar Ocorrência</h3>
-<form id="formOcorrencia">
-<div class="mb-2"><label>ID:</label> <span id="campoID"></span></div>
-<div class="mb-2"><label>Aluno:</label> <input type="text" id="campoAluno" class="form-control"></div>
-<div class="mb-2"><label>Sala:</label> <input type="text" id="campoSala" class="form-control"></div>
-<div class="mb-2"><label>Professor:</label> <input type="text" id="campoProfessor" class="form-control"></div>
-<div class="mb-2"><label>Tutor:</label> <input type="text" id="campoTutor" class="form-control"></div>
-<div class="mb-2"><label>FT:</label> <input type="text" id="campoFT" class="form-control"></div>
-<div class="mb-2"><label>FC:</label> <input type="text" id="campoFC" class="form-control"></div>
-<div class="mb-2"><label>FG:</label> <input type="text" id="campoFG" class="form-control"></div>
-<div class="mb-2"><label>Status:</label> 
-  <select id="campoStatus" class="form-select">
-    <option value="ATENDIMENTO">ATENDIMENTO</option>
-    <option value="FINALIZADA">FINALIZADA</option>
-    <option value="ASSINADA">ASSINADA</option>
-  </select>
-</div>
-<button type="submit" class="btn btn-success">Salvar</button>
-<button type="button" class="btn btn-secondary" onclick="window.history.back()">Voltar</button>
-</form>
-</div>
+  <div class="container" style="max-width:920px; margin-top:20px;">
+    <h2>Visualizar / Editar Ocorrência #{{ registro.ID }}</h2>
+    <div class="card p-4">
+      <!-- O formulário envia para a rota que atualiza a ocorrência (ex: update_ocorrencia) -->
+      <form id="frmEditar" method="post" action="{{ url_for('atualizar_ocorrencia', oid=registro.ID) }}">
+        <!-- Variável 'modo' passada pela rota ('ver', 'responder', 'editar') -->
+        <input type="hidden" name="modo" value="{{ modo }}">
+        <div class="row mb-3">
+          <div class="col-md-3">
+            <label>ID</label>
+            <input class="form-control field-view" value="{{ registro.ID }}" readonly>
+          </div>
+          <div class="col-md-3">
+            <label>Data</label>
+            <input class="form-control field-view" value="{{ registro.DCO }}" readonly>
+          </div>
+          <div class="col-md-3">
+            <label>Hora</label>
+            <input class="form-control field-view" value="{{ registro.HCO }}" readonly>
+          </div>
+          <div class="col-md-3">
+            <label>Sala</label>
+            <input class="form-control field-view" value="{{ registro.SALA }}" readonly>
+          </div>
+        </div>
 
-<script type="module">
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <label>Aluno</label>
+            <input class="form-control field-view" value="{{ registro.ALUNO }}" readonly>
+          </div>
+          <div class="col-md-6">
+            <label>Professor</label>
+            <input class="form-control field-view" value="{{ registro.PROFESSOR }}" readonly>
+          </div>
+        </div>
 
-const supabaseUrl = 'https://SEU_SUPABASE_URL';
-const supabaseKey = 'SEU_SUPABASE_ANON_KEY';
-const supabase = createClient(supabaseUrl, supabaseKey);
+        <div class="mb-3">
+          <label>Tutor</label>
+          <input class="form-control field-view" value="{{ registro.TUTOR }}" readonly>
+        </div>
 
-const urlParams = new URLSearchParams(window.location.search);
-const id = parseInt(urlParams.get('id'));
-const campo = urlParams.get('campo'); // FT, FC, FG
-const modo = urlParams.get('modo');   // ver ou editar
+        <!-- Descrição: normalmente visualização; fica editável somente em modo editar -->
+        <div class="mb-3">
+          <label>Descrição</label>
+          <textarea name="DESCRICAO" id="descricao" class="form-control" rows="4" {% if modo != 'editar' %}readonly{% endif %}>{{ registro.DESCRICAO }}</textarea>
+        </div>
 
-let registro;
+        <!-- Campos ATP, ATT, ATC, ATG: visíveis; editáveis em modo editar OR modo=responder para o campo específico -->
+        <div class="row mb-3">
+          <div class="col-md-4">
+            <label>ATP</label>
+            <textarea name="ATP" class="form-control" {% if modo != 'editar' %}readonly{% endif %}>{{ registro.ATP }}</textarea>
+          </div>
+          <div class="col-md-4">
+            <label>ATT (Resposta Tutor)</label>
+            <textarea name="ATT" id="ATT" class="form-control" {% if not (modo == 'editar' or (modo == 'responder' and campo == 'FT')) %}readonly{% endif %}>{{ registro.ATT }}</textarea>
+          </div>
+          <div class="col-md-4">
+            <label>ATC (Resposta Coordenação)</label>
+            <textarea name="ATC" id="ATC" class="form-control" {% if not (modo == 'editar' or (modo == 'responder' and campo == 'FC')) %}readonly{% endif %}>{{ registro.ATC }}</textarea>
+          </div>
+        </div>
 
-// Map campos e datas
-const campoMap = { FT:'ATT', FC:'ATC', FG:'ATG' };
-const dataMap = { FT:'DT', FC:'DC', FG:'DG' };
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <label>ATG (Resposta Gestão)</label>
+            <textarea name="ATG" id="ATG" class="form-control" {% if not (modo == 'editar' or (modo == 'responder' and campo == 'FG')) %}readonly{% endif %}>{{ registro.ATG }}</textarea>
+          </div>
 
-// Carregar registro
-async function carregarRegistro(){
-  const { data, error } = await supabase.from('ocorrencias').select('*').eq('ID',id).single();
-  if(error){ alert('Registro não encontrado'); history.back(); return; }
-  registro = data;
-  preencherCampos();
-}
+          <div class="col-md-6">
+            <label>Status</label>
+            <select name="STATUS" class="form-select" {% if modo != 'editar' %}disabled{% endif %}>
+              <option value="ATENDIMENTO" {% if registro.STATUS == 'ATENDIMENTO' %}selected{% endif %}>ATENDIMENTO</option>
+              <option value="FINALIZADA" {% if registro.STATUS == 'FINALIZADA' %}selected{% endif %}>FINALIZADA</option>
+              <option value="ASSINADA" {% if registro.STATUS == 'ASSINADA' %}selected{% endif %}>ASSINADA</option>
+            </select>
+          </div>
+        </div>
 
-// Preencher campos
-function preencherCampos(){
-  document.getElementById('campoID').textContent=registro.ID;
-  document.getElementById('campoAluno').value=registro.Aluno;
-  document.getElementById('campoSala').value=registro.Sala;
-  document.getElementById('campoProfessor').value=registro.Professor;
-  document.getElementById('campoTutor').value=registro.Tutor;
-  document.getElementById('campoFT').value=registro.FT;
-  document.getElementById('campoFC').value=registro.FC;
-  document.getElementById('campoFG').value=registro.FG;
-  document.getElementById('campoStatus').value=registro.Status;
+        <!-- FT / FC / FG checkboxes (apenas referência) -->
+        <div class="mb-3">
+          <label>FT / FC / FG</label>
+          <div>
+            <span class="small-note">FT:</span> <input type="text" class="form-control d-inline-block w-auto" value="{{ registro.FT }}" readonly>
+            <span class="small-note ms-3">FC:</span> <input type="text" class="form-control d-inline-block w-auto" value="{{ registro.FC }}" readonly>
+            <span class="small-note ms-3">FG:</span> <input type="text" class="form-control d-inline-block w-auto" value="{{ registro.FG }}" readonly>
+          </div>
+        </div>
 
-  // Todos readonly
-  document.querySelectorAll('#formOcorrencia input, #formOcorrencia select')
-    .forEach(inp=>{ inp.readOnly=true; inp.classList.add('readonly'); });
+        <!-- Campos de data DT DC DG (serão preenchidos pelo backend ao responder) -->
+        <div class="mb-3">
+          <label>DT / DC / DG</label>
+          <div>
+            <input class="form-control d-inline-block w-auto" value="{{ registro.DT }}" readonly>
+            <input class="form-control d-inline-block w-auto ms-2" value="{{ registro.DC }}" readonly>
+            <input class="form-control d-inline-block w-auto ms-2" value="{{ registro.DG }}" readonly>
+          </div>
+        </div>
 
-  // Libera campo específico se modo editar
-  if(campo && modo!=='ver'){
-    const c=document.getElementById('campo'+campo);
-    c.readOnly=false; c.classList.remove('readonly');
-  }
-}
+        <div class="d-flex justify-content-between">
+          <div>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">Voltar</a>
+            {% if modo == 'editar' %}
+              <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+            {% elif modo == 'responder' %}
+              <button type="submit" class="btn btn-success">Responder</button>
+            {% endif %}
+          </div>
+        </div>
 
-// Salvar alterações
-document.getElementById('formOcorrencia').addEventListener('submit', async function(e){
-  e.preventDefault();
-  const dataAtual = new Date().toISOString().split('T')[0];
-  const updateObj = {};
+      </form>
+    </div>
+  </div>
 
-  if(campo){
-    if(campo==='FT'){ updateObj.FT=registro.FT==='✔️'?'⚠️':'✔️'; updateObj.DT=dataAtual; updateObj.ATT=document.getElementById('campoFT').value; }
-    if(campo==='FC'){ updateObj.FC=registro.FC==='✔️'?'⚠️':'✔️'; updateObj.DC=dataAtual; updateObj.ATC=document.getElementById('campoFC').value; }
-    if(campo==='FG'){ updateObj.FG=registro.FG==='✔️'?'⚠️':'✔️'; updateObj.DG=dataAtual; updateObj.ATG=document.getElementById('campoFG').value; }
-  }
-
-  // Status automático
-  const FT=updateObj.FT||registro.FT;
-  const FC=updateObj.FC||registro.FC;
-  const FG=updateObj.FG||registro.FG;
-  updateObj.Status = (FT==='✔️'||FC==='✔️'||FG==='✔️')?'ATENDIMENTO':'FINALIZADA';
-
-  // Atualiza campos gerais
-  updateObj.Aluno=document.getElementById('campoAluno').value;
-  updateObj.Sala=document.getElementById('campoSala').value;
-  updateObj.Professor=document.getElementById('campoProfessor').value;
-  updateObj.Tutor=document.getElementById('campoTutor').value;
-
-  const { error } = await supabase.from('ocorrencias').update(updateObj).eq('ID',id);
-  if(error){ alert('Erro ao salvar: '+error.message); return; }
-  alert('Registro atualizado com sucesso!');
-  window.history.back();
-});
-
-carregarRegistro();
+<script>
+  // JS simples para tratar comportamentos no cliente (por exemplo desabilitar selects)
+  // Ao submeter, o backend deve:
+  // - se modo == 'responder' e campo == 'FT' -> salvar ATT, marcar FT='NÃO', gravar DT = now()
+  // - se modo == 'responder' e campo == 'FC' -> salvar ATC, marcar FC='NÃO', gravar DC = now()
+  // - se modo == 'responder' and campo == 'FG' -> salvar ATG, marcar FG='NÃO', gravar DG = now()
+  // - se modo == 'editar' -> atualizar campos passados
 </script>
 </body>
 </html>
