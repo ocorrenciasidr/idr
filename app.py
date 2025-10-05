@@ -141,29 +141,62 @@ def carregar_lookup(table_name: str, column=None) -> list:
         return []
 
 
-def carregar_dados_ocorrencias() -> list:
+# app.py
+
+# ... (código anterior)
+
+def carregar_dados_ocorrencias(filtro_tutor=None, filtro_status=None) -> list:
     supabase = conectar_supabase()
     if not supabase:
         print("❌ DEBUG: Falha na conexão com o Supabase.")
         return []
     try:
-        # CORREÇÃO APLICADA: 'ocorrencias' (PLURAL)
-        resp = supabase.table("ocorrencias").select("*").execute()
+        # 1. ORDENAÇÃO DESC. POR ID
+        query = supabase.table("ocorrencias").select("*").order("ID", desc=True)
+        
+        # 2. FILTRO POR TUTOR (apenas com ocorrências)
+        if filtro_tutor and filtro_tutor != "Todos":
+            query = query.eq("TUTOR", filtro_tutor)
+            
+        # 3. FILTRO POR STATUS
+        if filtro_status and filtro_status != "Todos":
+             # Mapeia nomes amigáveis para os valores do banco
+            status_map = {
+                "ATENDIMENTO": "ATENDIMENTO", 
+                "FINALIZADA": "FINALIZADA", 
+                "ASSINADA": "ASSINADA"
+            }
+            db_status = status_map.get(filtro_status)
+            if db_status:
+                query = query.eq("STATUS", db_status)
+
+        resp = query.execute()
         data = resp.data or []
         
         # DEBUG: Imprime a quantidade de dados recebidos
         print(f"✅ DEBUG: {len(data)} registros de ocorrências carregados do Supabase.")
         
-        # ensure uppercase keys for convenience
         normalized = [upperize_row_keys(r) for r in data]
-        # sort by ID descending if exists
-        # ... (restante da função)
-        
         return normalized
     except Exception as e:
         print("❌ Erro ao carregar ocorrencias:", e)
         return []
 
+def carregar_tutores_com_ocorrencias() -> list:
+    """Carrega uma lista de tutores que aparecem na tabela ocorrencias."""
+    supabase = conectar_supabase()
+    if not supabase: return []
+    try:
+        # Usa distinct (a coluna deve ser lowercase 'tutor' no banco)
+        resp = supabase.table("ocorrencias").select("TUTOR", count='exact').not_("TUTOR", "is", None).order("TUTOR", desc=False).execute()
+        # Retorna apenas os valores de TUTOR, removendo duplicados
+        tutores = sorted(list(set([r['TUTOR'] for r in resp.data if r.get('TUTOR')])))
+        return tutores
+    except Exception as e:
+        print("Erro ao carregar tutores:", e)
+        return []
+        
+# ... (restante do código)
 # -------------------------- ROTAS --------------------------
 @app.route("/")
 @app.route("/home")
@@ -587,3 +620,4 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("FLASK_DEBUG", "1") == "1"
     app.run(host="0.0.0.0", port=port, debug=debug)
+
