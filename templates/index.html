@@ -5,91 +5,99 @@
 <title>SGCE - Ocorrências</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
-    body { background-color: #121212; color: #f1f1f1; }
-    h2 { text-align: center; margin-bottom: 30px; }
-    .table thead th { background-color: #1e1e1e; color: #fff; }
-    .badge-pendente { background-color: #dc3545; }
-    .badge-ok { background-color: #28a745; }
-    .btn-action { margin-right: 5px; }
+    body { background-color: #121212; color: #f1f1f1; }
+    h2 { text-align: center; margin-bottom: 30px; }
+    .table thead th { background-color: #1e1e1e; color: #fff; }
+    /* Usando cores do Bootstrap para consistência */
+    .badge-pendente { background-color: #ffc107!important; color: #212529!important; } /* warning */
+    .badge-ok { background-color: #28a745!important; } /* success */
+    .btn-action { margin-right: 5px; }
 </style>
 </head>
 <body>
 <div class="container mt-4">
-    <h2>Sistema de Gestão de Convivência Escolar</h2>
+    <h2>Sistema de Gestão de Convivência Escolar</h2>
 
-    <div class="mb-3 text-end">
-        <a href="{{ url_for('relatorio_inicial') }}" class="btn btn-success">Gerar Relatório</a>
-        <a href="{{ url_for('nova') }}" class="btn btn-primary">Nova Ocorrência</a>
-    </div>
+    <div class="mb-3 text-end">
+        <a href="{{ url_for('relatorio_inicial') }}" class="btn btn-success">Gerar Relatório</a>
+        <a href="{{ url_for('nova') }}" class="btn btn-primary">Nova Ocorrência</a>
+    </div>
 
-    <div class="table-responsive">
-        <table class="table table-striped table-bordered align-middle text-center">
-            <thead>
-                <tr>
-                    <th>ID</th><th>Data</th><th>Hora</th><th>Aluno</th><th>Sala</th><th>Professor</th><th>Tutor</th>
-                    <th>FT</th><th>FC</th><th>FG</th><th>Status</th><th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-            {% for r in registros %}
-                <tr>
-                    <td>{{ r['ID'] }}</td>
-                    <td>{{ r['DCO'] }}</td>
-                    <td>{{ r['HCO'] }}</td>
-                    <td>{{ r['ALUNO'] }}</td>
-                    <td>{{ r['SALA'] }}</td>
-                    <td>{{ r['PROFESSOR'] }}</td>
-                    <td>{{ r['TUTOR'] }}</td>
-                    <td>{% if r.FT=='PENDENTE' %}<span class="badge badge-pendente">⚠️</span>{% else %}<span class="badge badge-ok">✔️</span>{% endif %}</td>
-                    <td>{% if r.FC=='PENDENTE' %}<span class="badge badge-pendente">⚠️</span>{% else %}<span class="badge badge-ok">✔️</span>{% endif %}</td>
-                    <td>{% if r.FG=='PENDENTE' %}<span class="badge badge-pendente">⚠️</span>{% else %}<span class="badge badge-ok">✔️</span>{% endif %}</td>
-                    <td>
-                        {% if r.STATUS=='ABERTA' %}<span class="badge bg-danger">{{ r.STATUS }}</span>
-                        {% elif r.STATUS=='ATENDIMENTO' %}<span class="badge bg-warning text-dark">{{ r.STATUS }}</span>
-                        {% else %}<span class="badge bg-success">{{ r.STATUS }}</span>{% endif %}
-                    </td>
-                    <td>
-                        <a href="{{ url_for('editar', oid=r['ID']) }}" class="btn btn-sm btn-info btn-action">Ver</a>
-                        <a href="#" class="btn btn-sm btn-primary btn-action" data-bs-toggle="modal" data-bs-target="#senhaModal"
-                        onclick="setEditarOid({{ r['ID'] }})">Editar</a>
-                    </td>
-                </tr>
-            {% else %}
-                <tr><td colspan="12">Nenhuma ocorrência encontrada.</td></tr>
-            {% endfor %}
-            </tbody>
-        </table>
-    </div>
+    <div class="table-responsive">
+        <table class="table table-dark table-striped table-bordered align-middle text-center">
+            <thead>
+                <tr>
+                    <th>ID</th><th>Data</th><th>Hora</th><th>Aluno</th><th>Sala</th><th>Professor</th><th>Tutor</th>
+                    <th>FT</th><th>FC</th><th>FG</th><th>Status</th><th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for r in registros %}
+                <tr class="{% if r.STATUS=='FINALIZADA' %}table-success text-dark{% elif r.STATUS=='ATENDIMENTO' %}table-warning text-dark{% endif %}">
+                                        <td>{{ r.ID }}</td>
+                    <td>{{ r.DCO }}</td>
+                    <td>{{ r.HCO }}</td>
+                    <td>{{ r.ALUNO }}</td>
+                    <td>{{ r.SALA }}</td>
+                    <td>{{ r.PROFESSOR }}</td>
+                    <td>{{ r.TUTOR }}</td>
+                    
+                                        <td>{% if r.FT=='SIM' %}<span class="badge badge-pendente">⚠️</span>{% else %}<span class="badge badge-ok">✔️</span>{% endif %}</td>
+                    <td>{% if r.FC=='SIM' %}<span class="badge badge-pendente">⚠️</span>{% else %}<span class="badge badge-ok">✔️</span>{% endif %}</td>
+                    <td>{% if r.FG=='SIM' %}<span class="badge badge-pendente">⚠️</span>{% else %}<span class="badge badge-ok">✔️</span>{% endif %}</td>
+                    
+                    <td>
+                        {% if r.STATUS=='ATENDIMENTO' %}<span class="badge bg-warning text-dark">{{ r.STATUS }}</span>
+                        {% else %}<span class="badge bg-success">{{ r.STATUS }}</span>{% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('editar', oid=r.ID) }}" class="btn btn-sm btn-info btn-action">Ver</a>
+                        <a href="#" class="btn btn-sm btn-primary btn-action" data-bs-toggle="modal" data-bs-target="#senhaModal"
+                        onclick="setEditarOid({{ r.ID }})">Editar</a>
+                    </td>
+                </tr>
+            {% else %}
+                <tr><td colspan="12" class="text-center">Nenhuma ocorrência encontrada.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
-<!-- Modal Senha -->
 <div class="modal fade" id="senhaModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <form method="post" action="{{ url_for('editar', oid=0) }}">
-                <div class="modal-header">
-                    <h5 class="modal-title">Acesso Restrito</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <input type="hidden" name="oid" id="editarOid">
-                    <div class="mb-3">
-                        <label for="senha" class="form-label">Digite a senha:</label>
-                        <input type="password" class="form-control" name="senha" id="senha" required>
-                    </div>
-                    <div id="senhaErro" class="text-danger" style="display:none;">Senha incorreta!</div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Confirmar</button>
-                </div>
-            </form>
-        </div>
-    </div>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+                        <form method="post" action="{{ url_for('editar', oid=0) }}">
+                <div class="modal-header">
+                    <h5 class="modal-title text-dark">Acesso Restrito</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-dark">
+                    <input type="hidden" name="oid" id="editarOid">
+                    <div class="mb-3">
+                        <label for="senha" class="form-label">Digite a senha:</label>
+                        <input type="password" class="form-control" name="senha" id="senha" required>
+                    </div>
+                    <div id="senhaErro" class="text-danger" style="display:none;">Senha incorreta!</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Confirmar</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 <script>
-    function setEditarOid(oid) { document.getElementById('editarOid').value = oid; }
+    function setEditarOid(oid) { 
+        document.getElementById('editarOid').value = oid; 
+        // Opcional: Atualiza o action do formulário (precisa ser feito via JS porque o Jinja só roda no servidor)
+        const form = document.querySelector('#senhaModal form');
+        if (form) {
+            form.action = "{{ url_for('editar', oid=0) }}".replace('/0', '/' + oid);
+        }
+    }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
