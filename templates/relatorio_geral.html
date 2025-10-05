@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>SGCE - Relatório Geral</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
   body { background:#121212; color:#eaeaea; font-size:12px; }
@@ -11,6 +12,8 @@
   .card { background:#1b1b1b; border:1px solid #333; }
   .table { color:#fff; }
   thead { background:#1e1e1e; }
+  canvas { background:#1a1a1a; border-radius:8px; padding:10px; }
+  .resumo-box { background:#1e1e1e; padding:10px; border-radius:6px; }
 </style>
 </head>
 <body>
@@ -35,7 +38,24 @@
 
   <div id="resultado" style="display:none;">
     <h5 class="text-center mb-3">Resumo das Ocorrências</h5>
-    <div id="tabelasResumo"></div>
+
+    <div id="resumoGeral" class="resumo-box mb-3 text-center"></div>
+
+    <div class="row">
+      <div class="col-md-6">
+        <canvas id="graficoSalas"></canvas>
+      </div>
+      <div class="col-md-6">
+        <canvas id="graficoStatus"></canvas>
+      </div>
+    </div>
+
+    <h6 class="mt-4">Ocorrências por Sala</h6>
+    <table class='table table-bordered table-striped text-center'>
+      <thead><tr><th>Sala</th><th>Qtde Ocorrências</th></tr></thead>
+      <tbody id="tabelaSalas"></tbody>
+    </table>
+
     <div class="text-center mt-3">
       <button id="btnPDF" class="btn btn-primary">Baixar PDF</button>
     </div>
@@ -52,9 +72,10 @@ const btnGerar = document.getElementById("btnGerar");
 const dataIni = document.getElementById("dataIni");
 const dataFim = document.getElementById("dataFim");
 const resultado = document.getElementById("resultado");
-const tabelasResumo = document.getElementById("tabelasResumo");
+const tabelaSalas = document.getElementById("tabelaSalas");
+const resumoGeral = document.getElementById("resumoGeral");
 const btnPDF = document.getElementById("btnPDF");
-
+let graficoSalas, graficoStatus;
 let ocorrencias = [];
 
 btnGerar.addEventListener("click", async ()=>{
@@ -65,37 +86,73 @@ btnGerar.addEventListener("click", async ()=>{
     .lte("DCO", dataFim.value);
   if (error) return console.error(error);
   ocorrencias = data;
-  if (!data.length) return alert("Nenhuma ocorrência encontrada.");
+  if (!data.length) return alert("Nenhuma ocorrência encontrada no período.");
 
   gerarResumo();
   resultado.style.display = "block";
 });
 
 function gerarResumo(){
+  // Agrupar por sala
   const porSala = {};
   ocorrencias.forEach(o=>{
     if (!porSala[o.SALA]) porSala[o.SALA]=[];
     porSala[o.SALA].push(o);
   });
 
-  let html = `<table class='table table-bordered table-striped text-center'>
-  <thead><tr><th>Sala</th><th>Qtde Ocorrências</th></tr></thead><tbody>`;
-  Object.keys(porSala).forEach(s=>{
-    html += `<tr><td>${s}</td><td>${porSala[s].length}</td></tr>`;
+  tabelaSalas.innerHTML = "";
+  Object.entries(porSala).forEach(([sala, lista])=>{
+    tabelaSalas.innerHTML += `<tr><td>${sala}</td><td>${lista.length}</td></tr>`;
   });
-  html += "</tbody></table>";
 
   const total = ocorrencias.length;
   const finalizadas = ocorrencias.filter(o=>o.STATUS=="FINALIZADA").length;
   const atendimento = ocorrencias.filter(o=>o.STATUS=="ATENDIMENTO").length;
   const assinadas = ocorrencias.filter(o=>o.STATUS=="ASSINADA").length;
 
-  html += `<div class="mt-3">
-  <h6>Resumo Geral</h6>
-  <p>Total: ${total} | Atendimentos: ${atendimento} | Finalizadas: ${finalizadas} | Assinadas: ${assinadas}</p>
-  </div>`;
+  resumoGeral.innerHTML = `
+    <h6 class="mb-2">Resumo Geral</h6>
+    <p>Total: <b>${total}</b> | Atendimentos: ${atendimento} (${((atendimento/total)*100).toFixed(1)}%) |
+    Finalizadas: ${finalizadas} (${((finalizadas/total)*100).toFixed(1)}%) |
+    Assinadas: ${assinadas} (${((assinadas/total)*100).toFixed(1)}%)</p>`;
 
-  tabelasResumo.innerHTML = html;
+  gerarGraficos(porSala, { atendimento, finalizadas, assinadas });
+}
+
+function gerarGraficos(porSala, statusData){
+  const ctxSala = document.getElementById("graficoSalas");
+  const ctxStatus = document.getElementById("graficoStatus");
+
+  if (graficoSalas) graficoSalas.destroy();
+  if (graficoStatus) graficoStatus.destroy();
+
+  graficoSalas = new Chart(ctxSala, {
+    type: 'bar',
+    data: {
+      labels: Object.keys(porSala),
+      datasets: [{
+        label: 'Ocorrências por Sala',
+        data: Object.values(porSala).map(v=>v.length),
+        backgroundColor: '#4caf50'
+      }]
+    },
+    options: {
+      plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#eaeaea'}}, y:{ticks:{color:'#eaeaea'}}}
+    }
+  });
+
+  graficoStatus = new Chart(ctxStatus, {
+    type: 'pie',
+    data: {
+      labels: ['Atendimento','Finalizada','Assinada'],
+      datasets: [{
+        data: [statusData.atendimento, statusData.finalizadas, statusData.assinadas],
+        backgroundColor: ['#ffc107','#28a745','#17a2b8']
+      }]
+    },
+    options: { plugins:{legend:{labels:{color:'#fff'}}} }
+  });
 }
 
 btnPDF.addEventListener("click", ()=>{
@@ -103,12 +160,21 @@ btnPDF.addEventListener("click", ()=>{
   doc.setFontSize(12);
   doc.text("RELATÓRIO GERAL DE OCORRÊNCIAS", 20, 20);
   doc.text(`Período: ${dataIni.value} a ${dataFim.value}`, 20, 30);
+
   let y = 45;
-  ocorrencias.forEach(o=>{
-    doc.text(`${o.SALA} - ${o.ALUNO} - ${o.PROFESSOR} - ${o.STATUS}`, 20, y, {maxWidth:170});
-    y += 6;
-    if (y>270){doc.addPage(); y=20;}
-  });
+  for (const tr of tabelaSalas.querySelectorAll("tr")) {
+    const tds = tr.querySelectorAll("td");
+    if (tds.length) {
+      doc.text(`${tds[0].textContent}: ${tds[1].textContent} ocorrências`, 20, y);
+      y += 6;
+      if (y>270){doc.addPage(); y=20;}
+    }
+  }
+
+  y += 10;
+  doc.text("Resumo:", 20, y);
+  y += 6;
+  doc.text(resumoGeral.innerText, 20, y, {maxWidth:170});
   doc.save("Relatorio_Geral.pdf");
 });
 </script>
