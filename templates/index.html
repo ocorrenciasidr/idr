@@ -1,233 +1,142 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-<meta charset="utf-8" />
+<meta charset="UTF-8">
 <title>SGCE - Ocorrências</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
-  /* Layout escuro e compacto similar ao seu print */
-  body { background:#121212; color:#eaeaea; font-size:11px; }
-  h2 { text-align:center; margin:14px 0; font-size:18px; color:#fff; }
-  .container { max-width:95%; }
+  body { background-color: #121212; color: #f1f1f1; font-size: 11px; }
+  h2 { text-align: center; margin-bottom: 20px; font-size: 18px; }
+  
+  .table {
+    font-size: 11px;
+    line-height: 1.1;
+    vertical-align: middle;
+    border-collapse: collapse;
+  }
 
-  /* tabela compacta */
-  .table { font-size:11px; line-height:1.05; }
-  .table thead th { background:#1e1e1e; color:#fff; padding:6px; white-space:nowrap; text-align:center; }
-  .table tbody td { padding:5px 6px; vertical-align:middle; white-space:nowrap; text-align:center; border-color:#2a2a2a; }
-  .table-striped tbody tr:nth-of-type(odd) { background:#1a1a1a; }
-  .table-striped tbody tr:nth-of-type(even) { background:#181818; }
-  .badge-ok { background:#28a745!important; color:#fff; padding:3px 6px; border-radius:4px; font-size:10px; }
-  .badge-pendente { background:#ffc107!important; color:#212529!important; padding:3px 6px; border-radius:4px; font-size:10px; }
+  .table thead th {
+    background-color: #1e1e1e;
+    color: #fff;
+    padding: 6px;
+    white-space: nowrap;
+  }
 
-  .btn-sm { font-size:10px; padding:3px 6px; }
-  .filter-bar { display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap; }
-  .filter-bar input, .filter-bar select { font-size:12px; padding:6px; min-width:160px; }
+  .table tbody td {
+    padding: 5px 6px;
+    white-space: nowrap;
+  }
 
-  /* small icon button (FT/FC/FG) */
-  .icon-cell { cursor:pointer; }
+  .table td, .table th {
+    border: 1px solid #2a2a2a;
+  }
 
-  /* keep table responsive and horizontal scroll for narrow screens */
-  .table-responsive { overflow:auto; max-height:60vh; }
+  .badge-pendente { background-color: #ffc107!important; color: #212529!important; font-size: 10px; padding: 3px 5px; }
+  .badge-ok { background-color: #28a745!important; font-size: 10px; padding: 3px 5px; }
+
+  .btn-action { margin-right: 2px; padding: 2px 6px; font-size: 10px; }
+  .btn { border-radius: 4px; }
+
+  .table-warning td, .table-success td { color: #000 !important; }
+
+  .container { max-width: 95%; }
+
+  .text-end .btn { font-size: 11px; padding: 4px 10px; }
 </style>
 </head>
 <body>
-  <div class="container">
-    <h2>Sistema de Gestão de Convivência Escolar</h2>
+<div class="container mt-3">
+  <h2>Sistema de Gestão de Convivência Escolar</h2>
 
-    <!-- filtros (serão preenchidos/autofiltrados via JS) -->
-    <div class="filter-bar">
-      <input id="qBusca" class="form-control" placeholder="🔍 Buscar aluno, professor ou sala..." value="{{ request.args.get('busca','') }}">
-      <select id="selTutor" class="form-select">
-        <option value="">Tutor (Todos)</option>
-        <!-- Jinja: preencha com lista de tutores (única) passada pela view OR JS poderá popular pelos registros -->
-        {% for t in tutores %}
-          <option value="{{ t }}">{{ t }}</option>
-        {% endfor %}
-      </select>
-
-      <select id="selStatus" class="form-select">
-        <option value="">Status (Todos)</option>
-        <!-- Popule com os status principais -->
-        <option value="ATENDIMENTO">ATENDIMENTO</option>
-        <option value="FINALIZADA">FINALIZADA</option>
-        <option value="ASSINADA">ASSINADA</option>
-      </select>
-
-      <div class="ms-auto">
-        <a href="home.html" class="btn btn-secondary btn-sm">🏠 Inicial</a>
-        <a href="{{ url_for('relatorio_inicial') }}" class="btn btn-success btn-sm">📊 Relatório</a>
-        <a href="{{ url_for('nova') }}" class="btn btn-warning btn-sm">➕ Nova</a>
-      </div>
-    </div>
-
-    <div class="table-responsive">
-      <table id="tblOcorrencias" class="table table-dark table-striped table-bordered align-middle text-center">
-        <thead>
-          <tr>
-            <th>ID</th><th>Data</th><th>Hora</th><th>Aluno</th><th>Sala</th>
-            <th>Professor</th><th>Tutor</th><th>FT</th><th>FC</th><th>FG</th><th>Status</th><th>Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for r in registros %}
-          <tr data-id="{{ r.ID }}" data-aluno="{{ r.ALUNO | default('') }}" data-professor="{{ r.PROFESSOR | default('') }}"
-              data-sala="{{ r.SALA | default('') }}" data-tutor="{{ r.TUTOR | default('') }}" data-status="{{ r.STATUS | default('') }}">
-            <td>{{ r.ID }}</td>
-            <td>{{ r.DCO }}</td>
-            <td>{{ r.HCO }}</td>
-            <td class="text-start" style="max-width:220px;">{{ r.ALUNO }}</td>
-            <td>{{ r.SALA }}</td>
-            <td>{{ r.PROFESSOR }}</td>
-            <td>{{ r.TUTOR }}</td>
-
-            <!-- FT/FC/FG: se 'SIM' -> aviso, se não -> ok -->
-            <td class="icon-cell" title="Clique para responder FT">
-              {% if r.FT == 'SIM' %}<span class="badge-pendente">⚠️</span>{% else %}<span class="badge-ok">✔️</span>{% endif %}
-            </td>
-            <td class="icon-cell" title="Clique para responder FC">
-              {% if r.FC == 'SIM' %}<span class="badge-pendente">⚠️</span>{% else %}<span class="badge-ok">✔️</span>{% endif %}
-            </td>
-            <td class="icon-cell" title="Clique para responder FG">
-              {% if r.FG == 'SIM' %}<span class="badge-pendente">⚠️</span>{% else %}<span class="badge-ok">✔️</span>{% endif %}
-            </td>
-
-            <td>
-              {% if r.STATUS == 'ATENDIMENTO' %}
-                <span class="badge bg-warning text-dark">{{ r.STATUS }}</span>
-              {% elif r.STATUS == 'FINALIZADA' %}
-                <span class="badge bg-success text-dark">{{ r.STATUS }}</span>
-              {% else %}
-                <span class="badge bg-secondary">{{ r.STATUS }}</span>
-              {% endif %}
-            </td>
-
-            <td>
-              <!-- Ver: modo visualização -->
-             <a href="{{ url_for('editar', oid=r.ID) }}?modo=ver" class="btn btn-info btn-sm">Ver</a>
-
-              <!-- Editar: solicita senha antes de abrir modo editar completo -->
-              <button class="btn btn-primary btn-sm btn-editar" data-oid="{{ r.ID }}">Editar</button>
-            </td>
-          </tr>
-          {% else %}
-          <tr><td colspan="12">Nenhuma ocorrência encontrada.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+  <div class="mb-2 text-end">
+    <a href="{{ url_for('relatorio_inicial') }}" class="btn btn-success btn-sm">Gerar Relatórios</a>
+    <a href="{{ url_for('nova') }}" class="btn btn-primary btn-sm">Nova Ocorrência</a>
   </div>
 
-  <!-- Modal senha para edição completa -->
-  <div class="modal fade" id="senhaModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <form id="senhaForm">
-          <div class="modal-header">
-            <h5 class="modal-title text-dark">Acesso Restrito</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+  <div class="table-responsive">
+    <table class="table table-dark table-striped table-bordered text-center align-middle">
+      <thead>
+        <tr>
+          <th>ID</th><th>Data</th><th>Hora</th><th>Aluno</th><th>Sala</th>
+          <th>Professor</th><th>Tutor</th><th>FT</th><th>FC</th><th>FG</th>
+          <th>Status</th><th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in registros %}
+        <tr class="{% if r.STATUS=='FINALIZADA' %}table-success text-dark{% elif r.STATUS=='ATENDIMENTO' %}table-warning text-dark{% endif %}">
+          <td>{{ r.ID }}</td>
+          <td>{{ r.DCO }}</td>
+          <td>{{ r.HCO }}</td>
+          <td>{{ r.ALUNO }}</td>
+          <td>{{ r.SALA }}</td>
+          <td>{{ r.PROFESSOR }}</td>
+          <td>{{ r.TUTOR }}</td>
+          
+          <td>{% if r.FT=='SIM' %}<span class="badge badge-pendente">⚠️</span>{% else %}<span class="badge badge-ok">✔️</span>{% endif %}</td>
+          <td>{% if r.FC=='SIM' %}<span class="badge badge-pendente">⚠️</span>{% else %}<span class="badge badge-ok">✔️</span>{% endif %}</td>
+          <td>{% if r.FG=='SIM' %}<span class="badge badge-pendente">⚠️</span>{% else %}<span class="badge badge-ok">✔️</span>{% endif %}</td>
+
+          <td>
+            {% if r.STATUS=='ATENDIMENTO' %}
+              <span class="badge bg-warning text-dark">{{ r.STATUS }}</span>
+            {% elif r.STATUS=='ASSINADA' %}
+              <span class="badge bg-info text-dark">{{ r.STATUS }}</span>
+            {% else %}
+              <span class="badge bg-success">{{ r.STATUS }}</span>
+            {% endif %}
+          </td>
+          <td>
+            <!-- Corrigido para incluir oid na rota -->
+            <a href="{{ url_for('editar', oid=r.ID) }}?modo=ver" class="btn btn-info btn-sm btn-action">Ver</a>
+            <a href="#" class="btn btn-primary btn-sm btn-action" data-bs-toggle="modal" data-bs-target="#senhaModal"
+               onclick="setEditarOid({{ r.ID }})">Editar</a>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="12" class="text-center">Nenhuma ocorrência encontrada.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal Senha -->
+<div class="modal fade" id="senhaModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" action="{{ url_for('editar', oid=0) }}">
+        <div class="modal-header">
+          <h5 class="modal-title text-dark">Acesso Restrito</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body text-dark">
+          <input type="hidden" name="oid" id="editarOid">
+          <div class="mb-3">
+            <label for="senha" class="form-label">Digite a senha:</label>
+            <input type="password" class="form-control" name="senha" id="senha" required>
           </div>
-          <div class="modal-body">
-            <input type="hidden" id="modalOid" value="">
-            <div class="mb-3">
-              <label for="senha" class="form-label">Digite a senha:</label>
-              <input id="senha" type="password" class="form-control" required>
-            </div>
-            <div id="senhaErro" class="text-danger" style="display:none">Senha incorreta.</div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-            <button type="submit" class="btn btn-primary btn-sm">Confirmar</button>
-          </div>
-        </form>
-      </div>
+          <div id="senhaErro" class="text-danger" style="display:none;">Senha incorreta!</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Confirmar</button>
+        </div>
+      </form>
     </div>
   </div>
+</div>
+
+<script>
+function setEditarOid(oid) { 
+  document.getElementById('editarOid').value = oid; 
+  const form = document.querySelector('#senhaModal form');
+  if (form) {
+    form.action = "{{ url_for('editar', oid=0) }}".replace('/0', '/' + oid);
+  }
+}
+</script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-  // senha para edição completa
-  const SENHA_EDICAO = 'idrgestao';
-
-  // Filtragem autofiltrante (busca, tutor, status)
-  const inputBusca = document.getElementById('qBusca');
-  const selTutor = document.getElementById('selTutor');
-  const selStatus = document.getElementById('selStatus');
-  const tabela = document.getElementById('tblOcorrencias').tBodies[0];
-
-  function filtrarTabela() {
-    const q = inputBusca.value.trim().toLowerCase();
-    const tutor = selTutor.value;
-    const status = selStatus.value;
-
-    for (const row of tabela.rows) {
-      const aluno = (row.dataset.aluno||'').toLowerCase();
-      const prof = (row.dataset.professor||'').toLowerCase();
-      const sala = (row.dataset.sala||'').toLowerCase();
-      const rowTutor = (row.dataset.tutor||'');
-      const rowStatus = (row.dataset.status||'');
-      const match = (aluno.includes(q) || prof.includes(q) || sala.includes(q));
-      const okTutor = !tutor || rowTutor === tutor;
-      const okStatus = !status || rowStatus === status;
-      row.style.display = (match && okTutor && okStatus) ? '' : 'none';
-    }
-  }
-
-  // autofiltragem ao digitar / mudar selects
-  inputBusca.addEventListener('input', filtrarTabela);
-  selTutor.addEventListener('change', filtrarTabela);
-  selStatus.addEventListener('change', filtrarTabela);
-
-  // popula automaticamente a lista de tutores se não foi preenchida pelo servidor
-  (function autoPopulateTutors() {
-    if (selTutor.options.length > 1) return; // já preenchido pelo servidor
-    const tutors = new Set();
-    for (const row of tabela.rows) if (row.dataset.tutor) tutors.add(row.dataset.tutor);
-    tutors.forEach(t => {
-      const o = document.createElement('option'); o.value = t; o.text = t; selTutor.appendChild(o);
-    });
-  })();
-
-  // FT/FC/FG: abrir editar com modo 'responder' e campo apropriado ao clicar na célula
-  document.querySelectorAll('#tblOcorrencias tbody tr').forEach(row => {
-    const oid = row.dataset.id;
-    const cells = row.querySelectorAll('td.icon-cell');
-    // cells[0] -> FT, [1] -> FC, [2] -> FG (same order as columns)
-    if (cells[0]) cells[0].addEventListener('click', ()=> window.location.href = "{{ url_for('editar') }}?oid="+oid+"&modo=responder&campo=FT");
-    if (cells[1]) cells[1].addEventListener('click', ()=> window.location.href = "{{ url_for('editar') }}?oid="+oid+"&modo=responder&campo=FC");
-    if (cells[2]) cells[2].addEventListener('click', ()=> window.location.href = "{{ url_for('editar') }}?oid="+oid+"&modo=responder&campo=FG");
-  });
-
-  // botão Editar -> abrir modal senha
-  document.querySelectorAll('.btn-editar').forEach(btn => {
-    btn.addEventListener('click', e => {
-      const oid = btn.dataset.oid;
-      document.getElementById('modalOid').value = oid;
-      const modal = new bootstrap.Modal(document.getElementById('senhaModal'));
-      modal.show();
-    });
-  });
-
-  // valida senha e redireciona para editar modo=editar
-  document.getElementById('senhaForm').addEventListener('submit', e => {
-    e.preventDefault();
-    const senha = document.getElementById('senha').value;
-    const oid = document.getElementById('modalOid').value;
-    if (senha === SENHA_EDICAO) {
-      // redirect to editar in edit mode
-      window.location.href = "{{ url_for('editar') }}?oid="+oid+"&modo=editar";
-    } else {
-      document.getElementById('senhaErro').style.display = 'block';
-    }
-  });
-
-  // initial filter if there are query params (optional)
-  (function applyInitialQuery() {
-    const params = new URLSearchParams(window.location.search);
-    const q = params.get('busca'); if (q) inputBusca.value = q;
-    const s = params.get('status'); if (s) selStatus.value = s;
-    const t = params.get('tutor'); if (t) selTutor.value = t;
-    filtrarTabela();
-  })();
-</script>
 </body>
 </html>
