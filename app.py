@@ -36,8 +36,8 @@ def conectar_supabase() -> Client | None:
         return None
 
 # -------------------------- Utilitários --------------------------
-def upperize_row_keys(row):
-    """Converte todas as chaves do dicionário para MAIÚSCULAS."""
+def upperize_row_keys(row: dict) -> dict:
+    """Converte todas as chaves de um dicionário para maiúsculas."""
     return {k.upper(): v for k, v in row.items()}
 
 
@@ -145,41 +145,41 @@ def carregar_lookup(table_name: str, column=None) -> list:
 
 # ... (código anterior)
 
-def carregar_dados_ocorrencias(filtro_tutor=None, filtro_status=None) -> list:
-    supabase = conectar_supabase()
-    if not supabase:
-        print("❌ DEBUG: Falha na conexão com o Supabase.")
-        return []
+def carregar_dados_ocorrencias(filtro_tutor=None, filtro_status=None):
+    """
+    Carrega as ocorrências do Supabase aplicando filtros opcionais por tutor e status.
+    Retorna sempre uma lista (mesmo que vazia).
+    """
     try:
-        # 1. ORDENAÇÃO DESC. POR ID
-        query = supabase.table("ocorrencias").select("*").order("ID", desc=True)
-        
-        # 2. FILTRO POR TUTOR (apenas com ocorrências)
+        supabase = conectar_supabase()
+        if not supabase:
+            print("❌ Erro: Supabase não conectado.")
+            return []
+
+        # --- Construção da query ---
+        query = supabase.table("ocorrencias").select("*")
+
+        # aplica filtro por tutor (se não for "Todos" e não vazio)
         if filtro_tutor and filtro_tutor != "Todos":
             query = query.eq("TUTOR", filtro_tutor)
-            
-        # 3. FILTRO POR STATUS
-        if filtro_status and filtro_status != "Todos":
-             # Mapeia nomes amigáveis para os valores do banco
-            status_map = {
-                "ATENDIMENTO": "ATENDIMENTO", 
-                "FINALIZADA": "FINALIZADA", 
-                "ASSINADA": "ASSINADA"
-            }
-            db_status = status_map.get(filtro_status)
-            if db_status:
-                query = query.eq("STATUS", db_status)
 
+        # aplica filtro por status (se não for "Todos" e não vazio)
+        if filtro_status and filtro_status != "Todos":
+            query = query.eq("STATUS", filtro_status)
+
+        # executa consulta corretamente
         resp = query.execute()
         data = resp.data or []
-        
-        # DEBUG: Imprime a quantidade de dados recebidos
-        print(f"✅ DEBUG: {len(data)} registros de ocorrências carregados do Supabase.")
-        
-        normalized = [upperize_row_keys(r) for r in data]
-        return normalized
+
+        print(f"✅ DEBUG: {len(data)} registros carregados do Supabase.")
+
+        # normaliza chaves para maiúsculas, se precisar em templates
+        registros = [upperize_row_keys(r) for r in data]
+
+        return registros
+
     except Exception as e:
-        print("❌ Erro ao carregar ocorrencias:", e)
+        print("❌ Erro ao carregar dados de ocorrências:", e)
         return []
 
 def carregar_tutores_com_ocorrencias() -> list:
@@ -795,6 +795,7 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("FLASK_DEBUG", "1") == "1"
     app.run(host="0.0.0.0", port=port, debug=debug)
+
 
 
 
