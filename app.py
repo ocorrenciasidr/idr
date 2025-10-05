@@ -1,9 +1,3 @@
-# Substitua pelas suas chaves do Supabase
-SUPABASE_URL = "rimuhgulxliduugenxro"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJpbXVoZ3VseGxpZHV1Z2VueHJvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTM1NTc1OCwiZXhwIjoyMDc0OTMxNzU4fQ.mcUWnpowzRom6cZt7amJqRqo-qNWQS6MBibIZbvFS0s"
-
-supabase = create_client(rimuhgulxliduugenxro, sb_secret_k543j2NP_ErAi9Yoyn1Keg_aMyUG4F-)
-
 # app.py
 import os
 from io import BytesIO
@@ -591,4 +585,5 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("FLASK_DEBUG", "1") == "1"
     app.run(host="0.0.0.0", port=port, debug=debug)
+
 
