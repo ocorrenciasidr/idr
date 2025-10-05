@@ -1,27 +1,30 @@
+# app.py
 import os
-import json
-from datetime import datetime, timedelta, timezone
 from io import BytesIO
+from datetime import datetime, timedelta, timezone
 
-import pandas as pd
-from dateutil import parser as date_parser
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file, jsonify
+from flask import (
+    Flask, render_template, request, redirect, url_for,
+    flash, jsonify, send_file
+)
 from fpdf import FPDF
 from supabase import create_client, Client
+import pandas as pd
+from dateutil import parser as date_parser
 
-# -------------------------- CONFIGURAÇÃO --------------------------
+# -------------------------- Configuração --------------------------
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "supersecret")
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
-PRAZO_DIAS = int(os.environ.get("PRAZO_DIAS", 7))  # Prazo para classificar atendimento
-SETORES_ATENDIMENTO = ["Tutor", "Coordenação", "Gestão"]
+
+# Prazo (dias) para avaliar "No Prazo"
+PRAZO_DIAS = int(os.environ.get("PRAZO_DIAS", 7))
 
 # Timezone São Paulo (UTC-3)
 TZ_SAO = timezone(timedelta(hours=-3))
 
-# Cria cliente supabase (pode ser None se variáveis não estiverem configuradas)
 def conectar_supabase() -> Client | None:
     if not SUPABASE_URL or not SUPABASE_KEY:
         print("❌ SUPABASE_URL ou SUPABASE_KEY não configurados.")
@@ -32,19 +35,20 @@ def conectar_supabase() -> Client | None:
         print("❌ Erro ao conectar ao Supabase:", e)
         return None
 
-# -------------------------- UTILITÁRIOS --------------------------
+# -------------------------- Utilitários --------------------------
 def upperize_row_keys(row: dict) -> dict:
-    """Retorna novo dict com chaves em MAIÚSCULAS (não modifica valores)."""
     return {str(k).upper(): v for k, v in (row or {}).items()}
 
-def ensure_columns_df(df: pd.DataFrame, cols: list) -> pd.DataFrame:
-    """Garante colunas presentes no DataFrame (preenche com None quando ausentes)."""
-    for c in cols:
-        if c not in df.columns:
-            df[c] = None
-    return df
+def normalize_checkbox(val) -> str:
+    """Return 'SIM' if checked/true-ish, else 'NÃO'."""
+    if val is None:
+        return "NÃO"
+    v = str(val).strip().lower()
+    if v in ("1", "true", "on", "sim", "yes"):
+        return "SIM"
+    return "NÃO"
 
-# -------------------------- PDF --------------------------
+# -------------------------- PDF helper --------------------------
 class PDF(FPDF):
     def header(self):
         self.set_font('Arial', 'B', 12)
@@ -59,272 +63,317 @@ class PDF(FPDF):
         self.set_font('Arial', 'I', 8)
         self.cell(0, 10, f'Página {self.page_no()}/{{nb}}', 0, 0, 'C')
 
-def adicionar_ocorrencia_ao_pdf(pdf: PDF, ocorrencia: dict):
-    """Adiciona um bloco com os dados de uma ocorrência ao PDF."""
+def adicionar_ocorrencia_ao_pdf(pdf: PDF, o: dict):
     w_label, w_value = 45, 145
     pdf.set_font('Arial', 'B', 10)
     pdf.set_fill_color(240, 240, 240)
     pdf.set_draw_color(0, 0, 0)
 
     def add_meta_row(label, value):
-        value_display = str(value).split(' ')[0] if (label == 'Data:' and value) else (str(value) if value is not None else '')
+        value_display = value if value not in (None, '') else ''
         pdf.set_font('Arial', 'B', 10)
         pdf.cell(w_label, 7, label, 'LR', 0, 'L', 1)
         pdf.set_font('Arial', '', 10)
-        pdf.cell(w_value, 7, value_display, 'LR', 1, 'L', 0)
+        pdf.cell(w_value, 7, str(value_display), 'LR', 1, 'L', 0)
 
     pdf.cell(w_label + w_value, 0, '', 'T', 1, 'L')
-    add_meta_row('Aluno:', ocorrencia.get('ALUNO', 'N/D'))
-    add_meta_row('Tutor:', ocorrencia.get('TUTOR', 'N/D'))
-    add_meta_row('Data:', ocorrencia.get('DCO', 'N/D'))
-    add_meta_row('Professor:', ocorrencia.get('PROFESSOR', 'N/D'))
+    add_meta_row('Aluno:', o.get('ALUNO', 'N/D'))
+    add_meta_row('Tutor:', o.get('TUTOR', 'N/D'))
+    add_meta_row('Data:', o.get('DCO', 'N/D'))
+    add_meta_row('Professor:', o.get('PROFESSOR', 'N/D'))
     pdf.set_font('Arial', 'B', 10)
     pdf.cell(w_label, 7, 'Sala:', 'LBR', 0, 'L', 1)
     pdf.set_font('Arial', '', 10)
-    pdf.cell(w_value, 7, ocorrencia.get('SALA', 'N/D'), 'RBT', 1, 'L', 0)
+    pdf.cell(w_value, 7, o.get('SALA', 'N/D'), 'RBT', 1, 'L', 0)
     pdf.ln(2)
 
     pdf.set_font('Arial', 'B', 10)
     pdf.cell(w_label, 7, 'Ocorrência nº:', 1, 0, 'L', 1)
     pdf.set_font('Arial', '', 10)
-    pdf.cell(w_value / 2, 7, str(ocorrencia.get('ID', 'N/D')), 1, 0, 'L')
+    pdf.cell(w_value / 2, 7, str(o.get('ID', 'N/D')), 1, 0, 'L')
     pdf.set_font('Arial', 'B', 10)
     pdf.cell(w_label / 2, 7, 'Hora:', 1, 0, 'L', 1)
     pdf.set_font('Arial', '', 10)
-    pdf.cell(w_value / 2 - w_label / 2, 7, ocorrencia.get('HCO', 'N/D'), 1, 1, 'L')
+    pdf.cell(w_value / 2 - w_label / 2, 7, o.get('HCO', 'N/D'), 1, 1, 'L')
     pdf.ln(5)
 
-    def adicionar_bloco_texto(label, campo_db):
+    def bloco(label, key):
         pdf.set_font('Arial', 'B', 10)
         pdf.cell(0, 7, label, 1, 1, 'L', 1)
         pdf.set_font('Arial', '', 10)
-        conteudo = ocorrencia.get(campo_db, '') or ''
-        conteudo = str(conteudo).strip()
-        if not conteudo:
+        conteudo = o.get(key, '') or ''
+        if not str(conteudo).strip():
             conteudo = 'NÃO APLICÁVEL'
-        pdf.multi_cell(0, 6, conteudo, 1, 'L', 0)
+        pdf.multi_cell(0, 6, str(conteudo), 1, 'L', 0)
         pdf.ln(2)
 
-    adicionar_bloco_texto('Descrição:', 'DESCRICAO')
-    adicionar_bloco_texto('Atendimento Professor:', 'ATP')
-    adicionar_bloco_texto('Atendimento Tutor (Se solicitado):', 'ATT')
-    adicionar_bloco_texto('Atendimento Coordenação (Se solicitado):', 'ATC')
-    adicionar_bloco_texto('Atendimento Gestão (Se solicitado):', 'ATG')
-    pdf.ln(10)
-
+    bloco('Descrição:', 'DESCRICAO')
+    bloco('Atendimento Professor (ATP):', 'ATP')
+    bloco('Atendimento Tutor (ATT):', 'ATT')
+    bloco('Atendimento Coordenação (ATC):', 'ATC')
+    bloco('Atendimento Gestão (ATG):', 'ATG')
+    pdf.ln(8)
     pdf.set_font('Arial', 'B', 10)
     pdf.cell(100, 7, 'Assinatura Responsável:', 0, 0, 'L')
     pdf.cell(0, 7, 'Data:       /       /       ', 0, 1, 'L')
     pdf.ln(5)
-    pdf.set_font('Arial', '', 8)
-    pdf.cell(0, 1, '-' * 125, 0, 1, 'L')
     pdf.set_font('Arial', 'I', 8)
     pdf.cell(0, 5, 'Ocorrência registrada no SGCE.', 0, 1, 'R')
 
-# -------------------------- CARREGAMENTO / CONSULTAS --------------------------
-def carregar_dados_ocorrencias() -> pd.DataFrame:
-    """Retorna DataFrame padronizado (colunas MAIÚSCULAS) com ocorrências."""
-    supabase = conectar_supabase()
-    if not supabase:
-        return pd.DataFrame()
-
-    try:
-        resp = supabase.table("ocorrencias").select("*").execute()
-        if not resp.data:
-            return pd.DataFrame()
-        df = pd.DataFrame(resp.data)
-        # padroniza colunas
-        df.columns = [c.upper() for c in df.columns]
-        # garante colunas essenciais
-        df = ensure_columns_df(df, ["ID","DCO","HCO","ALUNO","SALA","PROFESSOR","TUTOR","STATUS","FT","FC","FG","DESCRICAO"])
-        return df
-    except Exception as e:
-        print("❌ Erro ao carregar ocorrencias:", e)
-        return pd.DataFrame()
-
-def carregar_lookup(table_name: str) -> list:
-    """Busca lista simples de registros de tabelas de suporte (alunos, professores, salas)."""
+# -------------------------- Carregamento helpers --------------------------
+def carregar_lookup(table_name: str, column=None) -> list:
     supabase = conectar_supabase()
     if not supabase:
         return []
     try:
-        resp = supabase.table(table_name).select("*").order("id", desc=False).execute()
+        sel = "*" if column is None else column
+        resp = supabase.table(table_name).select(sel).order(column if column else "id", desc=False).execute()
         if not resp.data:
             return []
-        # normaliza chaves para MAIÚSCULAS e retorna lista de dicts
-        return [upperize_row_keys(r) for r in resp.data]
+        # if column provided, return list of values; else list of dicts
+        if column:
+            return [r.get(column) for r in resp.data if r.get(column) is not None]
+        return resp.data
     except Exception as e:
-        print(f"❌ Erro ao carregar {table_name}:", e)
+        print(f"Erro ao carregar {table_name}:", e)
+        return []
+
+def carregar_dados_ocorrencias() -> list:
+    supabase = conectar_supabase()
+    if not supabase:
+        return []
+    try:
+        resp = supabase.table("ocorrencia").select("*").execute()
+        data = resp.data or []
+        # ensure uppercase keys for convenience
+        normalized = [upperize_row_keys(r) for r in data]
+        # sort by ID descending if exists
+        try:
+            normalized = sorted(normalized, key=lambda x: int(x.get("ID", 0)), reverse=True)
+        except Exception:
+            pass
+        # format dates for display
+        for r in normalized:
+            if r.get("DCO"):
+                try:
+                    r["DCO"] = pd.to_datetime(r["DCO"]).strftime("%d/%m/%Y")
+                except Exception:
+                    pass
+            if r.get("HCO"):
+                try:
+                    r["HCO"] = pd.to_datetime(r["HCO"]).strftime("%H:%M")
+                except Exception:
+                    pass
+        return normalized
+    except Exception as e:
+        print("Erro ao carregar ocorrencias:", e)
         return []
 
 # -------------------------- ROTAS --------------------------
 @app.route("/")
+@app.route("/home")
+def home():
+    ano = datetime.now(TZ_SAO).year
+    return render_template("home.html", ano=ano)
+
 @app.route("/index")
 def index():
-    df = carregar_dados_ocorrencias()
-    if df.empty:
-        registros = []
-    else:
-        # opcional: formatar data/hora para exibição
-        if "DCO" in df.columns:
-            try:
-                df["DCO"] = pd.to_datetime(df["DCO"], errors="coerce").dt.strftime("%d/%m/%Y")
-            except Exception:
-                pass
-        if "HCO" in df.columns:
-            try:
-                df["HCO"] = pd.to_datetime(df["HCO"], errors="coerce").dt.strftime("%H:%M")
-            except Exception:
-                pass
-
-        # ordena por ID decrescente quando possível
-        if "ID" in df.columns:
-            try:
-                df = df.sort_values(by="ID", ascending=False)
-            except Exception:
-                pass
-
-        registros = df.to_dict(orient="records")
-
+    registros = carregar_dados_ocorrencias()
     return render_template("index.html", registros=registros)
 
+# --- Nova ocorrência ---
 @app.route("/nova", methods=["GET", "POST"])
 def nova():
     supabase = conectar_supabase()
-    if request.method == "GET":
-        # busca dados para os selects do formulário
-        alunos = carregar_lookup("alunos")
-        professores = carregar_lookup("professores")
-        salas = carregar_lookup("salas")
-        return render_template("nova.html", alunos=alunos, professores=professores, salas=salas)
+    # select options
+    professores = carregar_lookup("Professores", column="Professor")
+    salas = carregar_lookup("Salas", column="Sala")
 
-    # POST: grava nova ocorrência
+    if request.method == "GET":
+        return render_template("nova.html", professores_disp=professores, salas_disp=salas)
+
+    # POST: salvar
     if not supabase:
         flash("Erro de conexão com o banco.", "danger")
         return redirect(url_for("index"))
 
-    data = request.form.to_dict()
-    # Normaliza keys de entrada para match com a sua tabela
+    form = request.form
     payload = {
-        "ALUNO": data.get("aluno") or data.get("ALUNO"),
-        "SALA": data.get("sala") or data.get("SALA"),
-        "PROFESSOR": data.get("professor") or data.get("PROFESSOR"),
-        "TUTOR": data.get("tutor") or data.get("TUTOR"),
-        "DESCRICAO": data.get("descricao") or data.get("DESCRICAO"),
-        "FT": data.get("ft", "NÃO"),
-        "FC": data.get("fc", "NÃO"),
-        "FG": data.get("fg", "NÃO"),
-        "STATUS": data.get("status", "ABERTA"),
-        # registra data/hora local em ISO
-        "DCO": datetime.now(TZ_SAO).isoformat(),
-        "HCO": datetime.now(TZ_SAO).strftime("%H:%M")
+        # mantém a convenção de colunas MAIÚSCULAS em 'ocorrencia'
+        "DCO": datetime.now(TZ_SAO).date().isoformat(),
+        "HCO": datetime.now(TZ_SAO).strftime("%H:%M"),
+        "ALUNO": form.get("ALUNO", ""),
+        "SALA": form.get("SALA", ""),
+        "PROFESSOR": form.get("PROFESSOR", ""),
+        "TUTOR": form.get("TUTOR", ""),
+        "DESCRICAO": form.get("DESCRICAO", ""),
+        "ATP": form.get("ATP", "") or "",
+        "ATT": "", "ATC": "", "ATG": "",
+        "FT": normalize_checkbox(form.get("FT")),
+        "FC": normalize_checkbox(form.get("FC")),
+        "FG": normalize_checkbox(form.get("FG")),
+        "DT": None, "DC": None, "DG": None,
+        "STATUS": "ATENDIMENTO" if ("SIM" in (normalize_checkbox(form.get("FT")), normalize_checkbox(form.get("FC")), normalize_checkbox(form.get("FG")))) else "FINALIZADA",
+        "ASSINADA": False
     }
 
     try:
-        resp = supabase.table("ocorrencias").insert(payload).execute()
+        resp = supabase.table("ocorrencia").insert(payload).execute()
         if resp.error:
-            flash(f"Erro ao inserir ocorrência: {resp.error}", "danger")
+            flash("Erro ao inserir ocorrência.", "danger")
         else:
             flash("Ocorrência registrada com sucesso.", "success")
     except Exception as e:
-        print("❌ Erro ao inserir ocorrência:", e)
+        print("Erro ao inserir ocorrência:", e)
         flash("Erro ao gravar ocorrência.", "danger")
 
     return redirect(url_for("index"))
 
+# --- API alunos por sala ---
+@app.route("/api/alunos_por_sala/<sala>")
+def api_alunos_por_sala(sala):
+    supabase = conectar_supabase()
+    if not supabase:
+        return jsonify([])
+    try:
+        resp = supabase.table("Alunos").select("*").eq("Sala", sala).execute()
+        return jsonify(resp.data or [])
+    except Exception as e:
+        print("Erro api/alunos_por_sala:", e)
+        return jsonify([])
+
+# --- Editar ocorrência ---
 @app.route("/editar/<int:oid>", methods=["GET", "POST"])
 def editar(oid):
     supabase = conectar_supabase()
     if not supabase:
-        flash("Erro ao conectar ao banco de dados.", "danger")
+        flash("Erro de conexão com o banco.", "danger")
         return redirect(url_for("index"))
+
+    # buscar ocorrência
+    try:
+        resp = supabase.table("ocorrencia").select("*").eq("ID", oid).execute()
+        data = resp.data or []
+        if not data:
+            flash("Ocorrência não encontrada.", "danger")
+            return redirect(url_for("index"))
+        ocorr = upperize_row_keys(data[0])
+    except Exception as e:
+        print("Erro ao buscar ocorrência:", e)
+        flash("Erro ao buscar ocorrência.", "danger")
+        return redirect(url_for("index"))
+
+    professores = carregar_lookup("Professores", column="Professor")
+    salas = carregar_lookup("Salas", column="Sala")
+
+    if request.method == "GET":
+        return render_template("editar.html", ocorrencia=ocorr, professores_disp=professores, salas_disp=salas)
+
+    # POST: atualizar registro (sem senha)
+    form = request.form
+    update = {}
+
+    # atualizar campos livres
+    update["DESCRICAO"] = form.get("DESCRICAO", ocorr.get("DESCRICAO", ""))
+    update["ATP"] = form.get("ATP", ocorr.get("ATP", ""))
+    update["PROFESSOR"] = form.get("PROFESSOR", ocorr.get("PROFESSOR", ""))
+    update["SALA"] = form.get("SALA", ocorr.get("SALA", ""))
+    update["ALUNO"] = form.get("ALUNO", ocorr.get("ALUNO", ""))
+    update["TUTOR"] = form.get("TUTOR", ocorr.get("TUTOR", ""))
+
+    # Se as ações foram solicitadas (FT/FC/FG) e foram respondidas, gravar ATT/ATC/ATG e marcar DT/DC/DG
+    now_iso = datetime.now(TZ_SAO).isoformat()
+
+    # ATT (Tutor)
+    if form.get("ATT") is not None:
+        update["ATT"] = form.get("ATT", ocorr.get("ATT", ""))
+    # ATC (Coordenação)
+    if form.get("ATC") is not None:
+        update["ATC"] = form.get("ATC", ocorr.get("ATC", ""))
+    # ATG (Gestão)
+    if form.get("ATG") is not None:
+        update["ATG"] = form.get("ATG", ocorr.get("ATG", ""))
+
+    # Se o checkbox FT/FC/FG ainda for SIM no banco e o form trouxe texto de atendimento,
+    # consideramos que a solicitação foi atendida — atualizamos a flag para 'NÃO' e guardamos DT/DC/DG.
+    # Caso queira outro comportamento, avise.
+    # Nota: a UI enviará FT/FC/FG como checkbox quando estiver presente; aqui só ajustamos baseado no conteúdo.
+    if ocorr.get("FT") == "SIM" and update.get("ATT"):
+        update["FT"] = "NÃO"
+        update["DT"] = now_iso
+    if ocorr.get("FC") == "SIM" and update.get("ATC"):
+        update["FC"] = "NÃO"
+        update["DC"] = now_iso
+    if ocorr.get("FG") == "SIM" and update.get("ATG"):
+        update["FG"] = "NÃO"
+        update["DG"] = now_iso
+
+    # ajustar STATUS: se algum FT/FC/FG ainda for 'SIM' => ATENDIMENTO, senão FINALIZADA
+    # buscamos os valores atuais (priorizar updates)
+    ft = update.get("FT", ocorr.get("FT", "NÃO"))
+    fc = update.get("FC", ocorr.get("FC", "NÃO"))
+    fg = update.get("FG", ocorr.get("FG", "NÃO"))
+    if "SIM" in (ft, fc, fg):
+        update["STATUS"] = "ATENDIMENTO"
+    else:
+        update["STATUS"] = "FINALIZADA"
 
     try:
-        resp = supabase.table("ocorrencias").select("*").eq("ID", oid).execute()
-        if not resp.data:
-            # Tenta por id minúsculo (às vezes a PK é 'id')
-            resp = supabase.table("ocorrencias").select("*").eq("id", oid).execute()
+        supabase.table("ocorrencia").update(update).eq("ID", oid).execute()
+        flash("Ocorrência atualizada com sucesso.", "success")
     except Exception as e:
-        print("❌ Erro ao buscar ocorrência:", e)
-        resp = None
+        print("Erro ao atualizar ocorrência:", e)
+        flash("Erro ao atualizar ocorrência.", "danger")
 
-    if not resp or not resp.data:
-        flash(f"Ocorrência Nº {oid} não encontrada.", "danger")
-        return redirect(url_for("index"))
+    return redirect(url_for("index"))
 
-    # normaliza chaves para MAIÚSCULAS
-    ocorrencia = upperize_row_keys(resp.data[0])
+# --- Relatórios ---
+@app.route("/relatorio_inicial")
+def relatorio_inicial():
+    ano = datetime.now(TZ_SAO).year
+    return render_template("relatorio_inicial.html", ano=ano)
 
-    if request.method == "POST":
-        form = request.form.to_dict()
-        update_data = {}
-        now_local = datetime.now(TZ_SAO)
-
-        # lógica de atualização similar à que você tinha
-        # se FT/FC/FG estavam marcados como "SIM" no registro original, preenche atendimento e marca como NÃO
-        if ocorrencia.get("FT") == "SIM":
-            update_data["ATT"] = form.get("ATT", ocorrencia.get("ATT", ""))
-            update_data["FT"] = "NÃO"
-            update_data["DT"] = now_local.isoformat()
-        if ocorrencia.get("FC") == "SIM":
-            update_data["ATC"] = form.get("ATC", ocorrencia.get("ATC", ""))
-            update_data["FC"] = "NÃO"
-            update_data["DC"] = now_local.isoformat()
-        if ocorrencia.get("FG") == "SIM":
-            update_data["ATG"] = form.get("ATG", ocorrencia.get("ATG", ""))
-            update_data["FG"] = "NÃO"
-            update_data["DG"] = now_local.isoformat()
-
-        # campos editáveis
-        update_data["DESCRICAO"] = form.get("DESCRICAO", ocorrencia.get("DESCRICAO", ""))
-        update_data["ATP"] = form.get("ATP", ocorrencia.get("ATP", ""))
-
-        # ajusta STATUS
-        if "SIM" in [update_data.get("FT", "NÃO"), update_data.get("FC", "NÃO"), update_data.get("FG", "NÃO")]:
-            update_data["STATUS"] = "ATENDIMENTO"
-        else:
-            update_data["STATUS"] = "FINALIZADA"
-
-        try:
-            supabase.table("ocorrencias").update(update_data).eq("ID", oid).execute()
-            flash(f"Ocorrência Nº {oid} atualizada com sucesso!", "success")
-        except Exception as e:
-            print("❌ Erro ao atualizar ocorrência:", e)
-            flash("Erro ao atualizar ocorrência.", "danger")
-
-        return redirect(url_for("index"))
-
-    # GET: mostra a página de edição
-    campos_editaveis = {
-        "DESCRICAO": True,
-        "ATP": True,
-        "ATT": ocorrencia.get("FT", "NÃO") == "SIM",
-        "ATC": ocorrencia.get("FC", "NÃO") == "SIM",
-        "ATG": ocorrencia.get("FG", "NÃO") == "SIM"
-    }
-    papel = request.args.get("papel", "ver")
-    modo = "view" if papel == "ver" else "edit"
-    if modo == "view":
-        for k in campos_editaveis:
-            campos_editaveis[k] = False
-
-    return render_template("editar.html", ocorrencia=ocorrencia, campos_editaveis=campos_editaveis, modo=modo)
-
-@app.route("/relatorio_aluno", methods=["GET","POST"])
+@app.route("/relatorio_aluno", methods=["GET", "POST"])
 def relatorio_aluno():
-    """
-    Se GET: mostra a página de seleção (salas, alunos).
-    Se POST: recebe lista de IDs (ocorrencias[]) e gera PDF, baixando-o.
-    """
     supabase = conectar_supabase()
-    if request.method == "GET":
-        # opções para filtros
-        df = carregar_dados_ocorrencias()
-        salas = sorted(df["SALA"].dropna().unique().tolist()) if not df.empty and "SALA" in df.columns else []
-        alunos = sorted(df["ALUNO"].dropna().unique().tolist()) if not df.empty and "ALUNO" in df.columns else []
-        return render_template("relatorio_aluno.html", registros=[], salas=salas, alunos=alunos, sala_sel="", aluno_sel="")
+    salas = sorted(set([r.get("Sala") for r in (supabase.table("Alunos").select("Sala").execute().data or []) if r.get("Sala")] ))
+    alunos = sorted(set([r.get("Aluno") for r in (supabase.table("Alunos").select("Aluno").execute().data or []) if r.get("Aluno")] ))
+    sala_sel = request.args.get("sala", "")
+    aluno_sel = request.args.get("aluno", "")
 
-    # POST -> gerar PDF
+    ocorrencias = []
+    if aluno_sel:
+        try:
+            q = supabase.table("ocorrencia").select("*").eq("ALUNO", aluno_sel)
+            if sala_sel:
+                q = q.eq("SALA", sala_sel)
+            resp = q.execute()
+            ocorrencias = resp.data or []
+            # normalize for display keys similar to templates earlier
+            # transform keys to display-friendly names if needed in template
+            # template expects fields like 'Nº Ocorrência', 'DCO', etc.
+            normalized = []
+            for o in ocorrencias:
+                r = upperize_row_keys(o)
+                r_display = {
+                    "ID": r.get("ID"),
+                    "Nº Ocorrência": r.get("ID"),
+                    "DCO": r.get("DCO"),
+                    "HCO": r.get("HCO"),
+                    "Descrição da Ocorrência": r.get("DESCRICAO"),
+                    "Status": r.get("STATUS", ""),
+                }
+                normalized.append(r_display)
+            ocorrencias = normalized
+        except Exception as e:
+            print("Erro ao buscar ocorrencias por aluno:", e)
+            ocorrencias = []
+
+    return render_template("relatorio_aluno.html", salas=salas, alunos=alunos, sala_sel=sala_sel, aluno_sel=aluno_sel, ocorrencias=ocorrencias)
+
+@app.route("/gerar_pdf_aluno", methods=["POST"])
+def gerar_pdf_aluno():
+    supabase = conectar_supabase()
     selecionadas = request.form.getlist("ocorrencias[]")
     aluno = request.form.get("aluno", "")
     sala = request.form.get("sala", "")
@@ -335,24 +384,25 @@ def relatorio_aluno():
     try:
         ids = [int(x) for x in selecionadas]
     except Exception:
-        flash("IDs de ocorrências inválidos.", "danger")
+        flash("IDs inválidos.", "danger")
         return redirect(url_for("relatorio_aluno"))
 
-    if not supabase:
-        flash("Erro de conexão com o banco.", "danger")
+    try:
+        resp = supabase.table("ocorrencia").select("*").in_("ID", ids).execute()
+        ocorrs = [upperize_row_keys(o) for o in (resp.data or [])]
+    except Exception as e:
+        print("Erro buscar ocorrencias para PDF:", e)
+        flash("Erro ao preparar PDF.", "danger")
         return redirect(url_for("relatorio_aluno"))
 
-    resp = supabase.table("ocorrencias").select("*").in_("ID", ids).execute()
-    ocorrencias = [upperize_row_keys(r) for r in (resp.data or [])]
-
+    # gera PDF
     pdf = PDF()
     pdf.alias_nb_pages()
     pdf.add_page()
-    for o in ocorrencias:
+    for o in ocorrs:
         adicionar_ocorrencia_ao_pdf(pdf, o)
-        # tenta marcar ASSINADA (silencioso em caso de erro)
         try:
-            supabase.table("ocorrencias").update({"STATUS": "ASSINADA"}).eq("ID", o.get("ID")).execute()
+            supabase.table("ocorrencia").update({"STATUS": "ASSINADA", "ASSINADA": True}).eq("ID", o.get("ID")).execute()
         except Exception:
             pass
 
@@ -362,103 +412,176 @@ def relatorio_aluno():
     filename = f"Relatorio_{aluno or 'Aluno'}.pdf"
     return send_file(out, as_attachment=True, download_name=filename, mimetype="application/pdf")
 
-@app.route("/validar_senha", methods=["POST"])
-def validar_senha():
-    """
-    Endpoint simples para modal de senha — ajuste conforme sua lógica real.
-    Retorna redirect para editar ou realiza ação.
-    """
-    oid = request.form.get("oid")
-    acao = request.form.get("acao")
-    senha = request.form.get("senha")
-    # Aqui: você pode validar a senha real (ex: comparar com variavel de ambiente)
-    senha_correta = os.environ.get("ADMIN_SENHA", "1234")
-    if senha == senha_correta:
-        # redireciona para editar (ou outra ação)
-        try:
-            oid_int = int(oid)
-            return redirect(url_for("editar", oid=oid_int))
-        except Exception:
-            return redirect(url_for("index"))
-    else:
-        flash("Senha incorreta.", "danger")
-        return redirect(url_for("index"))
-
-# -------------------------- RELATÓRIOS ESTATÍSTICOS (EXTRAS) --------------------------
-def calcular_status_prazo(row):
-    status = {}
-    for setor, col in zip(SETORES_ATENDIMENTO, ['DT', 'DC', 'DG']):
-        valor = row.get(col)
-        if not valor or str(valor) in ('', 'None'):
-            status[setor] = 'Não Respondida'
-        else:
-            try:
-                dco = pd.to_datetime(row['DCO']).date()
-                atendimento = date_parser.parse(valor).date()
-                dias = (atendimento - dco).days
-                status[setor] = 'No Prazo' if dias <= PRAZO_DIAS else 'Fora do Prazo'
-            except Exception:
-                status[setor] = 'Não Respondida'
-    return status
-
-def calcular_relatorio_estatistico():
-    df = carregar_dados_ocorrencias()
+@app.route("/relatorio_geral")
+def relatorio_geral():
+    # Para exibir: agregue os dados conforme templates
+    supabase = conectar_supabase()
+    data_inicio = request.args.get("data_inicio")
+    data_fim = request.args.get("data_fim")
+    # pega todas as ocorrencias e processa localmente
+    resp = supabase.table("ocorrencia").select("*").execute()
+    data = resp.data or []
+    df = pd.DataFrame([upperize_row_keys(r) for r in data])
+    # garante colunas
     if df.empty:
-        return []
-    df['PRAZO_STATUS'] = df.apply(calcular_status_prazo, axis=1)
+        rel_sala = []
+        rel_setor = []
+    else:
+        df = ensure_cols_for_geral(df)
+        # aplicar filtros de data se fornecidos (DCO em iso)
+        if data_inicio:
+            try:
+                df = df[pd.to_datetime(df["DCO"], errors="coerce") >= pd.to_datetime(data_inicio)]
+            except Exception:
+                pass
+        if data_fim:
+            try:
+                df = df[pd.to_datetime(df["DCO"], errors="coerce") <= pd.to_datetime(data_fim)]
+            except Exception:
+                pass
+        rel_sala = calcular_relatorio_por_sala_df(df)
+        rel_setor = calcular_relatorio_estatistico_df(df)
+    return render_template("relatorio_geral.html", relatorio_sala=rel_sala, relatorio_setor=rel_setor, data_inicio=data_inicio, data_fim=data_fim)
+
+@app.route("/relatorio_tutor")
+def relatorio_tutor():
+    supabase = conectar_supabase()
+    start = request.args.get("start")
+    end = request.args.get("end")
+    # pega ocorrências FT == 'SIM' ou FT == 'SIM'/'NÃO' dependendo de sua lógica
+    resp = supabase.table("ocorrencia").select("*").execute()
+    data = resp.data or []
+    df = pd.DataFrame([upperize_row_keys(r) for r in data])
+    if df.empty:
+        rel = {}
+    else:
+        # filtra por data se fornecido
+        try:
+            if start:
+                df = df[pd.to_datetime(df["DCO"], errors="coerce") >= pd.to_datetime(start)]
+            if end:
+                df = df[pd.to_datetime(df["DCO"], errors="coerce") <= pd.to_datetime(end)]
+        except Exception:
+            pass
+        # consideramos FT == 'SIM' como solicitado (ajuste se usar outro valor)
+        df_ft = df[df["FT"] == "SIM"] if "FT" in df.columns else pd.DataFrame()
+        rel = {}
+        for idx, row in df_ft.iterrows():
+            tutor = row.get("TUTOR", "SEM TUTOR")
+            if tutor not in rel:
+                rel[tutor] = {"total": 0, "prazo": 0, "fora": 0, "nao": 0}
+            rel[tutor]["total"] += 1
+            # calcular prazo usando DT (data de resposta tutor) e DCO
+            dco = None
+            try:
+                dco = pd.to_datetime(row.get("DCO"))
+            except Exception:
+                dco = None
+            dt = None
+            try:
+                dt = date_parser.parse(str(row.get("DT"))) if row.get("DT") else None
+            except Exception:
+                dt = None
+            if dt is None:
+                rel[tutor]["nao"] += 1
+            else:
+                dias = (dt.date() - dco.date()).days if dco is not None else 9999
+                if dias <= PRAZO_DIAS:
+                    rel[tutor]["prazo"] += 1
+                else:
+                    rel[tutor]["fora"] += 1
+    return render_template("relatorio_tutor.html", relatorio=rel, start=start, end=end)
+
+@app.route("/relatorio_tutoraluno")
+def relatorio_tutoraluno():
+    supabase = conectar_supabase()
+    alunos = supabase.table("Alunos").select("*").execute().data or []
+    dados = {}
+    for a in alunos:
+        tutor = a.get("Tutor", "SEM TUTOR")
+        if tutor not in dados:
+            dados[tutor] = []
+        qtd = len(supabase.table("ocorrencia").select("*").eq("ALUNO", a.get("Aluno")).execute().data or [])
+        dados[tutor].append({"Aluno": a.get("Aluno"), "Sala": a.get("Sala"), "Quantidade Ocorrências": qtd})
+    return render_template("relatorio_tutoraluno.html", dados=dados)
+
+# -------------------------- Pequenas funções de relatório --------------------------
+def ensure_cols_for_geral(df: pd.DataFrame) -> pd.DataFrame:
+    needed = ["SALA", "DCO", "DT", "DC", "DG"]
+    for c in needed:
+        if c not in df.columns:
+            df[c] = None
+    return df
+
+def calcular_relatorio_por_sala_df(df: pd.DataFrame) -> list:
+    rel = []
+    total = len(df)
+    agrup = df.groupby("SALA") if "SALA" in df.columns else []
+    for sala, grupo in agrup:
+        cont = {"<7": 0, ">7": 0, "Não Respondidas": 0}
+        for _, row in grupo.iterrows():
+            datas = []
+            for c in ["DT", "DC", "DG"]:
+                val = row.get(c)
+                if val and str(val) not in ("", "None"):
+                    try:
+                        datas.append(date_parser.parse(str(val)).date())
+                    except Exception:
+                        pass
+            if datas:
+                try:
+                    dco = pd.to_datetime(row["DCO"]).date()
+                    if (min(datas) - dco).days <= PRAZO_DIAS:
+                        cont["<7"] += 1
+                    else:
+                        cont[">7"] += 1
+                except Exception:
+                    cont["Não Respondidas"] += 1
+            else:
+                cont["Não Respondidas"] += 1
+        total_sala = len(grupo)
+        rel.append({
+            "Sala": sala,
+            "Total Ocorrências": total_sala,
+            "Porcentagem": f"{(total_sala/total*100):.1f}%" if total>0 else "0%",
+            "Respondidas <7 dias": cont["<7"],
+            "Respondidas >7 dias": cont[">7"],
+            "Não Respondidas": cont["Não Respondidas"]
+        })
+    return rel
+
+def calcular_relatorio_estatistico_df(df: pd.DataFrame) -> list:
     resumo = []
-    for setor in SETORES_ATENDIMENTO:
-        contagem = {'No Prazo': 0, 'Fora do Prazo': 0, 'Não Respondida': 0}
-        for st in df['PRAZO_STATUS']:
-            contagem[st[setor]] += 1
+    setores = [("Tutor","DT"),("Coordenação","DC"),("Gestão","DG")]
+    for setor, col in setores:
+        cont = {"No Prazo":0, "Fora do Prazo":0, "Não Respondida":0}
+        for _, row in df.iterrows():
+            val = row.get(col)
+            if not val or str(val) in ("", "None"):
+                cont["Não Respondida"] += 1
+            else:
+                try:
+                    dco = pd.to_datetime(row["DCO"]).date()
+                    atend = date_parser.parse(str(val)).date()
+                    dias = (atend - dco).days
+                    if dias <= PRAZO_DIAS:
+                        cont["No Prazo"] += 1
+                    else:
+                        cont["Fora do Prazo"] += 1
+                except Exception:
+                    cont["Não Respondida"] += 1
         total = len(df)
         resumo.append({
-            'Setor': setor,
-            'Total': total,
-            'Respondidas <7 dias': contagem['No Prazo'],
-            'Respondidas >7 dias': contagem['Fora do Prazo'],
-            'Não Respondidas': contagem['Não Respondida']
+            "Setor": setor,
+            "Total": total,
+            "Respondidas <7 dias": cont["No Prazo"],
+            "Respondidas >7 dias": cont["Fora do Prazo"],
+            "Não Respondidas": cont["Não Respondida"]
         })
     return resumo
 
-def calcular_relatorio_por_sala():
-    df = carregar_dados_ocorrencias()
-    if df.empty:
-        return []
-    relatorio = []
-    total_geral = len(df)
-    # agrupa por sala (atenção: coluna 'SALA' em MAIÚSCULAS)
-    agrup = df.groupby('SALA') if 'SALA' in df.columns else []
-    for sala, grupo in agrup:
-        contagem = {'<7': 0, '>7': 0, 'Não Respondidas': 0}
-        for idx, row in grupo.iterrows():
-            datas = [str(row.get(c)) for c in ['DT','DC','DG'] if str(row.get(c,'None')) not in ('','None')]
-            if datas:
-                try:
-                    dco = pd.to_datetime(row['DCO']).date()
-                    atendimentos = [date_parser.parse(d).date() for d in datas]
-                    if (min(atendimentos) - dco).days <= PRAZO_DIAS:
-                        contagem['<7'] += 1
-                    else:
-                        contagem['>7'] += 1
-                except Exception:
-                    contagem['Não Respondidas'] += 1
-            else:
-                contagem['Não Respondidas'] += 1
-        total_sala = len(grupo)
-        relatorio.append({
-            'Sala': sala,
-            'Total Ocorrências': total_sala,
-            'Porcentagem': f"{(total_sala/total_geral*100):.1f}%" if total_geral>0 else '0%',
-            'Respondidas <7 dias': contagem['<7'],
-            'Respondidas >7 dias': contagem['>7'],
-            'Não Respondidas': contagem['Não Respondidas']
-        })
-    return relatorio
-
-# -------------------------- RUN --------------------------
+# -------------------------- Run --------------------------
 if __name__ == "__main__":
-    # Para desenvolvimento local
     port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("FLASK_DEBUG", "1") == "1"
-    app.run(debug=debug, port=port, host="0.0.0.0")
+    app.run(host="0.0.0.0", port=port, debug=debug)
