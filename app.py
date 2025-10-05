@@ -210,19 +210,39 @@ def home():
 
 @app.route("/index", methods=["GET"])
 def index():
-    supabase = conectar_supabase()   # ✅ cria a conexão antes de usar
-    if not supabase:
-        flash("Erro de conexão com o banco.", "danger")
-        return redirect(url_for("home"))
+    try:
+        supabase = conectar_supabase()
+        if not supabase:
+            flash("Erro de conexão com o banco.", "danger")
+            return redirect(url_for("home"))  # ✅ não deixa a função acabar sem return
 
-    filtro_tutor = request.args.get("tutor_filtro")
-    filtro_status = request.args.get("status_filtro")
+        filtro_tutor = request.args.get("tutor_filtro")
+        filtro_status = request.args.get("status_filtro")
 
-    registros = carregar_dados_ocorrencias(filtro_tutor, filtro_status)
+        registros = carregar_dados_ocorrencias(filtro_tutor, filtro_status)
 
+        try:
+            tutores_data = supabase.table("ocorrencias").select("TUTOR").execute().data or []
+            tutores_disp = sorted(list({r.get("TUTOR") for r in tutores_data if r.get("TUTOR")}))
+        except Exception as e:
+            print("Erro ao carregar tutores:", e)
+            tutores_disp = []
 
+        status_disp = ["ATENDIMENTO", "FINALIZADA", "ASSINADA"]
 
-# ... (coloque antes da rota editar)
+        print(f"✅ DEBUG: {len(registros)} registros de ocorrências carregados do Supabase.")
+        return render_template(
+            "index.html",
+            registros=registros,
+            tutores_disp=["Todos"] + tutores_disp,
+            status_disp=["Todos"] + status_disp,
+            filtro_tutor_sel=filtro_tutor,
+            filtro_status_sel=filtro_status
+        )
+
+    except Exception as e:
+        print("❌ Erro na rota /index:", e)
+        return "Erro interno na rota /index", 500
 
 # --- Rota de Atendimento (FT, FC, FG) ---
 @app.route("/atendimento/<int:oid>/<tipo_acao>", methods=["GET", "POST"])
@@ -775,6 +795,7 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("FLASK_DEBUG", "1") == "1"
     app.run(host="0.0.0.0", port=port, debug=debug)
+
 
 
 
