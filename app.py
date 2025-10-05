@@ -234,9 +234,10 @@ def index():
 
 # ... (coloque antes da rota editar)
 
+# --- Rota de Atendimento (FT, FC, FG) ---
 @app.route("/atendimento/<int:oid>/<tipo_acao>", methods=["GET", "POST"])
 def atendimento(oid, tipo_acao):
-    # Tipos válidos de ação/setor: F=Tutor, C=Coordenação, G=Gestão
+    # Tipos válidos de ação/setor: T=Tutor, C=Coordenação, G=Gestão
     if tipo_acao not in ["FT", "FC", "FG"]:
         flash("Ação inválida.", "danger")
         return redirect(url_for("index"))
@@ -245,6 +246,12 @@ def atendimento(oid, tipo_acao):
     if not supabase:
         flash("Erro de conexão com o banco.", "danger")
         return redirect(url_for("index"))
+
+    # Mapeamentos
+    # FT -> ATT, FC -> ATC, FG -> ATG (Campo de Texto de Resposta)
+    campo_atendimento = "A" + tipo_acao[1] + "T"
+    # FT -> DT, FC -> DC, FG -> DG (Campo de Data de Resposta)
+    campo_data = tipo_acao[0] + "T"
 
     # 1. Busca a ocorrência
     try:
@@ -259,18 +266,22 @@ def atendimento(oid, tipo_acao):
         flash("Erro ao buscar ocorrência.", "danger")
         return redirect(url_for("index"))
     
-    # 2. Se GET (apenas visualiza a tela de edição)
+    professores = carregar_lookup("Professores", column="Professor")
+    salas = carregar_lookup("Salas", column="Sala")
+    
+    # 2. Se GET (apenas visualiza a tela de edição, liberando SOMENTE o campo de atendimento)
     if request.method == "GET":
-        # Passa a ocorrência e o modo (ATT, ATC ou ATG) para o template
-        # O modo ATENDIMENTO só permite edição do campo de atendimento correspondente
-        return render_template("editar.html", ocorrencia=ocorr, modo="ATENDIMENTO", tipo_acao=tipo_acao)
-
+        # modo="ATENDIMENTO_INDIVIDUAL" indicará qual campo liberar no HTML
+        return render_template("editar.html", 
+                               ocorrencia=ocorr, 
+                               professores_disp=professores, 
+                               salas_disp=salas, 
+                               modo="ATENDIMENTO_INDIVIDUAL", 
+                               tipo_acao=tipo_acao,
+                               campo_atendimento=campo_atendimento) # Passamos o campo liberado
+                               
     # 3. Se POST (salva o atendimento)
     form = request.form
-    campo_atendimento = tipo_acao[0] + "TT" # FT -> ATT, FC -> ATC, FG -> ATG
-    campo_data = tipo_acao[0] + "T"        # FT -> DT, FC -> DC, FG -> DG
-    
-    # Obtém o conteúdo do atendimento
     atendimento_texto = form.get(campo_atendimento)
     
     if not atendimento_texto:
@@ -282,17 +293,30 @@ def atendimento(oid, tipo_acao):
     
     update = {}
     update[campo_atendimento] = atendimento_texto
-    update[campo_data] = now_iso # b) Grava a data
-    update[tipo_acao] = "NÃO"    # c) Muda o FT/FC/FG para NÃO
     
-    # Ajusta o STATUS (se todas as FT/FC/FG forem 'NÃO', muda para FINALIZADA)
-    # Pega os valores atuais (priorizando o update atual)
+    # REGRA DE INDIVIDUALIZAÇÃO E ATUALIZAÇÃO DO STATUS:
+    if atendimento_texto.strip() != "":
+        # Se preencheu o campo de atendimento,
+        # 1. Atualiza o texto de atendimento.
+        update[campo_atendimento] = atendimento_texto
+        # 2. Grava a data de resposta.
+        update[campo_data] = now_iso 
+        # 3. Muda o flag de solicitação (FT, FC ou FG) para NÃO.
+        update[tipo_acao] = "NÃO"    
+
+    # Lógica de STATUS: Checa se todos os flags (FT, FC, FG) AGORA são 'NÃO'.
+    # Usa o valor atual da ocorrência para os outros flags, e o valor do 'update' para o flag sendo alterado.
+    
     ft = update.get("FT") if tipo_acao == "FT" else ocorr.get("FT", "NÃO")
     fc = update.get("FC") if tipo_acao == "FC" else ocorr.get("FC", "NÃO")
     fg = update.get("FG") if tipo_acao == "FG" else ocorr.get("FG", "NÃO")
     
-    if "SIM" not in (ft, fc, fg):
+    # Se TODOS forem 'NÃO', o status se torna 'FINALIZADA'
+    if ft == "NÃO" and fc == "NÃO" and fg == "NÃO":
         update["STATUS"] = "FINALIZADA"
+    elif ocorr.get("STATUS") != "ASSINADA":
+        # Se ainda há flags SIM, o status se mantém em ATENDIMENTO (a menos que já esteja ASSINADA)
+        update["STATUS"] = "ATENDIMENTO" 
         
     # d) Armazena os dados na tabela ocorrencias
     try:
@@ -303,7 +327,6 @@ def atendimento(oid, tipo_acao):
         flash("Erro ao salvar o atendimento.", "danger")
         
     return redirect(url_for("index"))
-
 # app.py
 
 # ... (código anterior)
@@ -784,6 +807,7 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("FLASK_DEBUG", "1") == "1"
     app.run(host="0.0.0.0", port=port, debug=debug)
+
 
 
 
