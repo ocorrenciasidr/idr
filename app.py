@@ -145,41 +145,78 @@ def carregar_lookup(table_name: str, column=None) -> list:
 
 # ... (código anterior)
 
-def carregar_dados_ocorrencias(filtro_tutor=None, filtro_status=None):
-    """
-    Carrega as ocorrências do Supabase aplicando filtros opcionais por tutor e status.
-    Retorna sempre uma lista (mesmo que vazia).
-    """
+def carregar_dados_ocorrencias(filtro_tutor=None, filtro_status=None) -> list:
+    supabase = conectar_supabase()
+    if not supabase:
+        print("❌ DEBUG: Falha na conexão com o Supabase.")
+        return []
     try:
-        supabase = conectar_supabase()
-        if not supabase:
-            print("❌ Erro: Supabase não conectado.")
-            return []
+        # 1️⃣ Busca todos os registros ordenados por ID DESC
+        query = supabase.table("ocorrencias").select("*").order("ID", desc=True)
 
-        # --- Construção da query ---
-        query = supabase.table("ocorrencias").select("*")
-
-        # aplica filtro por tutor (se não for "Todos" e não vazio)
+        # 2️⃣ Aplicar filtros
         if filtro_tutor and filtro_tutor != "Todos":
             query = query.eq("TUTOR", filtro_tutor)
-
-        # aplica filtro por status (se não for "Todos" e não vazio)
         if filtro_status and filtro_status != "Todos":
-            query = query.eq("STATUS", filtro_status)
+            status_map = {"ATENDIMENTO": "ATENDIMENTO", "FINALIZADA": "FINALIZADA", "ASSINADA": "ASSINADA"}
+            db_status = status_map.get(filtro_status)
+            if db_status:
+                query = query.eq("STATUS", db_status)
 
-        # executa consulta corretamente
         resp = query.execute()
         data = resp.data or []
 
-        print(f"✅ DEBUG: {len(data)} registros carregados do Supabase.")
+        # 3️⃣ Normaliza campos
+        normalized = [upperize_row_keys(r) for r in data]
+        atualizados = 0
 
-        # normaliza chaves para maiúsculas, se precisar em templates
-        registros = [upperize_row_keys(r) for r in data]
+        # 4️⃣ Aplica regras automáticas no servidor
+        for ocorr in normalized:
+            update = {}
 
-        return registros
+            # FT → ATT
+            if ocorr.get("FT") == "SIM" and (ocorr.get("ATT") or "").strip() != "":
+                update["FT"] = "NÃO"
+                update["DT"] = datetime.now(TZ_SAO).date().isoformat()
+
+            # FC → ATC
+            if ocorr.get("FC") == "SIM" and (ocorr.get("ATC") or "").strip() != "":
+                update["FC"] = "NÃO"
+                update["DC"] = datetime.now(TZ_SAO).date().isoformat()
+
+            # FG → ATG
+            if ocorr.get("FG") == "SIM" and (ocorr.get("ATG") or "").strip() != "":
+                update["FG"] = "NÃO"
+                update["DG"] = datetime.now(TZ_SAO).date().isoformat()
+
+            # STATUS
+            ft = update.get("FT", ocorr.get("FT", "NÃO"))
+            fc = update.get("FC", ocorr.get("FC", "NÃO"))
+            fg = update.get("FG", ocorr.get("FG", "NÃO"))
+
+            if ft == "NÃO" and fc == "NÃO" and fg == "NÃO":
+                if ocorr.get("STATUS") != "ASSINADA":
+                    update["STATUS"] = "FINALIZADA"
+            else:
+                if ocorr.get("STATUS") != "ASSINADA":
+                    update["STATUS"] = "ATENDIMENTO"
+
+            # Aplica atualização se necessário
+            if update:
+                try:
+                    supabase.table("ocorrencias").update(update).eq("ID", ocorr["ID"]).execute()
+                    atualizados += 1
+                except Exception as e:
+                    print(f"⚠️ Erro ao atualizar ocorrência {ocorr['ID']}: {e}")
+
+        if atualizados > 0:
+            print(f"✅ {atualizados} ocorrências atualizadas automaticamente (FT/FC/FG e STATUS).")
+
+        print(f"✅ DEBUG: {len(normalized)} registros de ocorrências carregados do Supabase.")
+        return normalized
 
     except Exception as e:
-        print("❌ Erro ao carregar dados de ocorrências:", e)
+        print("❌ Erro ao carregar ocorrencias:", e)
         return []
 
 def carregar_tutores_com_ocorrencias() -> list:
@@ -780,6 +817,7 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("FLASK_DEBUG", "1") == "1"
     app.run(host="0.0.0.0", port=port, debug=debug)
+
 
 
 
