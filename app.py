@@ -341,6 +341,12 @@ def atendimento(oid, tipo_acao):
         
     return redirect(url_for("index"))
 
+@app.route("/relatorio_inicial")
+def relatorio_inicial():
+    # código da função
+    return render_template("relatorio_inicial.html")
+
+
 # Nova rota de edição completa (usada apenas após senha)
 @app.route("/editar_completo/<int:oid>", methods=["GET", "POST"])
 def editar_completo(oid):
@@ -515,3 +521,4 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("FLASK_DEBUG", "1") == "1"
     app.run(host="0.0.0.0", port=port, debug=debug)
+
