@@ -320,20 +320,43 @@ def editar_completo(oid):
     return redirect(url_for("index"))
 
 # --- Criar nova ocorrência ---
-# app (5).py - Corrigindo a lógica da função nova
+
+Ótimo! Para resolver o problema de indentação no app (5).py e as questões de funcionalidade (salvar dados e filtros), vou fornecer os blocos de código completos e corrigidos para cada parte.
+
+1. Correção de Sintaxe (Linha 383, app.py) e Lógica da Função nova
+O erro IndentationError na linha 383 estava impedindo seu servidor de iniciar. A causa é o alinhamento incorreto do bloco try/except na função nova.
+
+Abaixo está a função nova completa e corrigida para o seu app (5).py, que resolve a indentação e implementa sua regra de negócio:
+
+Lê: FT, FC, FG (Requerimento - vindo do formulário).
+
+Inicializa: ATT, ATC, ATG como vazios.
+
+Calcula: PT, PC, PG (Pendência) com a sua regra ('S' se requisitado e não atendido).
+
+Corrige a indentação do try/except no final.
+
+Python
+
+# app (5).py - Substituir a função nova (aproximadamente linha 220)
+
 @app.route("/nova", methods=["GET", "POST"])
-def nova():    
-    # ... (código de conexão e lookup)
+def nova():
+    supabase = conectar_supabase()
+    professores = carregar_lookup("Professores", column="Professor")
+    salas = carregar_lookup("Salas", column="Sala")
 
     if request.method == "GET":
         return render_template("nova.html", professores_disp=professores, salas_disp=salas)
 
-    # ... (verifica conexão)
+    if not supabase:
+        flash("Erro de conexão com o banco.", "danger")
+        return redirect(url_for("index"))
 
     form = request.form
 
-    # 1. Lê os campos de Requerimento de Atendimento (FT, FC, FG)
-    # Estes campos vêm do checkbox corrigido no nova.html
+    # 1. Lê os campos de Requerimento de Atendimento (FT, FC, FG) do formulário
+    # (Supondo que você corrigiu o nova.html para enviar FT, FC, FG)
     ft = normalize_checkbox(form.get("FT"))
     fc = normalize_checkbox(form.get("FC"))
     fg = normalize_checkbox(form.get("FG"))
@@ -380,20 +403,21 @@ def nova():
         "ASSINADA": False
     }
 
-   try:
+    try:
         resp = supabase.table("ocorrencias").insert(payload).execute()
         if resp.error:
-            # flash e print do erro
+            # Recomendo adicionar a mensagem de erro do Supabase no print para debug
+            print(f"Erro ao inserir ocorrência: {resp.error.message}")
             flash("Erro ao inserir ocorrências. Verifique os logs.", "danger")
         else:
             flash("Ocorrência registrada com sucesso.", "success")
-    # O BLOCO EXCEPT DEVE ESTAR AQUI, COM A INDENTAÇÃO CORRETA (mesmo nível do 'try:')
+    # Indentação corrigida
     except Exception as e:
         print("Erro ao gravar ocorrências:", e)
         flash("Erro ao gravar ocorrências.", "danger")
 
-    # O RETURN DEVE ESTAR FORA DO BLOCO try/except, no mesmo nível do '@app.route'
     return redirect(url_for("index"))
+2.
 # --- API: alunos por sala ---
 @app.route("/api/alunos_por_sala/<sala>")
 def api_alunos_por_sala(sala):
@@ -417,6 +441,7 @@ if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
 
    
+
 
 
 
