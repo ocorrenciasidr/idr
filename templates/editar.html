@@ -16,6 +16,8 @@
     .btn-dark{background:#1f2937;color:#fff;border-radius:8px;border:1px solid rgba(255,255,255,0.04);font-weight:600}
     .btn-outline-light{color:#fff;border-color:rgba(255,255,255,0.06);border-radius:8px}
     .muted{color:var(--muted);font-size:.92rem}
+    textarea.editavel{background:#fff;color:#111}
+    textarea.readonly{background:#0b1220;color:#cbd5e1}
   </style>
 </head>
 <body>
@@ -118,7 +120,7 @@
         <div class="col-md-4">
           <label>Atendimento Tutor (ATT)</label>
           {% if modo_local == 'ATENDIMENTO_INDIVIDUAL' and campo_atendimento == 'ATT' %}
-            <textarea name="ATT" class="form-control" rows="3">{{ occ.ATT or '' }}</textarea>
+            <textarea name="ATT" class="form-control editavel" rows="3">{{ occ.ATT or '' }}</textarea>
           {% elif modo_local == 'EDITAR' %}
             <textarea name="ATT" class="form-control" rows="3">{{ occ.ATT or '' }}</textarea>
           {% else %}
@@ -129,7 +131,7 @@
         <div class="col-md-4">
           <label>Atendimento Coordenação (ATC)</label>
           {% if modo_local == 'ATENDIMENTO_INDIVIDUAL' and campo_atendimento == 'ATC' %}
-            <textarea name="ATC" class="form-control" rows="3">{{ occ.ATC or '' }}</textarea>
+            <textarea name="ATC" class="form-control editavel" rows="3">{{ occ.ATC or '' }}</textarea>
           {% elif modo_local == 'EDITAR' %}
             <textarea name="ATC" class="form-control" rows="3">{{ occ.ATC or '' }}</textarea>
           {% else %}
@@ -140,7 +142,7 @@
         <div class="col-md-4">
           <label>Atendimento Gestão (ATG)</label>
           {% if modo_local == 'ATENDIMENTO_INDIVIDUAL' and campo_atendimento == 'ATG' %}
-            <textarea name="ATG" class="form-control" rows="3">{{ occ.ATG or '' }}</textarea>
+            <textarea name="ATG" class="form-control editavel" rows="3">{{ occ.ATG or '' }}</textarea>
           {% elif modo_local == 'EDITAR' %}
             <textarea name="ATG" class="form-control" rows="3">{{ occ.ATG or '' }}</textarea>
           {% else %}
@@ -148,40 +150,40 @@
           {% endif %}
         </div>
 
-        <!-- FT/FC/FG -->
+        <!-- PT/PC/PG -->
         <div class="col-md-4">
-          <label>FT</label>
+          <label>PT</label>
           {% if modo_local == 'EDITAR' %}
-            <select name="FT" class="form-select">
-              <option value="SIM" {% if occ.FT=='SIM' %}selected{% endif %}>SIM</option>
-              <option value="NÃO" {% if occ.FT=='NÃO' %}selected{% endif %}>NÃO</option>
+            <select name="PT" class="form-select">
+              <option value="SIM" {% if occ.PT=='SIM' %}selected{% endif %}>SIM</option>
+              <option value="NÃO" {% if occ.PT=='NÃO' %}selected{% endif %}>NÃO</option>
             </select>
           {% else %}
-            <input class="form-control readonly" value="{{ occ.FT or '' }}" readonly>
+            <input class="form-control readonly" value="{{ occ.PT or '' }}" readonly>
           {% endif %}
         </div>
 
         <div class="col-md-4">
-          <label>FC</label>
+          <label>PC</label>
           {% if modo_local == 'EDITAR' %}
-            <select name="FC" class="form-select">
-              <option value="SIM" {% if occ.FC=='SIM' %}selected{% endif %}>SIM</option>
-              <option value="NÃO" {% if occ.FC=='NÃO' %}selected{% endif %}>NÃO</option>
+            <select name="PC" class="form-select">
+              <option value="SIM" {% if occ.PC=='SIM' %}selected{% endif %}>SIM</option>
+              <option value="NÃO" {% if occ.PC=='NÃO' %}selected{% endif %}>NÃO</option>
             </select>
           {% else %}
-            <input class="form-control readonly" value="{{ occ.FC or '' }}" readonly>
+            <input class="form-control readonly" value="{{ occ.PC or '' }}" readonly>
           {% endif %}
         </div>
 
         <div class="col-md-4">
-          <label>FG</label>
+          <label>PG</label>
           {% if modo_local == 'EDITAR' %}
-            <select name="FG" class="form-select">
-              <option value="SIM" {% if occ.FG=='SIM' %}selected{% endif %}>SIM</option>
-              <option value="NÃO" {% if occ.FG=='NÃO' %}selected{% endif %}>NÃO</option>
+            <select name="PG" class="form-select">
+              <option value="SIM" {% if occ.PG=='SIM' %}selected{% endif %}>SIM</option>
+              <option value="NÃO" {% if occ.PG=='NÃO' %}selected{% endif %}>NÃO</option>
             </select>
           {% else %}
-            <input class="form-control readonly" value="{{ occ.FG or '' }}" readonly>
+            <input class="form-control readonly" value="{{ occ.PG or '' }}" readonly>
           {% endif %}
         </div>
 
