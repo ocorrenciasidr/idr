@@ -327,23 +327,22 @@ def carregar_dados() -> pd.DataFrame:
     if 'Nº Ocorrência' in df.columns:
         df['Nº Ocorrência'] = pd.to_numeric(df['Nº Ocorrência'], errors='coerce').fillna(0).astype(int)
 
-    for col in ['DCO', 'DT', 'DC', 'DG', 'HCO']:
-    if col in df.columns:
-        df[col] = pd.to_datetime(
-            df[col], 
-            format=FORMATO_ENTRADA, 
-            errors='coerce', 
-            utc=True
-        ).dt.tz_convert(TZ_SAO)
+    # ... (cerca da linha 330)
+    for col in ['DCO', 'DT', 'DC', 'DG', 'HCO']:
+        if col in df.columns:  # <-- CORRIGIDO: Agora está indentada
+            df[col] = pd.to_datetime( # <-- CORRIGIDO: Agora está indentada
+                df[col],
+                format=FORMATO_ENTRADA, # NOTE: A variável FORMATO_ENTRADA não foi definida no código fornecido.
+                errors='coerce',
+                utc=True
+            ).dt.tz_convert(TZ_SAO)
 
-        
-        # Coluna DCO é formatada para o display no HTML (DD/MM/AAAA)
-        if col == 'DCO':
-            df['DCO'] = df['DCO'].dt.strftime('%d/%m/%Y')
-            
-        # Coluna HCO é formatada para o display no HTML (HH:MM)
-        elif col == 'HCO':
-            df['HCO'] = df['HCO'].dt.strftime('%H:%M')
+            # O bloco if/elif interno também deve estar corretamente alinhado
+            if col == 'DCO':
+                df['DCO'] = df['DCO'].dt.strftime('%d/%m/%Y')
+
+            elif col == 'HCO':
+                df['HCO'] = df['HCO'].dt.strftime('%H:%M')
                 
     # 3. Limpeza de colunas de texto
     text_cols = ['PROFESSOR', 'Sala', 'Aluno', 'Tutor', 'Descrição da Ocorrência', 
@@ -999,3 +998,4 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
