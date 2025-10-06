@@ -1,18 +1,18 @@
-<!-- templates/relatorio_inicial.html -->
+<!-- templates/relatorio_geral.html -->
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
   <meta charset="utf-8"/>
-  <title>Relatório Inicial — SGCE</title>
+  <title>Relatório Geral — SGCE</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    :root{--bg:#0f1724;--panel:#071428;--muted:#cbd5e1}
-    body{background:var(--bg);color:#fff;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto;padding:20px}
-    .panel{max-width:1000px;margin:auto;background:linear-gradient(180deg,#0b1220,#07101a);padding:22px;border-radius:12px}
+    :root{--bg:#0f1724;--panel:#071428}
+    body{background:var(--bg);color:#fff;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto;padding:22px}
+    .panel{max-width:1100px;margin:auto;background:linear-gradient(180deg,#0b1220,#07101a);padding:22px;border-radius:12px}
     label{color:#e6eef8;font-weight:600}
     .form-control,.form-select{background:#071428;color:#e6eef8;border:1px solid rgba(255,255,255,0.06)}
-    table{width:100%;border-collapse:collapse;background:#fff}
+    table{width:100%;border-collapse:collapse;background:#fff;margin-bottom:22px}
     thead th{background:#f3f3f3;color:#111;padding:10px;border:1px solid #eaeaea}
     tbody td{padding:10px;border:1px solid #eee;color:#111}
     .btn-primary{background:#2563eb;border:none}
@@ -20,9 +20,9 @@
 </head>
 <body>
   <div class="panel">
-    <h2 class="mb-3 text-center">Relatório Inicial</h2>
+    <h2 class="text-center mb-3">Relatório Geral de Ocorrências</h2>
 
-    <form method="get" action="{{ url_for('relatorio_inicial') }}" class="row g-3 mb-3">
+    <form method="get" class="row g-3 mb-3" action="{{ url_for('relatorio_geral') }}">
       <div class="col-md-4">
         <label>Data Início</label>
         <input type="date" name="data_inicio" class="form-control" value="{{ request.args.get('data_inicio','') }}">
@@ -36,9 +36,9 @@
       </div>
     </form>
 
-    <h4 class="mt-4">Ocorrências por Sala</h4>
+    <h4>Ocorrências por Sala</h4>
     {% if relatorio_sala %}
-      <table class="mb-4">
+      <table>
         <thead><tr><th>Sala</th><th>Total Ocorrências</th><th>Respondidas &lt;7</th><th>Respondidas &gt;7</th><th>Não Respondidas</th></tr></thead>
         <tbody>
           {% for r in relatorio_sala %}
@@ -53,10 +53,10 @@
         </tbody>
       </table>
     {% else %}
-      <div class="mb-4 muted">Nenhum dado disponível.</div>
+      <div class="muted mb-3">Nenhum dado disponível para o período escolhido.</div>
     {% endif %}
 
-    <h4 class="mt-4">Resumo por Setor</h4>
+    <h4>Resumo por Setor</h4>
     {% if relatorio_setor %}
       <table>
         <thead><tr><th>Setor</th><th>Total</th><th>Respondidas &lt;7</th><th>Respondidas &gt;7</th><th>Não Respondidas</th></tr></thead>
@@ -76,8 +76,8 @@
       <div class="muted">Nenhum dado disponível.</div>
     {% endif %}
 
-    <div class="text-center mt-4">
-      <a class="btn btn-primary" href="{{ url_for('relatorio_geral') }}">Ir para Relatório Geral</a>
+    <div class="text-center mt-3">
+      <a class="btn btn-primary" href="#" onclick="window.print()">Baixar PDF</a>
     </div>
   </div>
 </body>
