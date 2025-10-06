@@ -114,6 +114,11 @@ def adicionar_ocorrencia_ao_pdf(pdf: PDF, o: dict):
     pdf.set_font('Arial', 'I', 8)
     pdf.cell(0, 5, 'Ocorrência registrada no SGCE.', 0, 1, 'R')
 
+def normalize_checkbox(value):
+    """Converte checkbox em 'SIM' ou 'NÃO'"""
+    return "SIM" if value in ("on", "SIM", True) else "NÃO"
+
+
 # -------------------------- Carregamento helpers --------------------------
 def carregar_lookup(table_name: str, column=None) -> list:
     supabase = conectar_supabase()
@@ -176,6 +181,8 @@ def home():
 def editar(oid):
     # Substitua pelo que sua função editar_completo faz
     return editar_completo(oid)
+
+
 
 @app.route("/relatorio_inicial")
 def relatorio_inicial():
@@ -303,12 +310,34 @@ def nova():
     supabase = conectar_supabase()
     professores = carregar_lookup("Professores", column="Professor")
     salas = carregar_lookup("Salas", column="Sala")
+
     if request.method == "GET":
         return render_template("nova.html", professores_disp=professores, salas_disp=salas)
+
     if not supabase:
         flash("Erro de conexão com o banco.", "danger")
         return redirect(url_for("index"))
+
     form = request.form
+
+    # Função para normalizar checkbox
+    def normalize_checkbox(value):
+        return "SIM" if value in ("on", "SIM", True) else "NÃO"
+
+    # Normaliza checkboxes
+    ft = normalize_checkbox(form.get("FT"))
+    fc = normalize_checkbox(form.get("FC"))
+    fg = normalize_checkbox(form.get("FG"))
+
+    # Calcula PT/PC/PG conforme regras
+    pt = "S" if ft == "SIM" and not form.get("ATT") else "N"
+    pc = "S" if fc == "SIM" and not form.get("ATC") else "N"
+    pg = "S" if fg == "SIM" and not form.get("ATG") else "N"
+
+    # Status
+    status = "FINALIZADA" if pt == "N" and pc == "N" and pg == "N" else "ATENDIMENTO"
+
+    # Monta payload
     payload = {
         "DCO": datetime.now(TZ_SAO).date().isoformat(),
         "HCO": datetime.now(TZ_SAO).strftime("%H:%M"),
@@ -318,27 +347,37 @@ def nova():
         "TUTOR": form.get("TUTOR", ""),
         "DESCRICAO": form.get("DESCRICAO", ""),
         "ATP": form.get("ATP", "") or "",
-        "ATT": "", "ATC": "", "ATG": "",
-        "FT": normalize_checkbox(form.get("FT")),
-        "FC": normalize_checkbox(form.get("FC")),
-        "FG": normalize_checkbox(form.get("FG")),
-        "DT": None, "DC": None, "DG": None,
-        "STATUS": "ATENDIMENTO" if "SIM" in (
-            normalize_checkbox(form.get("FT")),
-            normalize_checkbox(form.get("FC")),
-            normalize_checkbox(form.get("FG"))
-        ) else "FINALIZADA",
+        "ATT": form.get("ATT", ""),
+        "ATC": form.get("ATC", ""),
+        "ATG": form.get("ATG", ""),
+        "FT": ft,
+        "FC": fc,
+        "FG": fg,
+        "PT": pt,
+        "PC": pc,
+        "PG": pg,
+        "DT": None,
+        "DC": None,
+        "DG": None,
+        "STATUS": status,
         "ASSINADA": False
     }
+
+    # Debug para verificar o payload antes de enviar
+    print("Payload para inserção:", payload)
+
     try:
         resp = supabase.table("ocorrencias").insert(payload).execute()
+        print("Resposta do Supabase:", resp)
+
         if resp.error:
-            flash("Erro ao inserir ocorrências.", "danger")
+            flash(f"Erro ao inserir ocorrências: {resp.error}", "danger")
         else:
             flash("Ocorrência registrada com sucesso.", "success")
     except Exception as e:
         print("Erro ao inserir ocorrências:", e)
         flash("Erro ao gravar ocorrências.", "danger")
+
     return redirect(url_for("index"))
 
 # --- API: alunos por sala ---
@@ -364,6 +403,7 @@ if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
 
    
+
 
 
 
