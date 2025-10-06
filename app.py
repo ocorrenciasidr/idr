@@ -4,7 +4,7 @@ import pandas as pd
 from flask import Flask, render_template, request, redirect
 from dateutil import parser as date_parser
 
-from supabase_client import conectar_supabase  # Função que conecta ao Supabase
+
 from supabase import create_client, Client
 app = Flask(__name__)
 
@@ -63,12 +63,15 @@ def carregar_dados_ocorrencias() -> list:
         return []
 
 def conectar_supabase() -> Client:
-    SUPABASE_URL = os.getenv("SUPABASE_URL")
-    SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-    if not SUPABASE_URL or not SUPABASE_KEY:
-        print("Variáveis de ambiente do Supabase não encontradas!")
+    """Cria a conexão com o Supabase."""
+    url = "https://rimuhgulxliduugenxro.supabase.co"
+    key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."  # sua chave real
+    try:
+        return create_client(url, key)
+    except Exception as e:
+        print("❌ Erro ao conectar no Supabase:", e)
         return None
-    return create_client(SUPABASE_URL, SUPABASE_KEY)
+
 
 def carregar_lista_tabela(tabela_nome):
     """Carrega dados de qualquer tabela e transforma em lista de dicionários"""
@@ -118,5 +121,6 @@ def editar_ocorrencia(id):
 # Evita múltiplos app.run()
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
 
