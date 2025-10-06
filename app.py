@@ -193,6 +193,8 @@ def relatorio_inicial():
 
 # app (5).py - Substituir a função index (aproximadamente linha 190)
 
+# app (5).py - Função index (Corrigida e Validada)
+
 @app.route("/index")
 def index():
     supabase = conectar_supabase()
@@ -204,15 +206,14 @@ def index():
     filtro_tutor = request.args.get("tutor_filtro")
     filtro_status = request.args.get("status_filtro")
 
-    # 2. Buscar ocorrências JÁ filtradas (usando a função auxiliar)
-    # Isso torna o filtro funcional e eficiente.
+    # 2. Buscar ocorrências JÁ filtradas (eficiente)
     registros = carregar_dados_ocorrencias(
         filtro_tutor=filtro_tutor,
         filtro_status=filtro_status
     )
 
-    # 3. Gerar listas de filtros (incluindo "Todos")
-    tutores_disp = ["Todos"] + carregar_tutores_com_ocorrencias()
+    # 3. Gerar listas de filtros
+    tutores_disp = ["Todos"] + carregar_tutor_com_ocorrencias()
     status_disp = ["Todos", "ATENDIMENTO", "FINALIZADA", "ASSINADA"]
 
     return render_template(
@@ -222,7 +223,7 @@ def index():
         status_disp=status_disp,
         filtro_tutor_sel=filtro_tutor,
         filtro_status_sel=filtro_status
-    ) ---
+    )
     
 @app.route("/atendimento/<int:oid>/<tipo_acao>", methods=["GET", "POST"])
 def atendimento(oid, tipo_acao):
@@ -324,24 +325,7 @@ def editar_completo(oid):
 
 # --- Criar nova ocorrência ---
 
-Ótimo! Para resolver o problema de indentação no app (5).py e as questões de funcionalidade (salvar dados e filtros), vou fornecer os blocos de código completos e corrigidos para cada parte.
-
-1. Correção de Sintaxe (Linha 383, app.py) e Lógica da Função nova
-O erro IndentationError na linha 383 estava impedindo seu servidor de iniciar. A causa é o alinhamento incorreto do bloco try/except na função nova.
-
-Abaixo está a função nova completa e corrigida para o seu app (5).py, que resolve a indentação e implementa sua regra de negócio:
-
-Lê: FT, FC, FG (Requerimento - vindo do formulário).
-
-Inicializa: ATT, ATC, ATG como vazios.
-
-Calcula: PT, PC, PG (Pendência) com a sua regra ('S' se requisitado e não atendido).
-
-Corrige a indentação do try/except no final.
-
-Python
-
-# app (5).py - Substituir a função nova (aproximadamente linha 220)
+# app (5).py - Função nova (Corrigida e Validada)
 
 @app.route("/nova", methods=["GET", "POST"])
 def nova():
@@ -359,7 +343,6 @@ def nova():
     form = request.form
 
     # 1. Lê os campos de Requerimento de Atendimento (FT, FC, FG) do formulário
-    # (Supondo que você corrigiu o nova.html para enviar FT, FC, FG)
     ft = normalize_checkbox(form.get("FT"))
     fc = normalize_checkbox(form.get("FC"))
     fg = normalize_checkbox(form.get("FG"))
@@ -370,12 +353,12 @@ def nova():
     atg = ""
 
     # 3. Calcula PT, PC, PG (Pendência de Atendimento)
-    # Regra: PENDENTE ('S') se atendimento foi REQUISITADO (FT/FC/FG='SIM') E AINDA NÃO ATENDIDO (ATT/ATC/ATG='')
+    # Regra: PENDENTE ('S') se atendimento foi REQUISITADO ('SIM') E AINDA NÃO ATENDIDO ('')
     pt = "S" if ft == "SIM" and att == "" else "N"
     pc = "S" if fc == "SIM" and atc == "" else "N"
     pg = "S" if fg == "SIM" and atg == "" else "N"
 
-    # 4. Calcula STATUS: ATENDIMENTO se algum PT/PC/PG for 'S'
+    # 4. Calcula STATUS
     if pt == "N" and pc == "N" and pg == "N":
         status = "FINALIZADA"
     else:
@@ -390,15 +373,15 @@ def nova():
         "TUTOR": form.get("TUTOR", ""),
         "DESCRICAO": form.get("DESCRICAO", ""),
         "ATP": form.get("ATP", "") or "",
-        "ATT": att,  # Vazio
-        "ATC": atc,  # Vazio
-        "ATG": atg,  # Vazio
-        "FT": ft,    # Requerimento (SIM/NÃO)
-        "FC": fc,    # Requerimento (SIM/NÃO)
-        "FG": fg,    # Requerimento (SIM/NÃO)
-        "PT": pt,    # Status Pendente (S/N)
-        "PC": pc,    # Status Pendente (S/N)
-        "PG": pg,    # Status Pendente (S/N)
+        "ATT": att,
+        "ATC": atc,
+        "ATG": atg,
+        "FT": ft,    # Requerimento
+        "FC": fc,    # Requerimento
+        "FG": fg,    # Requerimento
+        "PT": pt,    # Pendente (S/N)
+        "PC": pc,    # Pendente (S/N)
+        "PG": pg,    # Pendente (S/N)
         "DT": None,
         "DC": None,
         "DG": None,
@@ -409,18 +392,14 @@ def nova():
     try:
         resp = supabase.table("ocorrencias").insert(payload).execute()
         if resp.error:
-            # Recomendo adicionar a mensagem de erro do Supabase no print para debug
-            print(f"Erro ao inserir ocorrência: {resp.error.message}")
-            flash("Erro ao inserir ocorrências. Verifique os logs.", "danger")
+            flash(f"Erro ao inserir ocorrências: {resp.error.message}", "danger")
         else:
             flash("Ocorrência registrada com sucesso.", "success")
-    # Indentação corrigida
     except Exception as e:
         print("Erro ao gravar ocorrências:", e)
         flash("Erro ao gravar ocorrências.", "danger")
 
     return redirect(url_for("index"))
-2.
 # --- API: alunos por sala ---
 @app.route("/api/alunos_por_sala/<sala>")
 def api_alunos_por_sala(sala):
@@ -434,16 +413,12 @@ def api_alunos_por_sala(sala):
         print("Erro api/alunos_por_sala:", e)
         return jsonify([])
 
-# -------------------------- Relatórios e PDF --------------------------
-# Relatórios simplificados (mesma lógica que você já tinha)
-# ... aqui você mantém todas as funções de relatório do seu código anterior
-# garantir que nomes das tabelas sejam 'ocorrencias' e colunas consistentes
-
 # -------------------------- Run --------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
 
    
+
 
 
 
