@@ -83,6 +83,8 @@ def limpar_caches():
     _salas_cache = None
 # -------------------- Rotas principais --------------------
 
+# -------------------- Rotas principais --------------------
+
 @app.route("/")
 def home():
     """Redireciona para a página principal."""
@@ -91,35 +93,37 @@ def home():
 
 @app.route("/index", methods=["GET", "POST"])
 def index():
-    """Página principal com filtros de Professor e Status."""
+    """Página principal com filtros de Tutor e Status."""
     global _df_cache
 
-    # Carregar cache ou buscar do Supabase
+    # Carrega cache ou busca do Supabase
     if _df_cache is None:
         _df_cache = obter_dados_supabase("ocorrencias")
 
     dados = _df_cache or []
 
-    # Aplicar filtros
-    filtro_professor = request.args.get("professor", "").strip()
+    # Filtros vindos da URL (ex: ?tutor=MARIA&status=ABERTA)
+    filtro_tutor = request.args.get("tutor", "").strip()
     filtro_status = request.args.get("status", "").strip()
 
-    if filtro_professor:
-        dados = [d for d in dados if d.get("PROFESSOR") == filtro_professor]
+    # Aplica filtro de Tutor
+    if filtro_tutor:
+        dados = [d for d in dados if d.get("TUTOR") == filtro_tutor]
 
+    # Aplica filtro de Status
     if filtro_status:
         dados = [d for d in dados if d.get("STATUS") == filtro_status]
 
-    # Extrair opções únicas de filtros
-    professores_unicos = sorted(set(d.get("PROFESSOR") for d in _df_cache if d.get("PROFESSOR")))
+    # Gera listas únicas de opções para os selects
+    tutores_unicos = sorted(set(d.get("TUTOR") for d in _df_cache if d.get("TUTOR")))
     status_unicos = sorted(set(d.get("STATUS") for d in _df_cache if d.get("STATUS")))
 
     return render_template(
         "index.html",
         dados=dados,
-        professores=professores_unicos,
+        tutores=tutores_unicos,
         status=status_unicos,
-        filtro_professor=filtro_professor,
+        filtro_tutor=filtro_tutor,
         filtro_status=filtro_status
     )
 
@@ -129,7 +133,7 @@ def nova():
     """Página para registrar nova ocorrência."""
     global _alunos_cache, _professores_cache, _salas_cache
 
-    # Carrega tabelas do Supabase
+    # Carrega tabelas auxiliares
     if _alunos_cache is None:
         _alunos_cache = obter_dados_supabase("Alunos")
     if _professores_cache is None:
