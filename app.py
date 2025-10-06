@@ -62,6 +62,14 @@ def carregar_dados_ocorrencias() -> list:
         print("Erro ao carregar ocorrências:", e)
         return []
 
+def conectar_supabase() -> Client:
+    SUPABASE_URL = os.getenv("SUPABASE_URL")
+    SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        print("Variáveis de ambiente do Supabase não encontradas!")
+        return None
+    return create_client(SUPABASE_URL, SUPABASE_KEY)
+
 def carregar_lista_tabela(tabela_nome):
     """Carrega dados de qualquer tabela e transforma em lista de dicionários"""
     supabase = conectar_supabase()
@@ -110,4 +118,5 @@ def editar_ocorrencia(id):
 # Evita múltiplos app.run()
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
