@@ -1,49 +1,84 @@
+<!-- templates/relatorio_inicial.html -->
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8">
-  <title>SGCE - RELATÓRIOS</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <meta charset="utf-8"/>
+  <title>Relatório Inicial — SGCE</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    body { background-color: #121212; color: #f5f5f5; }
-    .container { margin-top: 60px; }
-    .btn-lg {
-      border-radius: 1rem;
-      padding: 15px;
-      font-weight: bold;
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-    .btn-lg:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 4px 12px rgba(255,255,255,0.2);
-    }
-    .footer {
-      color: #888;
-      margin-top: 60px;
-    }
+    :root{--bg:#0f1724;--panel:#071428;--muted:#cbd5e1}
+    body{background:var(--bg);color:#fff;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto;padding:20px}
+    .panel{max-width:1000px;margin:auto;background:linear-gradient(180deg,#0b1220,#07101a);padding:22px;border-radius:12px}
+    label{color:#e6eef8;font-weight:600}
+    .form-control,.form-select{background:#071428;color:#e6eef8;border:1px solid rgba(255,255,255,0.06)}
+    table{width:100%;border-collapse:collapse;background:#fff}
+    thead th{background:#f3f3f3;color:#111;padding:10px;border:1px solid #eaeaea}
+    tbody td{padding:10px;border:1px solid #eee;color:#111}
+    .btn-primary{background:#2563eb;border:none}
   </style>
 </head>
 <body>
-  <div class="container text-center">
-    <h2 class="mb-4 fw-bold">SISTEMA DE GESTÃO DE CONVIVÊNCIA ESCOLAR</h2>
-    <h4 class="mb-5 text-secondary">RELATÓRIOS</h4>
+  <div class="panel">
+    <h2 class="mb-3 text-center">Relatório Inicial</h2>
 
-    <div class="d-grid gap-3 col-8 mx-auto">
-      <a href="{{ url_for('relatorio_aluno') }}" class="btn btn-primary btn-lg">📘 IMPRESSÃO DE OCORRÊNCIAS</a>
-      <a href="{{ url_for('relatorio_geral') }}" class="btn btn-success btn-lg">📊 ESTATÍSTICA GERAL DE OCORRÊNCIAS</a>
-      <a href="{{ url_for('relatorio_tutor') }}" class="btn btn-warning btn-lg text-dark">🧑‍🏫 ESTATÍSTICA POR TUTOR</a>
-      <a href="{{ url_for('relatorio_tutoraluno') }}" class="btn btn-info btn-lg">📋 LISTA TUTOR / TUTORADOS</a>
-    </div>
+    <form method="get" action="{{ url_for('relatorio_inicial') }}" class="row g-3 mb-3">
+      <div class="col-md-4">
+        <label>Data Início</label>
+        <input type="date" name="data_inicio" class="form-control" value="{{ request.args.get('data_inicio','') }}">
+      </div>
+      <div class="col-md-4">
+        <label>Data Fim</label>
+        <input type="date" name="data_fim" class="form-control" value="{{ request.args.get('data_fim','') }}">
+      </div>
+      <div class="col-md-4 d-flex align-items-end">
+        <button type="submit" class="btn btn-primary">Gerar</button>
+      </div>
+    </form>
 
-    <div class="mt-5">
-      <a href="{{ url_for('home') }}" class="btn btn-secondary">⬅ Voltar para Home</a>
+    <h4 class="mt-4">Ocorrências por Sala</h4>
+    {% if relatorio_sala %}
+      <table class="mb-4">
+        <thead><tr><th>Sala</th><th>Total Ocorrências</th><th>Respondidas &lt;7</th><th>Respondidas &gt;7</th><th>Não Respondidas</th></tr></thead>
+        <tbody>
+          {% for r in relatorio_sala %}
+            <tr>
+              <td>{{ r.Sala }}</td>
+              <td>{{ r["Total Ocorrências"] }}</td>
+              <td>{{ r["Respondidas <7 dias"] }}</td>
+              <td>{{ r["Respondidas >7 dias"] }}</td>
+              <td>{{ r["Não Respondidas"] }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="mb-4 muted">Nenhum dado disponível.</div>
+    {% endif %}
+
+    <h4 class="mt-4">Resumo por Setor</h4>
+    {% if relatorio_setor %}
+      <table>
+        <thead><tr><th>Setor</th><th>Total</th><th>Respondidas &lt;7</th><th>Respondidas &gt;7</th><th>Não Respondidas</th></tr></thead>
+        <tbody>
+          {% for r in relatorio_setor %}
+            <tr>
+              <td>{{ r.Setor }}</td>
+              <td>{{ r.Total }}</td>
+              <td>{{ r["Respondidas <7 dias"] }}</td>
+              <td>{{ r["Respondidas >7 dias"] }}</td>
+              <td>{{ r["Não Respondidas"] }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="muted">Nenhum dado disponível.</div>
+    {% endif %}
+
+    <div class="text-center mt-4">
+      <a class="btn btn-primary" href="{{ url_for('relatorio_geral') }}">Ir para Relatório Geral</a>
     </div>
   </div>
-
-  <footer class="footer text-center">
-    <small>Desenvolvido: Marcelo André Nogueira Cardes <br> Licenciado: EE PEI Profª Irene Dias Ribeiro</small>
-  </footer>
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
