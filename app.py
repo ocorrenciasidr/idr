@@ -5,7 +5,6 @@ from flask import Flask, render_template, request, redirect
 from dateutil import parser as date_parser
 
 
-from supabase import create_client, Client
 app = Flask(__name__)
 
 TZ_SAO = 'America/Sao_Paulo'
