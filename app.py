@@ -296,7 +296,8 @@ def carregar_dados() -> pd.DataFrame:
         return _df_cache
 
     supabase = conectar_supabase()
-    if not supabase: return pd.DataFrame()
+    if not supabase:
+        return pd.DataFrame()
 
     try:
         # Acessa a tabela 'ocorrencias' e ordena por 'ID' (MAIÚSCULO)
@@ -320,39 +321,40 @@ def carregar_dados() -> pd.DataFrame:
 
     # 1. Garante todas as colunas restantes e o tipo de valor padrão
     for col in expected_cols_app:
-        if col not in df.columns: 
+        if col not in df.columns:
             df[col] = 0 if col == 'Nº Ocorrência' else ''
     
     # 2. Processamento de datas e tipos
     if 'Nº Ocorrência' in df.columns:
         df['Nº Ocorrência'] = pd.to_numeric(df['Nº Ocorrência'], errors='coerce').fillna(0).astype(int)
 
-  for col in ['DCO', 'DT', 'DC', 'DG', 'HCO']:
-    if col in df.columns:
-        df[col] = pd.to_datetime(
-            df[col], 
-            format=FORMATO_ENTRADA, 
-            errors='coerce', 
-            utc=True
-        ).dt.tz_convert(TZ_SAO)
+    for col in ['DCO', 'DT', 'DC', 'DG', 'HCO']:
+        if col in df.columns:
+            df[col] = pd.to_datetime(
+                df[col],
+                format=FORMATO_ENTRADA,
+                errors='coerce',
+                utc=True
+            ).dt.tz_convert(TZ_SAO)
 
-        # Coluna DCO é formatada para o display no HTML (DD/MM/AAAA)
-        if col == 'DCO':
-            df['DCO'] = df['DCO'].dt.strftime('%d/%m/%Y')
+            # Coluna DCO é formatada para o display no HTML (DD/MM/AAAA)
+            if col == 'DCO':
+                df['DCO'] = df['DCO'].dt.strftime('%d/%m/%Y')
 
-        # Coluna HCO é formatada para o display no HTML (HH:MM)
-        elif col == 'HCO':
-            df['HCO'] = df['HCO'].dt.strftime('%H:%M')
+            # Coluna HCO é formatada para o display no HTML (HH:MM)
+            elif col == 'HCO':
+                df['HCO'] = df['HCO'].dt.strftime('%H:%M')
                 
     # 3. Limpeza de colunas de texto
-    text_cols = ['PROFESSOR', 'Sala', 'Aluno', 'Tutor', 'Descrição da Ocorrência', 
+    text_cols = ['PROFESSOR', 'Sala', 'Aluno', 'Tutor', 'Descrição da Ocorrência',
                  'Atendimento Professor', 'ATT', 'ATC', 'ATG', 'Status', 'FT', 'FC', 'FG']
     for col in text_cols:
         if col in df.columns:
-            df[col] = df[col].astype(str).str.strip().str.upper().fillna('') # Garante que SIM/NÃO seja maiúsculo
+            df[col] = df[col].astype(str).str.strip().str.upper().fillna('')  # Garante que SIM/NÃO seja maiúsculo
 
     _df_cache = df
     return df
+
 
 # -------------------- Rotas do Flask --------------------
 
@@ -998,4 +1000,5 @@ def tutoria():
 
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
 
