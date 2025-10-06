@@ -1,111 +1,62 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <title>SGCE - ESTATÍTICA GERAL DE OCORRÊNCIAS</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Ocorrências por Tutor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .tutor-section {
+            border: 1px solid #ccc;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+    </style>
 </head>
-<body class="p-4" data-bs-theme="dark"> 
+<body>
+
     <div class="container mt-5">
-    
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <a href="{{ url_for('relatorio_inicial') }}" class="btn btn-secondary">⬅️ Voltar aos Relatórios</a>
-        <h1 class="text-center flex-grow-1 m-0">SISTEMA DE GESTÃO DE OCORRÊNCIA ESCOLAR <br> ESTATÍSTICA GERAL DE OCORRÊNCIAS </h1>
-    </div>
+        <h1 class="text-center mb-4 text-primary">Relatório de Ocorrências por Tutor</h1>
+        
+        <div class="d-flex justify-content-end mb-4">
+            <a href="{{ url_for('relatorios') }}" class="btn btn-secondary">← Voltar para Relatórios</a>
+        </div>
+        
+        {% for tutor, alunos in dados.items() %}
+        <div class="bg-light p-4 mb-5 tutor-section">
+            
+            <h4 class="mb-3 text-primary">{{ tutor }}</h4>
+            
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Aluno</th>
+                            <th>Sala</th>
+                            <th class="text-center">Quantidade Ocorrências</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for a in alunos %}
+                        <tr>
+                            <td>{{ a.Aluno }}</td>
+                            <td>{{ a.Sala }}</td>
+                            <td class="text-center">{{ a['Quantidade Ocorrências'] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+        </div>
+        {% endfor %}
 
-    <form method="get" action="{{ url_for('relatorio_geral') }}" id="filtroForm" class="row g-3 mb-4 align-items-end">
-        <div class="col-md-3">
-            <label for="data_inicio" class="form-label">Data Início:</label>
-            <input type="date" name="data_inicio" id="data_inicio" class="form-control" value="{{ data_inicio if data_inicio else '' }}">
-        </div>
-        <div class="col-md-3">
-            <label for="data_fim" class="form-label">Data Fim:</label>
-            <input type="date" name="data_fim" id="data_fim" class="form-control" value="{{ data_fim if data_fim else '' }}">
-        </div>
-        <div class="col-md-6 d-flex">
-            <button type="submit" class="btn btn-primary me-2">📊 Gerar Relatório</button>
-            <a href="{{ url_for('relatorio_inicial') }}" class="btn btn-secondary">Menu Relatórios</a>
-        </div>
-    </form>
-    
-    {% if relatorio_sala or relatorio_setor %}
-        <div class="card shadow p-4">
-            
-            {% set periodo = "Período Completo" %}
-            {% if data_inicio and data_fim %}
-                {% set periodo = data_inicio + " a " + data_fim %}
-            {% elif data_inicio %}
-                {% set periodo = "A partir de " + data_inicio %}
-            {% elif data_fim %}
-                {% set periodo = "Até " + data_fim %}
-            {% endif %}
-
-            <h3 class="mb-4">Ocorrências por Sala ({{ periodo }})</h3>
-            <div class="table-responsive mb-5">
-                <table class="table table-striped table-bordered text-center">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Sala</th>
-                            <th>Total Ocorrências</th>
-                            <th>Porcentagem</th>
-                            <th>Respondidas <7 dias</th>
-                            <th>Respondidas >7 dias</th>
-                            <th>Não Respondidas</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for r in relatorio_sala %}
-                            <tr>
-                                <td>{{ r['Sala'] }}</td>
-                                <td>{{ r['Total Ocorrências'] }}</td>
-                                <td>{{ r['Porcentagem'] }}</td>
-                                <td class="text-success">{{ r['Respondidas <7 dias'] }}</td>
-                                <td class="text-warning">{{ r['Respondidas >7 dias'] }}</td>
-                                <td class="text-danger">{{ r['Não Respondidas'] }}</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-            <h3 class="mb-4">Resumo por Setor (Desempenho de Atendimento)</h3>
-            <div class="table-responsive">
-                <table class="table table-striped table-bordered text-center">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Setor</th>
-                            <th>Total Ocorrências</th>
-                            <th>Respondidas <7 dias</th>
-                            <th>Respondidas >7 dias</th>
-                            <th>Não Respondidas</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for r in relatorio_setor %}
-                            <tr>
-                                <td>{{ r['Setor'] }}</td>
-                                <td>{{ r['Total'] }}</td>
-                                <td class="text-success">{{ r['Respondidas <7 dias'] }} {{ r['Porc <7 dias'] }}</td>
-                                <td class="text-warning">{{ r['Respondidas >7 dias'] }} {{ r['Porc >7 dias'] }}</td>
-                                <td class="text-danger">{{ r['Não Respondidas'] }} {{ r['Porc Não Resp'] }}</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            
-        </div>
-    {% else %}
-        <div class="alert alert-info text-center mt-4">
-            Nenhuma ocorrência encontrada para o período selecionado ou as datas não são válidas.
-        </div>
-    {% endif %}
-    
-</div>
-
-<footer class="text-center mt-5 mb-3 text-secondary">
-    <small>Desenvolvido: Marcelo André Nogueira Cardes <br> Licenciado: EE PEI Profª Irene Dias Ribeiro</small>
-</footer>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    </div>
+    
+    <footer class="text-center mt-5 mb-3">
+        <small>Desenvolvido: Marcelo André Nogueira Cardes <br> Licenciado: EE PEI Profª Irene Dias Ribeiro</small>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
