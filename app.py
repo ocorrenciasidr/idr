@@ -322,7 +322,7 @@ def editar_completo(oid):
 # --- Criar nova ocorrência ---
 # app (5).py - Corrigindo a lógica da função nova
 @app.route("/nova", methods=["GET", "POST"])
-def nova():
+def nova():    
     # ... (código de conexão e lookup)
 
     if request.method == "GET":
@@ -380,10 +380,20 @@ def nova():
         "ASSINADA": False
     }
 
-    try:
+   try:
         resp = supabase.table("ocorrencias").insert(payload).execute()
-        # ... (Restante do bloco try/except e flash messages)
-    # ...
+        if resp.error:
+            # flash e print do erro
+            flash("Erro ao inserir ocorrências. Verifique os logs.", "danger")
+        else:
+            flash("Ocorrência registrada com sucesso.", "success")
+    # O BLOCO EXCEPT DEVE ESTAR AQUI, COM A INDENTAÇÃO CORRETA (mesmo nível do 'try:')
+    except Exception as e:
+        print("Erro ao gravar ocorrências:", e)
+        flash("Erro ao gravar ocorrências.", "danger")
+
+    # O RETURN DEVE ESTAR FORA DO BLOCO try/except, no mesmo nível do '@app.route'
+    return redirect(url_for("index"))
 # --- API: alunos por sala ---
 @app.route("/api/alunos_por_sala/<sala>")
 def api_alunos_por_sala(sala):
@@ -407,6 +417,7 @@ if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
 
    
+
 
 
 
