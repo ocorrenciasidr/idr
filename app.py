@@ -191,6 +191,8 @@ def relatorio_inicial():
 
 # app (5).py - Substitua a função index
 
+# app (5).py - Substituir a função index (aproximadamente linha 190)
+
 @app.route("/index")
 def index():
     supabase = conectar_supabase()
@@ -203,6 +205,7 @@ def index():
     filtro_status = request.args.get("status_filtro")
 
     # 2. Buscar ocorrências JÁ filtradas (usando a função auxiliar)
+    # Isso torna o filtro funcional e eficiente.
     registros = carregar_dados_ocorrencias(
         filtro_tutor=filtro_tutor,
         filtro_status=filtro_status
@@ -219,8 +222,8 @@ def index():
         status_disp=status_disp,
         filtro_tutor_sel=filtro_tutor,
         filtro_status_sel=filtro_status
-    )
-# --- Rota de Atendimento (FT, FC, FG) ---
+    ) ---
+    
 @app.route("/atendimento/<int:oid>/<tipo_acao>", methods=["GET", "POST"])
 def atendimento(oid, tipo_acao):
     if tipo_acao not in ["FT", "FC", "FG"]:
@@ -441,6 +444,7 @@ if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
 
    
+
 
 
 
