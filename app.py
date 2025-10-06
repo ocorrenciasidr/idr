@@ -320,24 +320,26 @@ def nova():
 
     form = request.form
 
-    # Função para normalizar checkbox
-    def normalize_checkbox(value):
-        return "SIM" if value in ("on", "SIM", True) else "NÃO"
-
     # Normaliza checkboxes
-    ft = normalize_checkbox(form.get("FT"))
-    fc = normalize_checkbox(form.get("FC"))
-    fg = normalize_checkbox(form.get("FG"))
+    ft = "SIM" if form.get("FT") == "on" else "NÃO"
+    fc = "SIM" if form.get("FC") == "on" else "NÃO"
+    fg = "SIM" if form.get("FG") == "on" else "NÃO"
 
-    # Calcula PT/PC/PG conforme regras
-    pt = "S" if ft == "SIM" and not form.get("ATT") else "N"
-    pc = "S" if fc == "SIM" and not form.get("ATC") else "N"
-    pg = "S" if fg == "SIM" and not form.get("ATG") else "N"
+    # Calcula PT, PC, PG
+    att = form.get("ATT", "").strip()
+    atc = form.get("ATC", "").strip()
+    atg = form.get("ATG", "").strip()
 
-    # Status
-    status = "FINALIZADA" if pt == "N" and pc == "N" and pg == "N" else "ATENDIMENTO"
+    pt = "S" if ft == "SIM" and att == "" else "N"
+    pc = "S" if fc == "SIM" and atc == "" else "N"
+    pg = "S" if fg == "SIM" and atg == "" else "N"
 
-    # Monta payload
+    # Calcula STATUS
+    if pt == "N" and pc == "N" and pg == "N":
+        status = "FINALIZADA"
+    else:
+        status = "ATENDIMENTO"
+
     payload = {
         "DCO": datetime.now(TZ_SAO).date().isoformat(),
         "HCO": datetime.now(TZ_SAO).strftime("%H:%M"),
@@ -347,12 +349,12 @@ def nova():
         "TUTOR": form.get("TUTOR", ""),
         "DESCRICAO": form.get("DESCRICAO", ""),
         "ATP": form.get("ATP", "") or "",
-        "ATT": form.get("ATT", ""),
-        "ATC": form.get("ATC", ""),
-        "ATG": form.get("ATG", ""),
-        "FT": ft,
-        "FC": fc,
-        "FG": fg,
+        "ATT": att,
+        "ATC": atc,
+        "ATG": atg,
+        "FT": ft,  # só para manter o registro interno
+        "FC": fc,  # só para manter o registro interno
+        "FG": fg,  # só para manter o registro interno
         "PT": pt,
         "PC": pc,
         "PG": pg,
@@ -363,15 +365,10 @@ def nova():
         "ASSINADA": False
     }
 
-    # Debug para verificar o payload antes de enviar
-    print("Payload para inserção:", payload)
-
     try:
         resp = supabase.table("ocorrencias").insert(payload).execute()
-        print("Resposta do Supabase:", resp)
-
         if resp.error:
-            flash(f"Erro ao inserir ocorrências: {resp.error}", "danger")
+            flash("Erro ao inserir ocorrências.", "danger")
         else:
             flash("Ocorrência registrada com sucesso.", "success")
     except Exception as e:
@@ -403,6 +400,7 @@ if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
 
    
+
 
 
 
