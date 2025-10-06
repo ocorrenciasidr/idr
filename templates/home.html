@@ -1,60 +1,41 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <title>SGCE - Home</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
-            color: #f8f9fa;
-        }
-        .container { margin-top: 100px; }
-        h1 { font-weight: 700; margin-bottom: 60px; text-shadow: 2px 2px 6px #000; }
-        .btn-home {
-            font-size: 1.3rem;
-            padding: 1.2rem;
-            border-radius: 12px;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .btn-home:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 5px 20px rgba(0,0,0,0.4);
-        }
-        footer { margin-top: 80px; }
-    </style>
+    <meta charset="UTF-8">
+    <title>Sistema de Gestão de Convivência Escolar</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
 </head>
-<body>
-    <div class="container text-center">
-        <h1>SGCE - Sistema de Gestão Escolar</h1>
-        <div class="row g-4 justify-content-center">
-            <div class="col-md-5">
-                <a href="{{ url_for('index') }}" class="btn btn-primary w-100 btn-home">📋 GESTÃO DE OCORRÊNCIAS</a>
-            </div>
-            <div class="col-md-5">
-                <a href="{{ url_for('relatorio_inicial') }}" class="btn btn-success w-100 btn-home">📊 GESTÃO DE RELATÓRIOS</a>
-            </div>
-            <div class="col-md-5">
-               <button class="btn btn-warning w-100 btn-home" disabled title="Em breve 🚧">
-  👨‍🏫 GESTÃO DE TUTORIA <small>(em breve)</small>
-</button>
-            </div>
-            <div class="col-md-5">
-               <!-- Botão Gestão de Frequência (desativado) -->
-<button class="btn btn-info w-100 btn-home" disabled title="Em breve 🚧">
-  📊 GESTÃO DE FREQUÊNCIA <small>(em breve)</small>
-</button>
-            </div>
-        </div>
+<body class="bg-dark text-light p-4" data-bs-theme="dark">
 
-        <footer class="text-center mt-5">
-            <small>
-                Desenvolvido: Marcelo André Nogueira Cardes <br>
-                Licenciado: EE PEI Profª Irene Dias Ribeiro
-            </small>
-        </footer>
-    </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <div class="container text-center mt-5">
+        <h1 class="mb-4">SISTEMA DE GESTÃO DE CONVIVÊNCIA ESCOLAR</h1>
+
+        <div class="d-grid gap-3 col-6 mx-auto">
+            <!-- 1. OCORRÊNCIAS (Ativo) -->
+            <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg shadow">Ocorrências</a>
+            
+            <!-- 2. RELATÓRIOS (Desativado) -->
+            <button type="button" class="btn btn-secondary btn-lg shadow" disabled>
+                Relatórios (Em Breve)
+            </button>
+
+            <!-- 3. TUTORIA (Desativado) -->
+            <button type="button" class="btn btn-secondary btn-lg shadow" disabled>
+                Tutoria (Em Breve)
+            </button>
+        </div>
+    </div>
+
+    <!-- O Modal de Senha e as funções JavaScript associadas (abrirModal e validarSenha) 
+        foram removidos, pois o botão de Relatórios está desativado. -->
+
+    <footer class="text-center mt-5 mb-3 text-secondary">
+        <small>
+            Desenvolvido: Marcelo André Nogueira Cardes <br>
+            Licenciado: EE PEI Profª Irene Dias Ribeiro
+        </small>
+    </footer>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-
