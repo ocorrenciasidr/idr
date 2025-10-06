@@ -100,6 +100,20 @@
 
 <div class="col-md-4">
   <div class="form-check mt-2">
+    <input class="form-check-input" type="checkbox" name="FT" id="FT" value="SIM">
+    <label class="form-check-label check-label" for="FT">Atendimento Tutor (FT)</label>
+  </div>
+</div>
+
+<div class="col-md-4">
+  <div class="form-check mt-2">
+    <input class="form-check-input" type="checkbox" name="FC" id="FC" value="SIM">
+    <label class="form-check-label check-label" for="FC">Atendimento Coord. (FC)</label>
+  </div>
+</div>
+
+<div class="col-md-4">
+  <div class="form-check mt-2">
     <input class="form-check-input" type="checkbox" name="FG" id="FG" value="SIM">
     <label class="form-check-label check-label" for="FG">Atendimento Gestão (FG)</label>
   </div>
@@ -123,7 +137,6 @@
     submitBtn.disabled = true;
     submitBtn.textContent = 'Registrando...';
 
-    // CORRIGIDO: Array para FT, FC, FG
     ['FT','FC','FG'].forEach(name => {
       const el = document.getElementById(name);
       if (!el) return;
@@ -141,5 +154,6 @@
 </script>
 </body>
 </html>
+
 
 
