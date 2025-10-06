@@ -5,7 +5,7 @@ from flask import Flask, render_template, request, redirect
 from dateutil import parser as date_parser
 
 from supabase_client import conectar_supabase  # Função que conecta ao Supabase
-
+from supabase import create_client, Client
 app = Flask(__name__)
 
 TZ_SAO = 'America/Sao_Paulo'
@@ -110,3 +110,4 @@ def editar_ocorrencia(id):
 # Evita múltiplos app.run()
 if __name__ == "__main__":
     app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
+
