@@ -172,6 +172,11 @@ def home():
     ano = datetime.now(TZ_SAO).year
     return render_template("home.html", ano=ano)
 
+@app.route("/editar/<int:oid>")
+def editar(oid):
+    # Substitua pelo que sua função editar_completo faz
+    return editar_completo(oid)
+
 @app.route("/relatorio_inicial")
 def relatorio_inicial():
     # Aqui você pode renderizar o template do relatório ou apenas retornar um texto temporário
@@ -359,5 +364,6 @@ if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
 
    
+
 
 
