@@ -20,21 +20,23 @@
     h1{flex:1;text-align:center;margin:0;font-weight:700;color:#fff;}
     .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
     .filter-select{min-width:220px;}
-    .btn-small{padding:.4rem .7rem;border-radius:8px;font-weight:600;}
+    .btn-small{padding:.35rem .55rem;border-radius:8px;font-weight:600;font-size:.85rem;}
     .panel{background:var(--panel); padding:16px; border-radius:10px; box-shadow:0 8px 30px rgba(0,0,0,.6);}
     table{background:#f7efd6;border-collapse:collapse;width:100%;}
-    thead th{background:#e9d8a6;color:#111;font-weight:700;padding:10px;border:1px solid rgba(0,0,0,.06);}
-    tbody td{padding:10px;border:1px solid rgba(0,0,0,.04);color:#111;}
+    thead th{background:#e9d8a6;color:#111;font-weight:700;padding:8px;border:1px solid rgba(0,0,0,.06);font-size:0.82rem;}
+    tbody td{padding:8px;border:1px solid rgba(0,0,0,.04);color:#111;font-size:0.78rem;} /* fonte reduzida para caber na horizontal */
     tbody tr:nth-child(odd){background:#f6ecd0;}
     .status-atendimento{background:#f8d7da;color:#7a161b;padding:6px 8px;border-radius:6px;display:inline-block}
     .status-finalizada{background:#fff3cd;color:#856404;padding:6px 8px;border-radius:6px;display:inline-block}
     .status-assinada{background:#d4edda;color:#155724;padding:6px 8px;border-radius:6px;display:inline-block}
-    .icon-button{cursor:pointer;padding:4px 8px;border-radius:6px;font-size:1.05rem}
-    .ft-sim{color:#b02a37}
-    .ft-nao{color:#2b8a3e}
+    .icon-button{cursor:pointer;padding:4px 6px;border-radius:6px;font-size:1rem;border:none;background:none}
+    .icon-lupa{color:#0d6efd}
+    .icon-lapis{color:#198754}
+    .pt-sim{color:#b02a37}
+    .pt-nao{color:#2b8a3e}
     .table-wrap{max-height:62vh;overflow:auto;border-radius:8px;padding:6px;background:transparent;}
     .muted{color:var(--muted);font-size:.92rem}
-    @media (max-width:900px){ .filter-select{min-width:160px} table{font-size:.9rem} }
+    @media (max-width:900px){ .filter-select{min-width:160px} table{font-size:.72rem} }
   </style>
 </head>
 <body>
@@ -75,7 +77,7 @@
           <thead>
             <tr>
               <th>ID</th><th>Data</th><th>Hora</th><th>Aluno</th><th>Sala</th><th>Professor</th><th>Tutor</th>
-              <th>FT</th><th>FC</th><th>FG</th><th>Status</th><th>Ações</th>
+              <th>PT</th><th>PC</th><th>PG</th><th>Status</th><th>Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -89,30 +91,65 @@
               <td>{{ r.PROFESSOR or '' }}</td>
               <td>{{ r.TUTOR or '' }}</td>
 
-              <!-- FT -->
+              <!-- PT -->
               <td>
-                {% if r.FT == "SIM" %}
-                  <a class="icon-button ft-sim" title="Abrir atendimento Tutor (FT)" href="{{ url_for('atendimento', oid=r.ID, tipo_acao='FT') }}">⚠️</a>
+                {# Regra: se PT == "SIM" e ATT vazio => "S", se PT == "SIM" e ATT preenchido => "N", se PT == "NÃO" => "N" #}
+                {% set pt_val = "N" %}
+                {% if r.PT == "SIM" %}
+                  {% if (r.ATT or '')|trim != '' %}
+                    {% set pt_val = "N" %}
+                  {% else %}
+                    {% set pt_val = "S" %}
+                  {% endif %}
                 {% else %}
-                  <span class="icon-button ft-nao">✔️</span>
+                  {% set pt_val = "N" %}
+                {% endif %}
+
+                {% if pt_val == "S" %}
+                  <a class="icon-button pt-sim" title="Abrir atendimento Tutor (PT)" href="{{ url_for('atendimento', oid=r.ID, tipo_acao='PT') }}">⚠️</a>
+                {% else %}
+                  <span class="icon-button pt-nao">✔️</span>
                 {% endif %}
               </td>
 
-              <!-- FC -->
+              <!-- PC -->
               <td>
-                {% if r.FC == "SIM" %}
-                  <a class="icon-button ft-sim" title="Abrir atendimento Coordenação (FC)" href="{{ url_for('atendimento', oid=r.ID, tipo_acao='FC') }}">⚠️</a>
+                {% set pc_val = "N" %}
+                {% if r.PC == "SIM" %}
+                  {% if (r.ATC or '')|trim != '' %}
+                    {% set pc_val = "N" %}
+                  {% else %}
+                    {% set pc_val = "S" %}
+                  {% endif %}
                 {% else %}
-                  <span class="icon-button ft-nao">✔️</span>
+                  {% set pc_val = "N" %}
+                {% endif %}
+
+                {% if pc_val == "S" %}
+                  <a class="icon-button pt-sim" title="Abrir atendimento Coordenação (PC)" href="{{ url_for('atendimento', oid=r.ID, tipo_acao='PC') }}">⚠️</a>
+                {% else %}
+                  <span class="icon-button pt-nao">✔️</span>
                 {% endif %}
               </td>
 
-              <!-- FG -->
+              <!-- PG -->
               <td>
-                {% if r.FG == "SIM" %}
-                  <a class="icon-button ft-sim" title="Abrir atendimento Gestão (FG)" href="{{ url_for('atendimento', oid=r.ID, tipo_acao='FG') }}">⚠️</a>
+                {% set pg_val = "N" %}
+                {% if r.PG == "SIM" %}
+                  {% if (r.ATG or '')|trim != '' %}
+                    {% set pg_val = "N" %}
+                  {% else %}
+                    {% set pg_val = "S" %}
+                  {% endif %}
                 {% else %}
-                  <span class="icon-button ft-nao">✔️</span>
+                  {% set pg_val = "N" %}
+                {% endif %}
+
+                {% if pg_val == "S" %}
+                  <!-- Requer senha para abrir PG: chamamos JS que pede senha e redireciona se correta -->
+                  <a href="javascript:void(0)" onclick="abrirPG({{ r.ID }})" class="icon-button pt-sim" title="Abrir atendimento Gestão (PG)">⚠️</a>
+                {% else %}
+                  <span class="icon-button pt-nao">✔️</span>
                 {% endif %}
               </td>
 
@@ -129,8 +166,8 @@
               </td>
 
               <td>
-                <a href="{{ url_for('editar', oid=r.ID) }}" class="btn btn-info btn-small">Ver</a>
-                <button class="btn btn-primary btn-small" onclick="editarCompletoPrompt({{ r.ID }})">Editar</button>
+                <a href="{{ url_for('editar', oid=r.ID) }}" class="icon-button icon-lupa" title="Visualizar ocorrência">🔍</a>
+                <button class="icon-button icon-lapis" onclick="editarCompletoPrompt({{ r.ID }})" title="Editar ocorrência">✏️</button>
               </td>
             </tr>
             {% else %}
@@ -143,17 +180,11 @@
   </div>
 
 <script>
-  // Ao voltar ao foco atualize a página para refletir alterações salvas no servidor
-  window.addEventListener('focus', function(){ 
-    // recarrega apenas se a página veio de outra aba (evita reload constante)
-    if (performance && performance.getEntriesByType('navigation')[0] && performance.getEntriesByType('navigation')[0].type !== 'reload') {
-      location.reload();
-    }
-  });
-
   function editarCompletoPrompt(id){
     const senha = prompt("Senha para edição completa:");
     if(senha === null) return;
+    if(senha !== "idrgestao"){ alert("Senha incorreta."); return; }
+    // submit POST to editar_completo with senha
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = `/editar_completo/${id}`;
@@ -162,6 +193,14 @@
     form.appendChild(input);
     document.body.appendChild(form);
     form.submit();
+  }
+
+  function abrirPG(id){
+    const senha = prompt("Senha necessária para abrir Atendimento Gestão (PG):");
+    if(senha === null) return;
+    if(senha !== "idrgestao"){ alert("Senha incorreta."); return; }
+    // se senha correta, redireciona para rota de atendimento PG
+    window.location.href = `/atendimento/${id}/PG`;
   }
 </script>
 </body>
