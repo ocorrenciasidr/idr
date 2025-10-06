@@ -364,6 +364,8 @@ def alunos_por_sala(sala):
 
 # app.py (dentro da função nova)
 
+# app.py (dentro da função nova)
+
 @app.route("/nova", methods=["GET", "POST"])
 def nova():
     supabase = conectar_supabase()
@@ -374,23 +376,22 @@ def nova():
     if request.method == "POST":
         try:
             # Captura dos campos do formulário
-            professor = request.form.get("professor") # Este é o nome do Professor
+            professor = request.form.get("professor")
             sala = request.form.get("sala")
             aluno = request.form.get("aluno")
             tutor = request.form.get("tutor")
             descricao = request.form.get("descricao")
             atp = request.form.get("atp") 
 
-            # CORREÇÃO CRÍTICA: O usuário logado é o Professor.
-            usuario = professor 
-
+            # O campo 'usuario' foi removido desta seção
+            
             # Captura dos flags FT, FC, FG
             flag_ft = request.form.get("ft")
             flag_fc = request.form.get("fc")
             flag_fg = request.form.get("fg")
             
             # Data e hora local SP
-            # Certifique-se de que datetime e TZ_SAO estão corretamente importados
+            # Certifique-se de que datetime e TZ_SAO estão corretamente importados no topo do app.py
             now_local = datetime.now(TZ_SAO) 
             dco_str = now_local.strftime("%Y-%m-%d %H:%M:%S")
             hco_str = now_local.strftime("%H:%M:%S")
@@ -410,8 +411,7 @@ def nova():
                 "FC": flag_fc, 
                 "FG": flag_fg,
                 
-                # CORREÇÃO FINAL: Chave minúscula (usuario) com valor do Professor
-                "usuario": usuario, 
+                # O campo "USUARIO" ou "usuario" FOI REMOVIDO DESTE DICIONÁRIO
                 
                 "DCO": dco_str,
                 "HCO": hco_str,
@@ -426,24 +426,15 @@ def nova():
 
         except Exception as e:
             flash(f"Erro ao registrar ocorrência: {e}", "danger")
-            # Este print ajuda a debugar no console do Render se necessário
+            # Este print ajuda a debugar no console do Render
             print(f"Erro ao registrar ocorrência: {e}") 
             return redirect(url_for("index"))
     
     # RENDERIZA O FORMULÁRIO (GET)
     return render_template("nova.html",
                            professores=carregar_professores(),
-                           salas=carregar_salas())    
-    # RENDERIZA O FORMULÁRIO (GET)
-    return render_template("nova.html",
-                           professores=carregar_professores(),
                            salas=carregar_salas())
     
-    # RENDERIZA O FORMULÁRIO (GET)
-    return render_template("nova.html",
-                           professores=carregar_professores(),
-                           salas=carregar_salas())
-
 # -------------------- Rota de Geração de PDF do Aluno --------------------
 # O código do PDF é extenso, garantindo que todas as funções auxiliares e rotas estejam inclusas
 # e que a função gerar_pdf_ocorrencias (não usada diretamente na rota) e a classe PDF estejam presentes.
@@ -773,6 +764,7 @@ if __name__ == "__main__":
     # Comando de execução para Render
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=True, port=port)
+
 
 
 
