@@ -410,7 +410,6 @@ def editar_completo(oid):
 @app.route("/nova", methods=["GET", "POST"])
 def nova():
     supabase = conectar_supabase()
-    # select options
     professores = carregar_lookup("Professores", column="Professor")
     salas = carregar_lookup("Salas", column="Sala")
 
@@ -418,13 +417,8 @@ def nova():
         return render_template("nova.html", professores_disp=professores, salas_disp=salas)
 
     # POST: salvar
-    if not supabase:
-        flash("Erro de conexão com o banco.", "danger")
-        return redirect(url_for("index"))
-
     form = request.form
     payload = {
-        # mantém a convenção de colunas MAIÚSCULAS em 'ocorrencias'
         "DCO": datetime.now(TZ_SAO).date().isoformat(),
         "HCO": datetime.now(TZ_SAO).strftime("%H:%M"),
         "ALUNO": form.get("ALUNO", ""),
@@ -442,17 +436,8 @@ def nova():
         "ASSINADA": False
     }
 
-    try:
-        # CORREÇÃO APLICADA: 'ocorrencias' (PLURAL)
-        resp = supabase.table("ocorrencias").insert(payload).execute()
-        if resp.error:
-            flash("Erro ao inserir ocorrências.", "danger")
-        else:
-            flash("Ocorrência registrada com sucesso.", "success")
-    except Exception as e:
-        print("Erro ao inserir ocorrências:", e)
-        flash("Erro ao gravar ocorrências.", "danger")
-
+    resp = supabase.table("ocorrencias").insert(payload).execute()
+    # redireciona para index (que carrega os registros novamente)
     return redirect(url_for("index"))
 
 # --- API alunos por sala ---
@@ -795,6 +780,7 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("FLASK_DEBUG", "1") == "1"
     app.run(host="0.0.0.0", port=port, debug=debug)
+
 
 
 
