@@ -1,125 +1,190 @@
+# -------------------- Imports --------------------
 import os
+import pytz
 from datetime import datetime
-import pandas as pd
-from flask import Flask, render_template, request, redirect
-from dateutil import parser as date_parser
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from supabase import create_client, Client
 
+# -------------------- Configurações gerais --------------------
+TZ_SAO = pytz.timezone("America/Sao_Paulo")
+FORMATO_ENTRADA = "%Y-%m-%dT%H:%M:%S%z"  # Formato ISO padrão do Supabase
+FORMATO_SAIDA_DATA = "%d/%m/%Y"
+FORMATO_SAIDA_HORA = "%H:%M"
 
+# Prazo padrão para relatórios (em dias)
+PRAZO_DIAS = 7
+SETORES_ATENDIMENTO = ["Tutor", "Coordenação", "Gestão"]
+
+# -------------------- Flask app --------------------
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'default_key_insegura_para_teste_local')
 
-TZ_SAO = 'America/Sao_Paulo'
+# -------------------- Caches globais --------------------
+_df_cache = None
+_alunos_cache = None
+_professores_cache = None
+_salas_cache = None
 
-def upperize_row_keys(row):
-    """Transforma todas as chaves do dicionário em maiúsculas."""
-    return {k.upper(): v for k, v in row.items()}
+# -------------------- Mapeamento de colunas --------------------
+FINAL_COLUMNS_MAP = {
+    "ID": "Nº Ocorrência",
+    "PROFESSOR": "PROFESSOR",
+    "SALA": "Sala",
+    "ALUNO": "Aluno",
+    "TUTOR": "Tutor",
+    "DESCRICAO_OCORRENCIA": "Descrição da Ocorrência",
+    "ATENDIMENTO_PROFESSOR": "Atendimento Professor",
+    "ATT": "ATT",
+    "ATC": "ATC",
+    "ATG": "ATG",
+    "STATUS": "Status",
+    "FT": "FT",
+    "FC": "FC",
+    "FG": "FG",
+    "DCO": "DCO",  # Data da Ocorrência
+    "HCO": "HCO",  # Hora da Ocorrência
+    "DT": "DT",    # Data Tutor
+    "DC": "DC",    # Data Coordenação
+    "DG": "DG"     # Data Gestão
+}
 
-def carregar_dados_ocorrencias() -> list:
-    supabase = conectar_supabase()
-    if not supabase:
-        return []
-
-    try:
-        resp = supabase.table("ocorrencias").select("*").execute()
-        data = resp.data or []
-        normalized = [upperize_row_keys(r) for r in data]
-        df = pd.DataFrame(normalized)
-
-        # Ordena por ID decrescente
-        if 'ID' in df.columns:
-            df = df.sort_values(by='ID', ascending=False)
-
-        # Corrigir datas e horas
-        for col in ['DCO', 'DT', 'DC', 'DG', 'HCO']:
-            if col in df.columns:
-                df[col] = pd.to_datetime(df[col], errors='coerce', utc=True).dt.tz_convert(TZ_SAO)
-                if col == 'DCO':
-                    df['DCO'] = df['DCO'].dt.strftime('%d/%m/%Y')
-                elif col == 'HCO':
-                    df['HCO'] = df['HCO'].dt.strftime('%H:%M')
-
-        # Status dinâmico
-        df['DisplayStatus'] = ''
-        df['DisplayColor'] = ''
-        for idx, row in df.iterrows():
-            ft_done = str(row.get('FT', '')).upper() == 'SIM'
-            fc_done = str(row.get('FC', '')).upper() == 'SIM'
-            fg_done = str(row.get('FG', '')).upper() == 'SIM'
-            status = str(row.get('STATUS', '')).upper()
-
-            if status == 'ASSINADA':
-                df.at[idx, 'DisplayStatus'] = 'ASSINADA'
-                df.at[idx, 'DisplayColor'] = 'success'
-            elif not (ft_done and fc_done and fg_done):
-                df.at[idx, 'DisplayStatus'] = 'ATENDIMENTO'
-                df.at[idx, 'DisplayColor'] = 'danger'
-            else:
-                df.at[idx, 'DisplayStatus'] = 'FINALIZADA'
-                df.at[idx, 'DisplayColor'] = 'warning'
-
-        return df.to_dict(orient='records')
-    except Exception as e:
-        print("Erro ao carregar ocorrências:", e)
-        return []
-
+# -------------------- Conexão com Supabase --------------------
 def conectar_supabase() -> Client:
     """Cria a conexão com o Supabase."""
-    url = "https://rimuhgulxliduugenxro.supabase.co"
-    key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."  # sua chave real
+    url = "https://rimuhgulxliduugenxro.supabase.co"  # <-- substitua pelo seu URL real
+    key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."   # <-- substitua pela sua chave real
     try:
-        return create_client(url, key)
+        supabase = create_client(url, key)
+        return supabase
     except Exception as e:
         print("❌ Erro ao conectar no Supabase:", e)
         return None
 
 
-def carregar_lista_tabela(tabela_nome):
-    """Carrega dados de qualquer tabela e transforma em lista de dicionários"""
+def obter_dados_supabase(tabela: str) -> list:
+    """Obtém dados de uma tabela do Supabase."""
     supabase = conectar_supabase()
+    if not supabase:
+        return []
     try:
-        resp = supabase.table(tabela_nome).select("*").execute()
-        data = resp.data or []
-        return [upperize_row_keys(r) for r in data]
+        resp = supabase.table(tabela).select("*").execute()
+        return resp.data or []
     except Exception as e:
-        print(f"Erro ao carregar {tabela_nome}:", e)
+        print(f"❌ Erro ao carregar dados da tabela {tabela}:", e)
         return []
 
-@app.route('/')
+
+# -------------------- Utilitários de cache --------------------
+def limpar_caches():
+    global _df_cache, _alunos_cache, _professores_cache, _salas_cache
+    _df_cache = None
+    _alunos_cache = None
+    _professores_cache = None
+    _salas_cache = None
+# -------------------- Rotas principais --------------------
+
+@app.route("/")
+def home():
+    """Redireciona para a página principal."""
+    return redirect(url_for("index"))
+
+
+@app.route("/index", methods=["GET", "POST"])
 def index():
-    ocorrencias = carregar_dados_ocorrencias()
-    return render_template('index.html', ocorrencias=ocorrencias)
+    """Página principal com filtros de Professor e Status."""
+    global _df_cache
 
-@app.route('/nova', methods=['GET', 'POST'])
-def nova_ocorrencia():
-    supabase = conectar_supabase()
-    alunos = carregar_lista_tabela('alunos')
-    professores = carregar_lista_tabela('professores')
-    salas = carregar_lista_tabela('salas')
+    # Carregar cache ou buscar do Supabase
+    if _df_cache is None:
+        _df_cache = obter_dados_supabase("ocorrencias")
 
-    if request.method == 'POST':
-        dados = request.form.to_dict()
-        supabase.table('ocorrencias').insert(dados).execute()
-        return redirect('/')
-    return render_template('nova.html', alunos=alunos, professores=professores, salas=salas)
+    dados = _df_cache or []
 
-@app.route('/editar/<int:id>', methods=['GET', 'POST'])
-def editar_ocorrencia(id):
-    supabase = conectar_supabase()
-    alunos = carregar_lista_tabela('alunos')
-    professores = carregar_lista_tabela('professores')
-    salas = carregar_lista_tabela('salas')
+    # Aplicar filtros
+    filtro_professor = request.args.get("professor", "").strip()
+    filtro_status = request.args.get("status", "").strip()
 
-    if request.method == 'POST':
-        dados = request.form.to_dict()
-        supabase.table('ocorrencias').update(dados).eq('id', id).execute()
-        return redirect('/')
-    else:
-        resp = supabase.table('ocorrencias').select("*").eq('id', id).execute()
-        ocorrencia = resp.data[0] if resp.data else None
-        return render_template('editar.html', ocorrencia=ocorrencia, alunos=alunos, professores=professores, salas=salas)
+    if filtro_professor:
+        dados = [d for d in dados if d.get("PROFESSOR") == filtro_professor]
 
-# Evita múltiplos app.run()
+    if filtro_status:
+        dados = [d for d in dados if d.get("STATUS") == filtro_status]
+
+    # Extrair opções únicas de filtros
+    professores_unicos = sorted(set(d.get("PROFESSOR") for d in _df_cache if d.get("PROFESSOR")))
+    status_unicos = sorted(set(d.get("STATUS") for d in _df_cache if d.get("STATUS")))
+
+    return render_template(
+        "index.html",
+        dados=dados,
+        professores=professores_unicos,
+        status=status_unicos,
+        filtro_professor=filtro_professor,
+        filtro_status=filtro_status
+    )
+
+
+@app.route("/nova", methods=["GET", "POST"])
+def nova():
+    """Página para registrar nova ocorrência."""
+    global _alunos_cache, _professores_cache, _salas_cache
+
+    # Carrega tabelas do Supabase
+    if _alunos_cache is None:
+        _alunos_cache = obter_dados_supabase("Alunos")
+    if _professores_cache is None:
+        _professores_cache = obter_dados_supabase("Professores")
+    if _salas_cache is None:
+        _salas_cache = obter_dados_supabase("Salas")
+
+    if request.method == "POST":
+        try:
+            dados = {
+                "PROFESSOR": request.form.get("professor"),
+                "SALA": request.form.get("sala"),
+                "ALUNO": request.form.get("aluno"),
+                "TUTOR": request.form.get("tutor"),
+                "DESCRICAO_OCORRENCIA": request.form.get("descricao"),
+                "ATENDIMENTO_PROFESSOR": request.form.get("atendimento_professor"),
+                "DCO": datetime.now(TZ_SAO).strftime(FORMATO_SAIDA_DATA),
+                "HCO": datetime.now(TZ_SAO).strftime(FORMATO_SAIDA_HORA),
+                "STATUS": "Aberta",
+                "FT": "NÃO",
+                "FC": "NÃO",
+                "FG": "NÃO"
+            }
+
+            supabase = conectar_supabase()
+            if supabase:
+                supabase.table("ocorrencias").insert(dados).execute()
+                limpar_caches()
+                flash("✅ Ocorrência registrada com sucesso!", "success")
+                return redirect(url_for("index"))
+            else:
+                flash("❌ Erro ao conectar no banco de dados.", "danger")
+
+        except Exception as e:
+            flash(f"❌ Erro ao salvar ocorrência: {e}", "danger")
+
+    return render_template(
+        "nova.html",
+        alunos=_alunos_cache or [],
+        professores=_professores_cache or [],
+        salas=_salas_cache or []
+    )
+
+
+# -------------------- Erros --------------------
+@app.errorhandler(404)
+def pagina_nao_encontrada(e):
+    return render_template("404.html"), 404
+
+
+@app.errorhandler(500)
+def erro_interno(e):
+    return render_template("500.html", erro=e), 500
+
+
+# -------------------- Execução local --------------------
 if __name__ == "__main__":
-    app.run(debug=True, port=int(os.environ.get('PORT', 5000)))
-
-
-
+    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
