@@ -1,177 +1,112 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="utf-8" />
-  <title>Relatório por Aluno — SGCE</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta charset="UTF-8">
+  <title>SGCE - RELATÓRIO DE OCORRÊNCIAS POR ALUNO</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
   <style>
-    :root {
-      --bg: #0f1724;
-      --panel: #071428;
-      --muted: #b6c2d1;
-    }
-    body {
-      background: var(--bg);
-      color: #fff;
-      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto;
-      padding: 22px;
-    }
-    .panel {
-      max-width: 1000px;
-      margin: auto;
-      background: linear-gradient(180deg, #0b1220, #07101a);
-      padding: 22px;
-      border-radius: 12px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-    }
-    label {
-      font-weight: 600;
-      color: #e6eef8;
-    }
-    .form-control, .form-select {
-      background: #071428;
-      color: #e6eef8;
-      border: 1px solid rgba(255, 255, 255, 0.06);
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #fff;
-    }
-    thead th {
-      background: #f3f3f3;
-      color: #111;
-      padding: 10px;
-      border: 1px solid #eaeaea;
-    }
-    tbody td {
-      padding: 10px;
-      border: 1px solid #eee;
-      color: #111;
-    }
-    .btn-primary {
-      background: #2563eb;
-      border: none;
-    }
-    .btn-dark {
-      background: #1f2937;
-      color: #fff;
-      border-radius: 8px;
-      border: 1px solid rgba(255,255,255,0.04);
-      font-weight: 600;
-    }
-    .muted {
-      color: var(--muted);
-      font-size: 0.9rem;
-    }
+    body { background: #f4f4f4; }
+    .container { margin-top: 30px; }
+    table th, table td { text-align: center; vertical-align: middle; }
+    .desc-cell { text-align: left !important; }
+    .printer-icon { font-size: 1.2em; color: #198754; }
   </style>
 </head>
 <body>
-  <div class="panel">
-    <h2 class="text-center mb-3">Relatório de Ocorrências por Aluno</h2>
+<div class="container">
+  <h2 class="mb-4 text-center">
+    SISTEMA DE GESTÃO DE CONVIVÊNCIA ESCOLAR <br>
+    RELATÓRIO DE OCORRÊNCIAS POR ALUNO
+  </h2>
 
-    <form method="get" action="{{ url_for('relatorio_aluno') }}" class="row g-3 mb-4">
-      <div class="col-md-5">
-        <label>Sala</label>
-        <select name="sala" id="salaSelect" class="form-select" required>
-          <option value="">-- selecione uma sala --</option>
-          {% for s in salas %}
-            <option value="{{ s }}" {% if sala_sel == s %}selected{% endif %}>{{ s }}</option>
+  <!-- Filtros -->
+  <form method="get" class="row g-3 mb-4">
+    <div class="col-md-4">
+      <label for="sala" class="form-label">Sala</label>
+      <select id="sala" name="sala" class="form-select" onchange="this.form.submit()">
+        <option value="">Selecione</option>
+        {% for s in salas %}
+          <option value="{{ s }}" {% if sala_sel == s %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-4">
+      <label for="aluno" class="form-label">Aluno</label>
+      <select id="aluno" name="aluno" class="form-select" onchange="this.form.submit()">
+        <option value="">Selecione</option>
+        {% for a in alunos %}
+          <option value="{{ a }}" {% if aluno_sel == a %}selected{% endif %}>{{ a }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-4 d-flex align-items-end">
+      <a href="{{ url_for('relatorio_aluno') }}" class="btn btn-secondary w-100">Limpar Filtros</a>
+    </div>
+  </form>
+
+  <!-- Tabela de Ocorrências -->
+  {% if aluno_sel %}
+    <h3 class="mt-4">Ocorrências para: {{ aluno_sel }} ({{ sala_sel }})</h3>
+
+    {% if ocorrencias %}
+      <form method="post" action="{{ url_for('gerar_pdf_aluno') }}">
+        <input type="hidden" name="aluno" value="{{ aluno_sel }}">
+        <input type="hidden" name="sala" value="{{ sala_sel }}">
+
+        <table class="table table-bordered table-striped">
+          <thead class="table-dark">
+            <tr>
+              <th class="text-center">🖨 Nº Ocorrência</th>
+              <th>Data</th>
+              <th>Hora</th>
+              <th class="desc-cell">Descrição</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for o in ocorrencias %}
+            <tr>
+              <td>
+                <div class="d-flex align-items-center justify-content-center gap-2">
+                  <input type="checkbox" name="ocorrencias[]" value="{{ o['ID'] }}"
+                    {% if o['Status'] == 'ASSINADA' %} disabled {% endif %}>
+                  <span>{{ o['Nº Ocorrência'] }}</span>
+                </div>
+              </td>
+              <td>{{ o['DCO'] }}</td>
+              <td>{{ o['HCO'] }}</td>
+              <td class="desc-cell">{{ o['Descrição da Ocorrência'] }}</td>
+              <td>
+                <span class="badge bg-{% if o['Status'] == 'ASSINADA' %}success{% else %}warning{% endif %}">
+                  {{ o['Status'] }}
+                </span>
+              </td>
+            </tr>
           {% endfor %}
-        </select>
-      </div>
+          </tbody>
+        </table>
 
-      <div class="col-md-5">
-        <label>Aluno</label>
-        <select name="aluno" id="alunoSelect" class="form-select" required>
-          {% if alunos %}
-            <option value="">-- selecione um aluno --</option>
-            {% for a in alunos %}
-              <option value="{{ a }}" {% if aluno_sel == a %}selected{% endif %}>{{ a }}</option>
-            {% endfor %}
-          {% else %}
-            <option value="">-- selecione a sala primeiro --</option>
-          {% endif %}
-        </select>
-      </div>
-
-      <div class="col-md-2 d-flex align-items-end">
-        <button type="submit" class="btn btn-dark w-100">Buscar</button>
-      </div>
-    </form>
-
-    {% if aluno_sel %}
-      <h5 class="mb-3">Ocorrências de {{ aluno_sel }}</h5>
-      {% if ocorrencias %}
-        <form method="post" action="{{ url_for('gerar_pdf_aluno') }}">
-          <input type="hidden" name="aluno" value="{{ aluno_sel }}">
-          <input type="hidden" name="sala" value="{{ sala_sel }}">
-          <table class="table table-striped table-bordered bg-white text-dark">
-            <thead>
-              <tr>
-                <th></th>
-                <th>ID</th>
-                <th>Data</th>
-                <th>Hora</th>
-                <th>Descrição</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for o in ocorrencias %}
-                <tr>
-                  <td><input type="checkbox" name="ocorrencias[]" value="{{ o.ID }}"></td>
-                  <td>{{ o.ID }}</td>
-                  <td>{{ o.DCO }}</td>
-                  <td>{{ o.HCO }}</td>
-                  <td style="text-align:left">{{ o["Descrição da Ocorrência"] }}</td>
-                  <td>{{ o.Status }}</td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-          <div class="text-end mt-3">
-            <button type="submit" class="btn btn-primary">Gerar PDF</button>
-          </div>
-        </form>
-      {% else %}
-        <div class="muted">Nenhuma ocorrência encontrada para este aluno.</div>
-      {% endif %}
+        <div class="text-center mt-3">
+          <button type="submit" class="btn btn-success">📄 Gerar PDF</button>
+        </div>
+      </form>
     {% else %}
-      <div class="muted">Selecione uma sala e um aluno para visualizar as ocorrências.</div>
+      <div class="alert alert-warning text-center">
+        Nenhuma ocorrência encontrada para este aluno.
+      </div>
     {% endif %}
-  </div>
+  {% endif %}
+</div>
 
-  <script>
-    // Quando selecionar uma sala, recarrega os alunos daquela sala
-    document.getElementById('salaSelect').addEventListener('change', async function() {
-      const sala = this.value;
-      const alunoSelect = document.getElementById('alunoSelect');
-      alunoSelect.innerHTML = '<option>Carregando alunos...</option>';
+<footer class="text-center mt-5 mb-3">
+  <small>
+    Desenvolvido: Marcelo André Nogueira Cardes <br>
+    Licenciado: EE PEI Profª Irene Dias Ribeiro
+  </small>
+</footer>
 
-      if (!sala) {
-        alunoSelect.innerHTML = '<option value="">-- selecione a sala primeiro --</option>';
-        return;
-      }
-
-      try {
-        const res = await fetch(`/api/alunos_por_sala/${encodeURIComponent(sala)}`);
-        const data = await res.json();
-        alunoSelect.innerHTML = '<option value="">-- selecione um aluno --</option>';
-        data.forEach(a => {
-          const nome = a.ALUNO || a.Aluno || a.nome || a.NOME;
-          if (nome) {
-            const opt = document.createElement('option');
-            opt.value = nome;
-            opt.textContent = nome;
-            alunoSelect.appendChild(opt);
-          }
-        });
-      } catch (e) {
-        alunoSelect.innerHTML = '<option value="">Erro ao carregar alunos</option>';
-      }
-    });
-  </script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
