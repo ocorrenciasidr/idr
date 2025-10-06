@@ -58,6 +58,7 @@ FINAL_COLUMNS_MAP = {
     "DT": "DT",    # Data Tutor
     "DC": "DC",    # Data Coordenação
     "DG": "DG"     # Data Gestão
+}
 # -------------------- Conexão com Supabase --------------------
 def conectar_supabase() -> Client:
     """Cria a conexão com o Supabase."""
@@ -651,4 +652,5 @@ def tutoria():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=True, host='0.0.0.0', port=port)
+
 
