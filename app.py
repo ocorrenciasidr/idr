@@ -189,20 +189,47 @@ def relatorio_inicial():
     # Aqui você pode renderizar o template do relatório ou apenas retornar um texto temporário
     return render_template("relatorio_inicial.html")  # crie relatorio.html ou substitua por um retorno de teste
 
-@app.route("/index", methods=["GET"])
+@app.route("/index")
 def index():
-    filtro_tutor = request.args.get("tutor_filtro")
-    filtro_status = request.args.get("status_filtro")
-    registros = carregar_dados_ocorrencias(filtro_tutor, filtro_status)
-    tutores_disp = carregar_tutores_com_ocorrencias()
-    status_disp = ["ATENDIMENTO", "FINALIZADA", "ASSINADA"]
+    supabase = conectar_supabase()
+    if not supabase:
+        flash("Erro de conexão com o banco.", "danger")
+        return redirect(url_for("home"))
+
+    # Captura filtros enviados pelo usuário
+    filtro_tutor_sel = request.args.get("tutor_filtro", "")
+    filtro_status_sel = request.args.get("status_filtro", "")
+
+    # Busca todas as ocorrências
+    query = supabase.table("ocorrencias").select("*")
+
+    # Aplica filtro de tutor se houver
+    if filtro_tutor_sel:
+        query = query.eq("TUTOR", filtro_tutor_sel)
+
+    # Aplica filtro de status se houver
+    if filtro_status_sel:
+        query = query.eq("STATUS", filtro_status_sel)
+
+    # Executa a query
+    resp = query.execute()
+    registros = resp.data if not resp.error else []
+
+    # Gera a lista de tutores/professores que possuem ocorrências
+    tutores_disp = list({r["TUTOR"] for r in registros if r.get("TUTOR")})
+    tutores_disp.sort()
+
+    # Lista de status disponíveis dinamicamente
+    status_disp = list({r["STATUS"] for r in registros if r.get("STATUS")})
+    status_disp.sort()
+
     return render_template(
         "index.html",
         registros=registros,
-        tutores_disp=["Todos"] + tutores_disp,
-        status_disp=["Todos"] + status_disp,
-        filtro_tutor_sel=filtro_tutor,
-        filtro_status_sel=filtro_status
+        tutores_disp=tutores_disp,
+        status_disp=status_disp,
+        filtro_tutor_sel=filtro_tutor_sel,
+        filtro_status_sel=filtro_status_sel
     )
 
 # --- Rota de Atendimento (FT, FC, FG) ---
@@ -400,6 +427,7 @@ if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
 
    
+
 
 
 
