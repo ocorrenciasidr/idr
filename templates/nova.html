@@ -69,32 +69,32 @@
           <textarea name="ATP" rows="3" class="form-control"></textarea>
         </div>
 
-        <!-- FT/FC/FG checkboxes -->
+        <!-- PT/PC/PG checkboxes -->
         <div class="col-md-4">
           <div class="form-check mt-2">
-            <input class="form-check-input" type="checkbox" name="FT" id="FT" value="SIM">
-            <label class="form-check-label check-label" for="FT">Atendimento Tutor (FT)</label>
+            <input class="form-check-input" type="checkbox" name="PT" id="PT" value="SIM">
+            <label class="form-check-label check-label" for="PT">Atendimento Tutor (PT)</label>
           </div>
         </div>
 
         <div class="col-md-4">
           <div class="form-check mt-2">
-            <input class="form-check-input" type="checkbox" name="FC" id="FC" value="SIM">
-            <label class="form-check-label check-label" for="FC">Atendimento Coord. (FC)</label>
+            <input class="form-check-input" type="checkbox" name="PC" id="PC" value="SIM">
+            <label class="form-check-label check-label" for="PC">Atendimento Coord. (PC)</label>
           </div>
         </div>
 
         <div class="col-md-4">
           <div class="form-check mt-2">
-            <input class="form-check-input" type="checkbox" name="FG" id="FG" value="SIM">
-            <label class="form-check-label check-label" for="FG">Atendimento Gestão (FG)</label>
+            <input class="form-check-input" type="checkbox" name="PG" id="PG" value="SIM">
+            <label class="form-check-label check-label" for="PG">Atendimento Gestão (PG)</label>
           </div>
         </div>
 
         <!-- hidden fields to guarantee explicit "NÃO" if checkboxes não marcados -->
-        <input type="hidden" name="FT_present" value="1">
-        <input type="hidden" name="FC_present" value="1">
-        <input type="hidden" name="FG_present" value="1">
+        <input type="hidden" name="PT_present" value="1">
+        <input type="hidden" name="PC_present" value="1">
+        <input type="hidden" name="PG_present" value="1">
 
         <div class="col-12 d-flex gap-2 justify-content-end mt-4">
           <a href="{{ url_for('index') }}" class="btn btn-outline-light">Cancelar</a>
@@ -134,20 +134,16 @@
     document.getElementById('tutor').value = opt ? (opt.dataset.tutor || '') : '';
   });
 
-  // Antes do submit: garantir campos FT/FC/FG explícitos (se desmarcado -> envia "NÃO")
+  // Antes do submit: garantir campos PT/PC/PG explícitos (se desmarcado -> envia "NÃO")
   document.getElementById('novaForm').addEventListener('submit', function(e) {
     const submitBtn = document.getElementById('submitBtn');
     submitBtn.disabled = true;
     submitBtn.textContent = 'Registrando...';
 
-    // Para cada checkbox, se não estiver marcado, crie um input hidden com valor "NÃO"
-    ['FT','FC','FG'].forEach(name => {
+    ['PT','PC','PG'].forEach(name => {
       const el = document.getElementById(name);
-      // se o elemento não existe (p.ex. se mudou o id), não faz nada
       if (!el) return;
-      // se NÃO marcado, adiciona hidden com o mesmo nome e valor "NÃO"
       if (!el.checked) {
-        // cria somente se já não existe um campo hidden com essa chave
         if (!document.querySelector(`input[type="hidden"][name="${name}"]`)) {
           const h = document.createElement('input');
           h.type = 'hidden';
@@ -156,10 +152,7 @@
           this.appendChild(h);
         }
       }
-      // se marcado, o checkbox já envia value="SIM"
     });
-
-    // Nota: deixamos o submit seguir normalmente (server-side). Se quiser AJAX, podemos implementar.
   });
 </script>
 </body>
