@@ -189,6 +189,8 @@ def relatorio_inicial():
     # Aqui você pode renderizar o template do relatório ou apenas retornar um texto temporário
     return render_template("relatorio_inicial.html")  # crie relatorio.html ou substitua por um retorno de teste
 
+# app (5).py - Substitua a função index
+
 @app.route("/index")
 def index():
     supabase = conectar_supabase()
@@ -196,26 +198,19 @@ def index():
         flash("Erro de conexão com o banco.", "danger")
         return redirect(url_for("home"))
 
-    # Pegando filtros da URL
+    # 1. Pegando filtros da URL
     filtro_tutor = request.args.get("tutor_filtro")
     filtro_status = request.args.get("status_filtro")
 
-    # Buscar ocorrências
-    query = supabase.table("ocorrencias").select("*")
-    registros = query.execute().data or []
+    # 2. Buscar ocorrências JÁ filtradas (usando a função auxiliar)
+    registros = carregar_dados_ocorrencias(
+        filtro_tutor=filtro_tutor,
+        filtro_status=filtro_status
+    )
 
-    # Gerar lista de professores que têm ocorrências
-    professores_ocorrencias = sorted(list({r["PROFESSOR"] for r in registros if r.get("PROFESSOR")}))
-    tutores_disp = professores_ocorrencias  # ou outra lista se você tiver tutores diferentes
-
-    # Filtrar registros por tutor e status
-    if filtro_tutor:
-        registros = [r for r in registros if r.get("TUTOR") == filtro_tutor]
-    if filtro_status:
-        registros = [r for r in registros if r.get("STATUS") == filtro_status]
-
-    # Status disponíveis na tabela
-    status_disp = sorted(list({r["STATUS"] for r in registros if r.get("STATUS")}))
+    # 3. Gerar listas de filtros (incluindo "Todos")
+    tutores_disp = ["Todos"] + carregar_tutores_com_ocorrencias()
+    status_disp = ["Todos", "ATENDIMENTO", "FINALIZADA", "ASSINADA"]
 
     return render_template(
         "index.html",
@@ -225,7 +220,6 @@ def index():
         filtro_tutor_sel=filtro_tutor,
         filtro_status_sel=filtro_status
     )
-
 # --- Rota de Atendimento (FT, FC, FG) ---
 @app.route("/atendimento/<int:oid>/<tipo_acao>", methods=["GET", "POST"])
 def atendimento(oid, tipo_acao):
@@ -413,6 +407,7 @@ if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
 
    
+
 
 
 
