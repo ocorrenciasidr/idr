@@ -362,44 +362,16 @@ def alunos_por_sala(sala):
 
 # -------------------- Rota de Nova Ocorrência (Corrigida) --------------------
 
-@app.route("/nova", methods=["POST"])
+@app.route("/nova", methods=["GET", "POST"])
 def nova():
-    # CORREÇÃO: Conectar Supabase dentro da função para evitar NameError
-    supabase = conectar_supabase()
-    if not supabase:
-        flash("Erro ao conectar ao banco de dados.", "danger")
-        return redirect(url_for("index"))
-
-    try:
-        professor = request.form.get("professor")
-        descricao = request.form.get("descricao")
-        usuario = request.form.get("usuario")
-
-        # Data e hora local SP
-        now_local = datetime.now(TZ_SAO)
-        dco_str = now_local.strftime("%Y-%m-%d %H:%M:%S")
-        hco_str = now_local.strftime("%H:%M:%S")
-
-        dados_insercao = {
-            "PROFESSOR": professor,
-            "DESCRICAO": descricao,
-            "USUARIO": usuario,
-            "DCO": dco_str,
-            "HCO": hco_str,
-            "FT": "SIM", # FT, FC, FG definidos como SIM para iniciar o atendimento
-            "FC": "SIM",
-            "FG": "SIM"
-        }
-
-        # Insere e limpa o cache
-        supabase.table("ocorrencias").insert(dados_insercao).execute()
-        limpar_caches()
-        flash("Ocorrência registrada com sucesso!", "success")
-        return redirect(url_for("index"))
-
-    except Exception as e:
-        flash(f"Erro ao registrar ocorrência: {e}", "danger")
-        return redirect(url_for("index"))
+    if request.method == "POST":
+        # ... código de inserção (como está hoje)
+        pass # return redirect(url_for("index"))
+    
+    # Se for GET, renderiza o formulário
+    return render_template("novo_registro.html", 
+                           professores=carregar_professores(), 
+                           salas=carregar_salas())
 
 # -------------------- Rota de Geração de PDF do Aluno --------------------
 # O código do PDF é extenso, garantindo que todas as funções auxiliares e rotas estejam inclusas
@@ -730,3 +702,4 @@ if __name__ == "__main__":
     # Comando de execução para Render
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=True, port=port)
+
