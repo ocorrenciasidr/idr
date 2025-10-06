@@ -1,3 +1,4 @@
+<!-- templates/nova.html -->
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -6,33 +7,15 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    body {
-      background:#0f1724;
-      color:#fff;
-      padding:22px;
-      font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto;
-    }
-    .panel {
-      background:linear-gradient(180deg,#0b1220,#07101a);
-      border-radius:12px;
-      padding:24px;
-      box-shadow:0 8px 30px rgba(2,6,23,.6);
-      max-width:920px;
-      margin:auto;
-    }
-    label { font-weight:600; color:#e6eef8; margin-bottom:4px; }
-    .form-control, .form-select, textarea {
-      background:#071428; color:#e6eef8; border:1px solid rgba(255,255,255,0.06);
-    }
-    textarea { resize: vertical; }
-    .btn-dark {
-      background:#1f2937; color:#fff; border:1px solid rgba(255,255,255,0.04);
-      border-radius:8px; font-weight:600;
-    }
-    .btn-dark:hover { background:#111827; }
-    .btn-outline-light { border-radius:8px; font-weight:600; }
-    .small-note { font-size:.86rem; color:#b6c2d1; }
-    .check-label { font-weight:500; margin-left:6px; }
+    :root{ --bg:#0f1724; --panel:#071428; --muted:#b6c2d1; }
+    body{background:var(--bg); color:#fff; font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto; padding:22px;}
+    .panel{max-width:920px;margin:auto;background:linear-gradient(180deg,#0b1220,#07101a);padding:24px;border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,.6);}
+    label{font-weight:600;color:#e6eef8}
+    .form-control, .form-select, textarea{background:#071428;color:#e6eef8;border:1px solid rgba(255,255,255,0.06)}
+    .btn-dark{background:#1f2937;color:#fff;border:1px solid rgba(255,255,255,0.04);border-radius:8px;font-weight:600}
+    .btn-outline-light{border-radius:8px;font-weight:600;color:#fff;border-color:rgba(255,255,255,0.08)}
+    .small-note{font-size:.86rem;color:var(--muted)}
+    .check-label{font-weight:500;margin-left:6px}
   </style>
 </head>
 <body>
@@ -41,7 +24,6 @@
 
     <form method="post" action="{{ url_for('nova') }}">
       <div class="row g-3">
-
         <div class="col-md-6">
           <label>Professor</label>
           <select name="PROFESSOR" id="prof" class="form-select">
@@ -71,7 +53,7 @@
 
         <div class="col-md-6">
           <label>Tutor</label>
-          <input type="text" name="TUTOR" id="tutor" class="form-control" readonly />
+          <input type="text" name="TUTOR" id="tutor" class="form-control" readonly/>
           <div class="small-note mt-1">Será preenchido ao escolher o aluno.</div>
         </div>
 
@@ -80,13 +62,13 @@
           <textarea name="DESCRICAO" rows="4" class="form-control" required></textarea>
         </div>
 
-        <!-- NOVO CAMPO: Atendimento Professor -->
+        <!-- ATP -->
         <div class="col-12">
           <label>Atendimento Professor (ATP)</label>
           <textarea name="ATP" rows="3" class="form-control"></textarea>
         </div>
 
-        <!-- Checkboxes FT/FC/FG -->
+        <!-- FT/FC/FG checkboxes -->
         <div class="col-md-4">
           <div class="form-check mt-2">
             <input class="form-check-input" type="checkbox" name="FT" id="FT" value="SIM">
@@ -116,34 +98,34 @@
     </form>
   </div>
 
-  <script>
-    // Carregar alunos da sala
-    document.getElementById('sala').addEventListener('change', async function() {
-      const sala = this.value;
-      const alunoSelect = document.getElementById('aluno');
-      alunoSelect.innerHTML = '<option>Carregando...</option>';
-      try {
-        const res = await fetch(`/api/alunos_por_sala/${encodeURIComponent(sala)}`);
-        const data = await res.json();
-        alunoSelect.innerHTML = '<option value="">-- selecione --</option>';
-        data.forEach(a => {
-          const opt = document.createElement('option');
-          const nome = a.ALUNO || a.Aluno || a.nome || a.NOME;
-          opt.value = nome || '';
-          opt.textContent = nome || 'Aluno';
-          opt.dataset.tutor = a.TUTOR || a.Tutor || a.tutor || '';
-          alunoSelect.appendChild(opt);
-        });
-      } catch (err) {
-        alunoSelect.innerHTML = '<option value="">Erro ao carregar alunos</option>';
-      }
-    });
+<script>
+  // Carregar alunos da sala via API existente
+  document.getElementById('sala').addEventListener('change', async function() {
+    const sala = this.value;
+    const alunoSelect = document.getElementById('aluno');
+    alunoSelect.innerHTML = '<option>Carregando...</option>';
+    try {
+      const res = await fetch(`/api/alunos_por_sala/${encodeURIComponent(sala)}`);
+      const data = await res.json();
+      alunoSelect.innerHTML = '<option value="">-- selecione --</option>';
+      data.forEach(a => {
+        const opt = document.createElement('option');
+        const nome = a.ALUNO || a.Aluno || a.nome || a.NOME;
+        opt.value = nome || '';
+        opt.textContent = nome || 'Aluno';
+        opt.dataset.tutor = a.TUTOR || a.Tutor || a.tutor || '';
+        alunoSelect.appendChild(opt);
+      });
+    } catch (err) {
+      alunoSelect.innerHTML = '<option value="">Erro ao carregar alunos</option>';
+    }
+  });
 
-    // Preencher tutor automaticamente
-    document.getElementById('aluno').addEventListener('change', function() {
-      const opt = this.selectedOptions[0];
-      document.getElementById('tutor').value = opt ? (opt.dataset.tutor || '') : '';
-    });
-  </script>
+  // Preencher tutor automaticamente
+  document.getElementById('aluno').addEventListener('change', function() {
+    const opt = this.selectedOptions[0];
+    document.getElementById('tutor').value = opt ? (opt.dataset.tutor || '') : '';
+  });
+</script>
 </body>
 </html>
