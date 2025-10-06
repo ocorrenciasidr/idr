@@ -364,14 +364,76 @@ def alunos_por_sala(sala):
 
 # app.py (Revisão da rota /nova)
 
+# app.py (dentro da função nova)
+
 @app.route("/nova", methods=["GET", "POST"])
 def nova():
-    # ... (código de conexão e lógica POST)
+    supabase = conectar_supabase()
+    if not supabase:
+        flash("Erro ao conectar ao banco de dados.", "danger")
+        return redirect(url_for("index"))
+
+    if request.method == "POST":
+        try:
+            # Captura dos campos do formulário
+            professor = request.form.get("professor")
+            sala = request.form.get("sala")
+            aluno = request.form.get("aluno")
+            tutor = request.form.get("tutor")
+            descricao = request.form.get("descricao")
+            atp = request.form.get("atp") # Conteúdo do Atendimento Professor (Texto)
+            usuario = request.form.get("usuario", "ADMIN")
+
+            # Captura dos flags FT, FC, FG (Caixa de Seleção SIM/NÃO)
+            flag_ft = request.form.get("ft")
+            flag_fc = request.form.get("fc")
+            flag_fg = request.form.get("fg")
+            
+            # Data e hora local SP
+            now_local = datetime.now(TZ_SAO)
+            dco_str = now_local.strftime("%Y-%m-%d %H:%M:%S")
+            hco_str = now_local.strftime("%H:%M:%S")
+
+            dados_insercao = {
+                "PROFESSOR": professor,
+                "SALA": sala,                   
+                "ALUNO": aluno,                 
+                "TUTOR": tutor,                 
+                "DESCRICAO": descricao,
+                "ATP": atp,                         
+                # ATT, ATC, ATG são os campos que guardam o TEXTO do atendimento.
+                # Eles devem ficar vazios ou com um placeholder inicial, pois são preenchidos na EDIÇÃO.
+                "ATT": "",                         
+                "ATC": "",                  
+                "ATG": "",                  
+                
+                # FT, FC, FG são os flags que indicam se o atendimento é necessário (SIM/NÃO)
+                "FT": flag_ft, 
+                "FC": flag_fc, 
+                "FG": flag_fg,
+                
+                "USUARIO": usuario,
+                "DCO": dco_str,
+                "HCO": hco_str,
+                "STATUS": "ATENDIMENTO" 
+            }
+
+            # Insere no Supabase e limpa o cache
+            supabase.table("ocorrencias").insert(dados_insercao).execute()
+            limpar_caches()
+            flash("Ocorrência registrada com sucesso!", "success")
+            return redirect(url_for("index"))
+
+        except Exception as e:
+            flash(f"Erro ao registrar ocorrência: {e}", "danger")
+            # Log detalhado do erro no servidor
+            print(f"Erro ao registrar ocorrência: {e}") 
+            return redirect(url_for("index"))
     
     # RENDERIZA O FORMULÁRIO (GET)
     return render_template("nova.html",
-                           professores=carregar_professores(), # Lista de professores
-                           salas=carregar_salas())            # Lista de salas
+                           professores=carregar_professores(),
+                           salas=carregar_salas())
 
 # -------------------- Rota de Geração de PDF do Aluno --------------------
 # O código do PDF é extenso, garantindo que todas as funções auxiliares e rotas estejam inclusas
@@ -702,5 +764,6 @@ if __name__ == "__main__":
     # Comando de execução para Render
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=True, port=port)
+
 
 
