@@ -182,18 +182,12 @@ def editar(oid):
     # Substitua pelo que sua função editar_completo faz
     return editar_completo(oid)
 
-
-
 @app.route("/relatorio_inicial")
 def relatorio_inicial():
     # Aqui você pode renderizar o template do relatório ou apenas retornar um texto temporário
     return render_template("relatorio_inicial.html")  # crie relatorio.html ou substitua por um retorno de teste
 
-# app (5).py - Substitua a função index
-
-# app (5).py - Substituir a função index (aproximadamente linha 190)
-
-# app (5).py - Função index (Corrigida e Validada)
+# app (5).py - Substituir a função index
 
 @app.route("/index")
 def index():
@@ -213,7 +207,8 @@ def index():
     )
 
     # 3. Gerar listas de filtros
-    tutores_disp = ["Todos"] + carregar_tutor_com_ocorrencias()
+    # AQUI ESTÁ A CORREÇÃO: Usando 'carregar_tutores_com_ocorrencias' (no plural)
+    tutores_disp = ["Todos"] + carregar_tutores_com_ocorrencias()
     status_disp = ["Todos", "ATENDIMENTO", "FINALIZADA", "ASSINADA"]
 
     return render_template(
@@ -223,8 +218,7 @@ def index():
         status_disp=status_disp,
         filtro_tutor_sel=filtro_tutor,
         filtro_status_sel=filtro_status
-    )
-    
+    )    
 @app.route("/atendimento/<int:oid>/<tipo_acao>", methods=["GET", "POST"])
 def atendimento(oid, tipo_acao):
     if tipo_acao not in ["FT", "FC", "FG"]:
@@ -418,6 +412,7 @@ if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
 
    
+
 
 
 
