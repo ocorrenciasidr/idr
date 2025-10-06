@@ -1,4 +1,3 @@
-<!-- templates/nova.html -->
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -7,122 +6,144 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    body{background:#0f1724; color:#fff; padding:22px; font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto;}
-    .panel{background:linear-gradient(180deg,#0b1220,#07101a); border-radius:10px; padding:20px; box-shadow:0 8px 30px rgba(2,6,23,.6);}
-    label{font-weight:600; color:#e6eef8;}
-    .form-control, .form-select, textarea{background:#071428; color:#e6eef8; border:1px solid rgba(255,255,255,0.06);}
-    .btn-dark { background:#1f2937; color:#fff; border:1px solid rgba(255,255,255,0.04); }
+    body {
+      background:#0f1724;
+      color:#fff;
+      padding:22px;
+      font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto;
+    }
+    .panel {
+      background:linear-gradient(180deg,#0b1220,#07101a);
+      border-radius:12px;
+      padding:24px;
+      box-shadow:0 8px 30px rgba(2,6,23,.6);
+      max-width:920px;
+      margin:auto;
+    }
+    label { font-weight:600; color:#e6eef8; margin-bottom:4px; }
+    .form-control, .form-select, textarea {
+      background:#071428; color:#e6eef8; border:1px solid rgba(255,255,255,0.06);
+    }
+    textarea { resize: vertical; }
+    .btn-dark {
+      background:#1f2937; color:#fff; border:1px solid rgba(255,255,255,0.04);
+      border-radius:8px; font-weight:600;
+    }
+    .btn-dark:hover { background:#111827; }
+    .btn-outline-light { border-radius:8px; font-weight:600; }
     .small-note { font-size:.86rem; color:#b6c2d1; }
+    .check-label { font-weight:500; margin-left:6px; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="panel mx-auto" style="max-width:920px;">
-      <h3 class="mb-3">Registrar Nova Ocorrência</h3>
+  <div class="panel">
+    <h3 class="mb-4 text-center">Registrar Nova Ocorrência</h3>
 
-      <form method="post" action="{{ url_for('nova') }}">
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label>Professor</label>
-            <select name="PROFESSOR" id="prof" class="form-select">
-              <option value="">-- selecione --</option>
-              {% for p in professores_disp %}
-                <option value="{{ p }}">{{ p }}</option>
-              {% endfor %}
-            </select>
-          </div>
+    <form method="post" action="{{ url_for('nova') }}">
+      <div class="row g-3">
 
-          <div class="col-md-6">
-            <label>Sala</label>
-            <select name="SALA" id="sala" class="form-select" required>
-              <option value="">-- selecione --</option>
-              {% for s in salas_disp %}
-                <option value="{{ s }}">{{ s }}</option>
-              {% endfor %}
-            </select>
-          </div>
+        <div class="col-md-6">
+          <label>Professor</label>
+          <select name="PROFESSOR" id="prof" class="form-select">
+            <option value="">-- selecione --</option>
+            {% for p in professores_disp %}
+              <option value="{{ p }}">{{ p }}</option>
+            {% endfor %}
+          </select>
+        </div>
 
-          <div class="col-md-6">
-            <label>Aluno</label>
-            <select name="ALUNO" id="aluno" class="form-select" required>
-              <option value="">Selecione sala primeiro</option>
-            </select>
-          </div>
+        <div class="col-md-6">
+          <label>Sala</label>
+          <select name="SALA" id="sala" class="form-select" required>
+            <option value="">-- selecione --</option>
+            {% for s in salas_disp %}
+              <option value="{{ s }}">{{ s }}</option>
+            {% endfor %}
+          </select>
+        </div>
 
-          <div class="col-md-6">
-            <label>Tutor</label>
-            <input type="text" name="TUTOR" id="tutor" class="form-control" readonly />
-            <div class="small-note mt-1">Será preenchido ao escolher o aluno.</div>
-          </div>
+        <div class="col-md-6">
+          <label>Aluno</label>
+          <select name="ALUNO" id="aluno" class="form-select" required>
+            <option value="">Selecione a sala primeiro</option>
+          </select>
+        </div>
 
-          <div class="col-12">
-            <label>Descrição</label>
-            <textarea name="DESCRICAO" rows="4" class="form-control" required></textarea>
-          </div>
+        <div class="col-md-6">
+          <label>Tutor</label>
+          <input type="text" name="TUTOR" id="tutor" class="form-control" readonly />
+          <div class="small-note mt-1">Será preenchido ao escolher o aluno.</div>
+        </div>
 
-          <div class="col-md-4">
-            <label>FT (Solicitar atendimento Tutor)</label>
-            <select name="FT" class="form-select">
-              <option value="">NÃO</option>
-              <option value="SIM">SIM</option>
-            </select>
-          </div>
-          <div class="col-md-4">
-            <label>FC (Solicitar atendimento Coordenação)</label>
-            <select name="FC" class="form-select">
-              <option value="">NÃO</option>
-              <option value="SIM">SIM</option>
-            </select>
-          </div>
-          <div class="col-md-4">
-            <label>FG (Solicitar atendimento Gestão)</label>
-            <select name="FG" class="form-select">
-              <option value="">NÃO</option>
-              <option value="SIM">SIM</option>
-            </select>
-          </div>
+        <div class="col-12">
+          <label>Descrição da Ocorrência</label>
+          <textarea name="DESCRICAO" rows="4" class="form-control" required></textarea>
+        </div>
 
-          <div class="col-12 d-flex gap-2 justify-content-end">
-            <a href="{{ url_for('index') }}" class="btn btn-outline-light">Cancelar</a>
-            <button type="submit" class="btn btn-dark">Registrar Ocorrência</button>
+        <!-- NOVO CAMPO: Atendimento Professor -->
+        <div class="col-12">
+          <label>Atendimento Professor (ATP)</label>
+          <textarea name="ATP" rows="3" class="form-control"></textarea>
+        </div>
+
+        <!-- Checkboxes FT/FC/FG -->
+        <div class="col-md-4">
+          <div class="form-check mt-2">
+            <input class="form-check-input" type="checkbox" name="FT" id="FT" value="SIM">
+            <label class="form-check-label check-label" for="FT">Atendimento Tutor (FT)</label>
           </div>
         </div>
-      </form>
-    </div>
+
+        <div class="col-md-4">
+          <div class="form-check mt-2">
+            <input class="form-check-input" type="checkbox" name="FC" id="FC" value="SIM">
+            <label class="form-check-label check-label" for="FC">Atendimento Coord. (FC)</label>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="form-check mt-2">
+            <input class="form-check-input" type="checkbox" name="FG" id="FG" value="SIM">
+            <label class="form-check-label check-label" for="FG">Atendimento Gestão (FG)</label>
+          </div>
+        </div>
+
+        <div class="col-12 d-flex gap-2 justify-content-end mt-4">
+          <a href="{{ url_for('index') }}" class="btn btn-outline-light">Cancelar</a>
+          <button type="submit" class="btn btn-dark">Registrar Ocorrência</button>
+        </div>
+      </div>
+    </form>
   </div>
 
-<script>
-  // Ao escolher sala: carrega alunos via API
-  document.getElementById('sala').addEventListener('change', async function(){
-    const sala = this.value;
-    const alunoSelect = document.getElementById('aluno');
-    alunoSelect.innerHTML = '<option>Carregando...</option>';
-    try {
-      const res = await fetch(`/api/alunos_por_sala/${encodeURIComponent(sala)}`);
-      const data = await res.json();
-      alunoSelect.innerHTML = '<option value="">-- selecione --</option>';
-      data.forEach(a => {
-        const opt = document.createElement('option');
-        // dependendo do retorno (pode ser objeto com keys em maiúsculas ou minúsculas)
-        const nome = a.NOME || a.nome || a.ALUNO || a.Aluno || a.ALUNO || a.ALUNO;
-        opt.value = nome || a.id || JSON.stringify(a);
-        opt.textContent = nome || (a.nome || a.Aluno || a.ALUNO) || (a.id || 'Aluno');
-        // store tutor as data attribute (if present)
-        opt.dataset.tutor = a.TUTOR || a.tutor || a.Tutor || '';
-        alunoSelect.appendChild(opt);
-      });
-    } catch (err) {
-      alunoSelect.innerHTML = '<option value="">Erro ao carregar</option>';
-    }
-  });
+  <script>
+    // Carregar alunos da sala
+    document.getElementById('sala').addEventListener('change', async function() {
+      const sala = this.value;
+      const alunoSelect = document.getElementById('aluno');
+      alunoSelect.innerHTML = '<option>Carregando...</option>';
+      try {
+        const res = await fetch(`/api/alunos_por_sala/${encodeURIComponent(sala)}`);
+        const data = await res.json();
+        alunoSelect.innerHTML = '<option value="">-- selecione --</option>';
+        data.forEach(a => {
+          const opt = document.createElement('option');
+          const nome = a.ALUNO || a.Aluno || a.nome || a.NOME;
+          opt.value = nome || '';
+          opt.textContent = nome || 'Aluno';
+          opt.dataset.tutor = a.TUTOR || a.Tutor || a.tutor || '';
+          alunoSelect.appendChild(opt);
+        });
+      } catch (err) {
+        alunoSelect.innerHTML = '<option value="">Erro ao carregar alunos</option>';
+      }
+    });
 
-  // preencher tutor ao escolher aluno
-  document.getElementById('aluno').addEventListener('change', function(){
-    const opt = this.selectedOptions[0];
-    const tutor = opt ? (opt.dataset.tutor || '') : '';
-    const tutorInput = document.getElementById('tutor');
-    tutorInput.value = tutor || '';
-  });
-</script>
+    // Preencher tutor automaticamente
+    document.getElementById('aluno').addEventListener('change', function() {
+      const opt = this.selectedOptions[0];
+      document.getElementById('tutor').value = opt ? (opt.dataset.tutor || '') : '';
+    });
+  </script>
 </body>
 </html>
