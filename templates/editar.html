@@ -1,207 +1,149 @@
-<!-- templates/editar.html -->
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="utf-8"/>
-  <title>SGCE — Editar Ocorrência</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    :root{--bg:#0f1724;--panel:#071428;--muted:#b6c2d1;}
-    body{background:var(--bg);color:#fff;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto;padding:20px;}
-    .panel{max-width:980px;margin:auto;background:linear-gradient(180deg,#0b1220,#07101a);padding:22px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.6)}
-    label{font-weight:600;color:#e6eef8}
-    .form-control,.form-select,textarea{background:#071428;color:#e6eef8;border:1px solid rgba(255,255,255,0.06)}
-    .readonly{background:#0b1220;color:#cbd5e1}
-    .btn-dark{background:#1f2937;color:#fff;border-radius:8px;border:1px solid rgba(255,255,255,0.04);font-weight:600}
-    .btn-outline-light{color:#fff;border-color:rgba(255,255,255,0.06);border-radius:8px}
-    .muted{color:var(--muted);font-size:.92rem}
-    textarea.editavel{background:#fff;color:#111}
-    textarea.readonly{background:#0b1220;color:#cbd5e1}
-  </style>
+    <meta charset="UTF-8">
+    <title>Nova Ocorrência</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
 </head>
-<body>
-  <div class="panel">
-    {% set occ = (ocorrencia if (ocorrencia is defined) else (ocorrencias if (ocorrencias is defined) else None)) %}
-    <h3 class="mb-2">Ocorrência - {{ occ.ID if occ else '' }}</h3>
-    <div class="mb-3 muted">Modo: <strong>{{ modo if modo is defined else 'VISUALIZAÇÃO' }}</strong></div>
+<body class="p-4" data-bs-theme="dark"> <h1 class="mb-4">Nova Ocorrência</h1>
 
-    {% set modo_local = modo if (modo is defined) else '' %}
-    {% set tipo = tipo_acao if (tipo_acao is defined) else '' %}
-    {% if modo_local == 'ATENDIMENTO_INDIVIDUAL' and tipo %}
-      {% set action_url = url_for('atendimento', oid=occ.ID, tipo_acao=tipo) %}
-    {% elif modo_local == 'EDITAR' %}
-      {% set action_url = url_for('editar_completo', oid=occ.ID) %}
-    {% else %}
-      {% set action_url = url_for('editar', oid=occ.ID) %}
-    {% endif %}
-
-    <form method="post" action="{{ action_url }}">
-      <div class="row g-3">
-        <div class="col-md-3">
-          <label>ID</label>
-          <input class="form-control readonly" value="{{ occ.ID }}" readonly>
-        </div>
-
-        <div class="col-md-3">
-          <label>Data (DCO)</label>
-          <input class="form-control readonly" value="{{ occ.DCO or '' }}" readonly>
-        </div>
-
-        <div class="col-md-3">
-          <label>Hora (HCO)</label>
-          <input class="form-control readonly" value="{{ occ.HCO or '' }}" readonly>
-        </div>
-
-        <div class="col-md-3">
-          <label>Status</label>
-          {% if modo_local == 'EDITAR' %}
-            <select name="STATUS" class="form-select">
-              <option value="ATENDIMENTO" {% if occ.STATUS=='ATENDIMENTO' %}selected{% endif %}>ATENDIMENTO</option>
-              <option value="FINALIZADA" {% if occ.STATUS=='FINALIZADA' %}selected{% endif %}>FINALIZADA</option>
-              <option value="ASSINADA" {% if occ.STATUS=='ASSINADA' %}selected{% endif %}>ASSINADA</option>
-            </select>
-          {% else %}
-            <input class="form-control readonly" value="{{ occ.STATUS or '' }}" readonly>
-          {% endif %}
-        </div>
-
+<form method="POST" action="{{ url_for('nova') }}">
+    <div class="row mb-3">
         <div class="col-md-6">
-          <label>Aluno</label>
-          {% if modo_local == 'EDITAR' %}
-            <input name="ALUNO" class="form-control" value="{{ occ.ALUNO or '' }}">
-          {% else %}
-            <input class="form-control readonly" value="{{ occ.ALUNO or '' }}" readonly>
-          {% endif %}
-        </div>
-
-        <div class="col-md-3">
-          <label>Sala</label>
-          {% if modo_local == 'EDITAR' %}
-            <select name="SALA" class="form-select">
-              {% for s in salas_disp %}<option value="{{ s }}" {% if occ.SALA==s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+            <label class="form-label">Professor:</label>
+            <select class="form-select" name="PROFESSOR" required>
+                <option value="">Selecione um Professor</option>
+                {% for prof in professores_disp %}
+                    <option value="{{ prof }}">{{ prof }}</option>
+                {% endfor %}
             </select>
-          {% else %}
-            <input class="form-control readonly" value="{{ occ.SALA or '' }}" readonly>
-          {% endif %}
         </div>
-
-        <div class="col-md-3">
-          <label>Professor</label>
-          {% if modo_local == 'EDITAR' %}
-            <select name="PROFESSOR" class="form-select">
-              {% for p in professores_disp %}<option value="{{ p }}" {% if occ.PROFESSOR==p %}selected{% endif %}>{{ p }}</option>{% endfor %}
+        <div class="col-md-6">
+            <label class="form-label">Sala:</label>
+            <select class="form-select" name="SALA" id="sala-select" required onchange="carregarAlunos()">
+                <option value="">Selecione uma Sala</option>
+                {% for sala in salas_disp %}
+                    <option value="{{ sala }}">{{ sala }}</option>
+                {% endfor %}
             </select>
-          {% else %}
-            <input class="form-control readonly" value="{{ occ.PROFESSOR or '' }}" readonly>
-          {% endif %}
         </div>
-
-        <div class="col-12">
-          <label>Descrição</label>
-          {% if modo_local == 'EDITAR' %}
-            <textarea name="DESCRICAO" class="form-control" rows="4">{{ occ.DESCRICAO or '' }}</textarea>
-          {% else %}
-            <textarea class="form-control readonly" rows="4" readonly>{{ occ.DESCRICAO or '' }}</textarea>
-          {% endif %}
+    </div>
+    
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label class="form-label">Aluno:</label>
+            <select class="form-select" name="ALUNO" id="aluno-select" required onchange="selecionarTutor()">
+                <option value="">Selecione um Aluno</option>
+                </select>
         </div>
-
-        <!-- ATP (Professor) -->
-        <div class="col-12">
-          <label>Atendimento Professor (ATP)</label>
-          {% if modo_local == 'EDITAR' %}
-            <textarea name="ATP" class="form-control" rows="3">{{ occ.ATP or '' }}</textarea>
-          {% else %}
-            <textarea class="form-control readonly" rows="3" readonly>{{ occ.ATP or '' }}</textarea>
-          {% endif %}
+        <div class="col-md-6">
+            <label class="form-label">Tutor:</label>
+            <input type="text" class="form-control" name="TUTOR" id="tutor-input" readonly required>
         </div>
+    </div>
 
-        <!-- ATT / ATC / ATG -->
-        <div class="col-md-4">
-          <label>Atendimento Tutor (ATT)</label>
-          {% if modo_local == 'ATENDIMENTO_INDIVIDUAL' and campo_atendimento == 'ATT' %}
-            <textarea name="ATT" class="form-control editavel" rows="3">{{ occ.ATT or '' }}</textarea>
-          {% elif modo_local == 'EDITAR' %}
-            <textarea name="ATT" class="form-control" rows="3">{{ occ.ATT or '' }}</textarea>
-          {% else %}
-            <textarea class="form-control readonly" rows="3" readonly>{{ occ.ATT or '' }}</textarea>
-          {% endif %}
+    <div class="mb-3">
+        <label class="form-label">Descrição da Ocorrência:</label>
+        <textarea class="form-control" name="DESCRICAO" rows="3" required></textarea>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">ATP (Atendimento Professor):</label>
+        <textarea class="form-control" name="ATP" rows="2"></textarea>
+    </div>
+    
+    <div class="mb-3">
+        <label class="form-label">Solicitar Ações (Marque para indicar que a ação é necessária):</label>
+        <div class="row">
+            <div class="col-md-4">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="FT" id="checkFT">
+                    <label class="form-check-label" for="checkFT">
+                        Atendimento Tutor (FT)
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="FC" id="checkFC">
+                    <label class="form-check-label" for="checkFC">
+                        Atendimento Coordenação (FC)
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="FG" id="checkFG">
+                    <label class="form-check-label" for="checkFG">
+                        Atendimento Gestão (FG)
+                    </label>
+                </div>
+            </div>
         </div>
+    </div>
+    
+    <button type="submit" class="btn btn-success mt-3">Registrar Ocorrência</button>
+    <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Cancelar</a>
+</form>
 
-        <div class="col-md-4">
-          <label>Atendimento Coordenação (ATC)</label>
-          {% if modo_local == 'ATENDIMENTO_INDIVIDUAL' and campo_atendimento == 'ATC' %}
-            <textarea name="ATC" class="form-control editavel" rows="3">{{ occ.ATC or '' }}</textarea>
-          {% elif modo_local == 'EDITAR' %}
-            <textarea name="ATC" class="form-control" rows="3">{{ occ.ATC or '' }}</textarea>
-          {% else %}
-            <textarea class="form-control readonly" rows="3" readonly>{{ occ.ATC or '' }}</textarea>
-          {% endif %}
-        </div>
+<script>
+    let alunosCache = {}; 
 
-        <div class="col-md-4">
-          <label>Atendimento Gestão (ATG)</label>
-          {% if modo_local == 'ATENDIMENTO_INDIVIDUAL' and campo_atendimento == 'ATG' %}
-            <textarea name="ATG" class="form-control editavel" rows="3">{{ occ.ATG or '' }}</textarea>
-          {% elif modo_local == 'EDITAR' %}
-            <textarea name="ATG" class="form-control" rows="3">{{ occ.ATG or '' }}</textarea>
-          {% else %}
-            <textarea class="form-control readonly" rows="3" readonly>{{ occ.ATG or '' }}</textarea>
-          {% endif %}
-        </div>
+    async function carregarAlunos() {
+        const salaSelect = document.getElementById('sala-select');
+        const alunoSelect = document.getElementById('aluno-select');
+        const tutorInput = document.getElementById('tutor-input');
+        const sala = salaSelect.value;
+        
+        alunoSelect.innerHTML = '<option value="">Selecione um Aluno</option>';
+        tutorInput.value = '';
 
-        <!-- PT/PC/PG -->
-        <div class="col-md-4">
-          <label>PT</label>
-          {% if modo_local == 'EDITAR' %}
-            <select name="PT" class="form-select">
-              <option value="SIM" {% if occ.PT=='SIM' %}selected{% endif %}>SIM</option>
-              <option value="NÃO" {% if occ.PT=='NÃO' %}selected{% endif %}>NÃO</option>
-            </select>
-          {% else %}
-            <input class="form-control readonly" value="{{ occ.PT or '' }}" readonly>
-          {% endif %}
-        </div>
+        if (!sala) {
+            return;
+        }
 
-        <div class="col-md-4">
-          <label>PC</label>
-          {% if modo_local == 'EDITAR' %}
-            <select name="PC" class="form-select">
-              <option value="SIM" {% if occ.PC=='SIM' %}selected{% endif %}>SIM</option>
-              <option value="NÃO" {% if occ.PC=='NÃO' %}selected{% endif %}>NÃO</option>
-            </select>
-          {% else %}
-            <input class="form-control readonly" value="{{ occ.PC or '' }}" readonly>
-          {% endif %}
-        </div>
+        let alunosPorSala = alunosCache[sala];
 
-        <div class="col-md-4">
-          <label>PG</label>
-          {% if modo_local == 'EDITAR' %}
-            <select name="PG" class="form-select">
-              <option value="SIM" {% if occ.PG=='SIM' %}selected{% endif %}>SIM</option>
-              <option value="NÃO" {% if occ.PG=='NÃO' %}selected{% endif %}>NÃO</option>
-            </select>
-          {% else %}
-            <input class="form-control readonly" value="{{ occ.PG or '' }}" readonly>
-          {% endif %}
-        </div>
+        if (!alunosPorSala) {
+            try {
+                const response = await fetch(`/api/alunos_por_sala/${encodeURIComponent(sala)}`);
+                if (!response.ok) {
+                    throw new Error('Erro ao buscar alunos');
+                }
+                alunosPorSala = await response.json();
+                alunosCache[sala] = alunosPorSala; 
+            } catch (error) {
+                console.error("Erro ao carregar alunos:", error);
+                alunoSelect.innerHTML = '<option value="">Erro ao carregar alunos</option>';
+                return;
+            }
+        }
+        
+        if (alunosPorSala.length > 0) {
+            alunosPorSala.forEach(aluno => {
+                const option = document.createElement('option');
+                option.value = aluno.Aluno; 
+                option.textContent = aluno.Aluno;
+                option.dataset.tutor = aluno.Tutor; 
+                alunoSelect.appendChild(option);
+            });
+        } else {
+             alunoSelect.innerHTML = '<option value="">Nenhum aluno encontrado</option>';
+        }
+    }
 
-        <!-- DT / DC / DG -->
-        <div class="col-md-4"><label>DT</label><input class="form-control readonly" value="{{ occ.DT or '' }}" readonly></div>
-        <div class="col-md-4"><label>DC</label><input class="form-control readonly" value="{{ occ.DC or '' }}" readonly></div>
-        <div class="col-md-4"><label>DG</label><input class="form-control readonly" value="{{ occ.DG or '' }}" readonly></div>
-
-        <div class="col-12 d-flex gap-2 justify-content-end mt-3">
-          <a href="{{ url_for('index') }}" class="btn btn-outline-light">Voltar</a>
-          {% if modo_local == 'ATENDIMENTO_INDIVIDUAL' and tipo %}
-            <button type="submit" class="btn btn-dark">Salvar Atendimento</button>
-          {% elif modo_local == 'EDITAR' %}
-            <button type="submit" class="btn btn-dark">Salvar Alterações</button>
-          {% endif %}
-        </div>
-      </div>
-    </form>
-  </div>
+    function selecionarTutor() {
+        const alunoSelect = document.getElementById('aluno-select');
+        const tutorInput = document.getElementById('tutor-input');
+        const selectedOption = alunoSelect.options[alunoSelect.selectedIndex];
+        
+        if (selectedOption && selectedOption.dataset.tutor) {
+            tutorInput.value = selectedOption.dataset.tutor;
+        } else {
+            tutorInput.value = '';
+        }
+    }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
