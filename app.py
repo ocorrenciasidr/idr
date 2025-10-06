@@ -12,17 +12,15 @@ from flask import (
 )
 import pandas as pd
 from supabase import create_client, Client
+from datetime import timezone
+import pytz
 
 # -------------------- Configurações gerais --------------------
-# Timezone (preferência por zoneinfo quando disponível)
-try:
-    from zoneinfo import ZoneInfo
-    TZ_SAO = ZoneInfo("America/Sao_Paulo")
-except Exception:
-    TZ_SAO = timezone(timedelta(hours=-3))
+TZ_SAO = pytz.timezone("America/Sao_Paulo")
+FORMATO_ENTRADA = "%Y-%m-%dT%H:%M:%S%z"  # Formato ISO padrão do Supabase
 
 # Formatos
-FORMATO_ENTRADA = "%Y-%m-%dT%H:%M:%S.%fZ"  # ISO (com milissegundos + Z) - usado quando aplicável
+FORMATO_ENTRADA = "%Y-%m-%dT%H:%M:%S%z"  # formato ISO padrão vindo do Supabase
 FORMATO_SAIDA_DATA = "%d/%m/%Y"
 FORMATO_SAIDA_HORA = "%H:%M"
 
@@ -40,43 +38,50 @@ _alunos_cache = None
 _professores_cache = None
 _salas_cache = None
 
-# -------------------- Mapeamento de colunas --------------------
-# Mapeia colunas do DB (MAIÚSCULO) para nomes amigáveis do app
 FINAL_COLUMNS_MAP = {
-    'ID': 'Nº Ocorrência',
-    'PROFESSOR': 'PROFESSOR',
-    'SALA': 'Sala',
-    'ALUNO': 'Aluno',
-    'DCO': 'DCO',
-    'HCO': 'HCO',
-    'DESCRICAO': 'Descrição da Ocorrência',
-    'ATP': 'Atendimento Professor',
-    'ATT': 'ATT',
-    'ATC': 'ATC',
-    'ATG': 'ATG',
-    'FT': 'FT',
-    'FC': 'FC',
-    'FG': 'FG',
-    'DT': 'DT',
-    'DC': 'DC',
-    'DG': 'DG',
-    'STATUS': 'Status',
-    'TUTOR': 'Tutor'
-}
-
+    "ID": "Nº Ocorrência",
+    "PROFESSOR": "PROFESSOR",
+    "SALA": "Sala",
+    "ALUNO": "Aluno",
+    "TUTOR": "Tutor",
+    "DESCRICAO_OCORRENCIA": "Descrição da Ocorrência",
+    "ATENDIMENTO_PROFESSOR": "Atendimento Professor",
+    "ATT": "ATT",
+    "ATC": "ATC",
+    "ATG": "ATG",
+    "STATUS": "Status",
+    "FT": "FT",
+    "FC": "FC",
+    "FG": "FG",
+    "DCO": "DCO",  # Data da Ocorrência
+    "HCO": "HCO",  # Hora da Ocorrência
+    "DT": "DT",    # Data Tutor
+    "DC": "DC",    # Data Coordenação
+    "DG": "DG"     # Data Gestão
 # -------------------- Conexão com Supabase --------------------
-def conectar_supabase() -> Client | None:
-    """Cria e retorna um cliente Supabase, ou None em caso de erro."""
+def conectar_supabase() -> Client:
+    """Cria a conexão com o Supabase."""
+    url = "https://<SEU_PROJETO>.supabase.co"
+    key = "<SUA_CHAVE_API>"
     try:
-        url = os.environ.get('SUPABASE_URL')
-        key = os.environ.get('SUPABASE_KEY')
-        if not url or not key:
-            print('ERRO: SUPABASE_URL ou SUPABASE_KEY não configuradas.')
-            return None
-        return create_client(url, key)
+        supabase = create_client(url, key)
+        return supabase
     except Exception as e:
-        print(f'Erro ao conectar com Supabase: {e}')
+        print("❌ Erro ao conectar no Supabase:", e)
         return None
+
+
+def obter_dados_supabase(tabela: str) -> list:
+    """Obtém dados de uma tabela do Supabase."""
+    supabase = conectar_supabase()
+    if not supabase:
+        return []
+    try:
+        resp = supabase.table(tabela).select("*").execute()
+        return resp.data or []
+    except Exception as e:
+        print(f"❌ Erro ao carregar dados da tabela {tabela}:", e)
+        return []
 
 # -------------------- Utilitários de cache --------------------
 def limpar_caches():
@@ -168,69 +173,70 @@ def get_proximo_id_supabase(supabase: Client):
         return 9999
 
 
-def carregar_dados() -> pd.DataFrame:
-    """Carrega e normaliza os dados da tabela 'ocorrencias'."""
+# -------------------- Configurações globais --------------------
+from datetime import timezone
+import pytz
+
+TZ_SAO = pytz.timezone("America/Sao_Paulo")
+FORMATO_ENTRADA = "%Y-%m-%dT%H:%M:%S%z"  # Formato padrão ISO vindo do Supabase
+
+
+# -------------------- Função carregar_dados --------------------
+def carregar_dados():
     global _df_cache
-    if _df_cache is not None:
-        return _df_cache
 
-    supabase = conectar_supabase()
-    if not supabase:
-        return pd.DataFrame(columns=list(FINAL_COLUMNS_MAP.values()))
-
-    try:
-        resp = supabase.table('ocorrencias').select('*').order('ID', desc=True).execute()
-        data = resp.data or []
-    except Exception as e:
-        print(f"Erro ao carregar ocorrencias: {e}")
-        flash(f"Erro ao carregar dados do Supabase: {e}", "danger")
-        return pd.DataFrame(columns=list(FINAL_COLUMNS_MAP.values()))
-
+    data = obter_dados_supabase("ocorrencias")  # função que busca no Supabase
     expected_cols_app = list(FINAL_COLUMNS_MAP.values())
 
     if not data:
         df = pd.DataFrame([], columns=expected_cols_app)
     else:
         df = pd.DataFrame(data)
-        # Renomeia colunas vindas do DB para os nomes usados no app, quando aplicável
-        rename_map = {db_col: app_col for db_col, app_col in FINAL_COLUMNS_MAP.items() if db_col in df.columns}
-        if rename_map:
-            df = df.rename(columns=rename_map)
 
-    # Garante todas as colunas esperadas
+        # Renomeia colunas do DB (MAIÚSCULO) para as chaves do App/Pandas
+        rename_map = {
+            db_col: app_col
+            for db_col, app_col in FINAL_COLUMNS_MAP.items()
+            if db_col in df.columns
+        }
+        df = df.rename(columns=rename_map)
+
+    # 1. Garante todas as colunas e valores padrão
     for col in expected_cols_app:
         if col not in df.columns:
-            df[col] = '' if col != 'Nº Ocorrência' else 0
+            df[col] = 0 if col == "Nº Ocorrência" else ""
 
-    # Converte Nº Ocorrência para int quando possível
-    if 'Nº Ocorrência' in df.columns:
-        df['Nº Ocorrência'] = pd.to_numeric(df['Nº Ocorrência'], errors='coerce').fillna(0).astype(int)
+    # 2. Processamento de tipos e datas
+    if "Nº Ocorrência" in df.columns:
+        df["Nº Ocorrência"] = (
+            pd.to_numeric(df["Nº Ocorrência"], errors="coerce")
+            .fillna(0)
+            .astype(int)
+        )
 
-    # Processa colunas de data/hora (aceita vários formatos)
-    for col in ['DCO', 'DT', 'DC', 'DG', 'HCO']:
+    for col in ["DCO", "DT", "DC", "DG", "HCO"]:
         if col in df.columns:
-            df[col] = pd.to_datetime(df[col], errors='coerce', utc=True)
-            try:
-                df[col] = df[col].dt.tz_convert(TZ_SAO)
-            except Exception:
-                # se já for timezone-aware local ou sem tz, converta sem erro
-                pass
+            df[col] = pd.to_datetime(
+                df[col],
+                format=FORMATO_ENTRADA,
+                errors="coerce",
+                utc=True,
+            ).dt.tz_convert(TZ_SAO)
 
-            if col == 'DCO':
-                # Formato para exibição
-                df['DCO'] = df['DCO'].dt.strftime(FORMATO_SAIDA_DATA).fillna('')
-            elif col == 'HCO':
-                df['HCO'] = df['HCO'].dt.strftime(FORMATO_SAIDA_HORA).fillna('')
-            else:
-                # para DT/DC/DG mantemos isoformat quando possível
-                df[col] = df[col].dt.strftime('%Y-%m-%dT%H:%M:%S')
+            # Formata para exibição
+            if col == "DCO":
+                df["DCO"] = df["DCO"].dt.strftime("%d/%m/%Y")
+            elif col == "HCO":
+                df["HCO"] = df["HCO"].dt.strftime("%H:%M")
 
-    # Normaliza colunas de texto
-    text_cols = ['PROFESSOR', 'Sala', 'Aluno', 'Tutor', 'Descrição da Ocorrência',
-                 'Atendimento Professor', 'ATT', 'ATC', 'ATG', 'Status', 'FT', 'FC', 'FG']
+    # 3. Limpeza de colunas de texto
+    text_cols = [
+        "PROFESSOR", "Sala", "Aluno", "Tutor", "Descrição da Ocorrência",
+        "Atendimento Professor", "ATT", "ATC", "ATG", "Status", "FT", "FC", "FG"
+    ]
     for col in text_cols:
         if col in df.columns:
-            df[col] = df[col].astype(str).str.strip().fillna('')
+            df[col] = df[col].astype(str).str.strip().str.upper().fillna("")
 
     _df_cache = df
     return df
@@ -645,3 +651,4 @@ def tutoria():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=True, host='0.0.0.0', port=port)
+
