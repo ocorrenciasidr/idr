@@ -1,143 +1,167 @@
+<!-- templates/index.html -->
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-<meta charset="UTF-8">
-<title>SGCE - Ocorrências</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<style>
-  body { background-color: #121212; color: #f1f1f1; font-size: 11px; }
-  h2 { text-align: center; margin-bottom: 20px; font-size: 18px; }
-  
-  .table {
-    font-size: 11px;
-    line-height: 1.1;
-    vertical-align: middle;
-    border-collapse: collapse;
-  }
-
-  .table thead th {
-    background-color: #1e1e1e;
-    color: #fff;
-    padding: 6px;
-    white-space: nowrap;
-  }
-
-  .table tbody td {
-    padding: 5px 6px;
-    white-space: nowrap;
-  }
-
-  .table td, .table th {
-    border: 1px solid #2a2a2a;
-  }
-
-  .badge-pendente { background-color: #ffc107!important; color: #212529!important; font-size: 10px; padding: 3px 5px; }
-  .badge-ok { background-color: #28a745!important; font-size: 10px; padding: 3px 5px; }
-
-  .btn-action { margin-right: 2px; padding: 2px 6px; font-size: 10px; }
-  .btn { border-radius: 4px; }
-
-  .table-warning td, .table-success td { color: #000 !important; }
-
-  .container { max-width: 95%; }
-
-  .text-end .btn { font-size: 11px; padding: 4px 10px; }
-</style>
+  <meta charset="utf-8" />
+  <title>SGCE — Ocorrências</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background:#fffaf0; padding:20px; font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
+    .card-layout { background: linear-gradient(180deg,#fff,#fffaf8); padding:18px; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,0.06); }
+    h3 { font-weight:700; letter-spacing:.2px; }
+    .filter-select { width: 220px; display:inline-block; margin-right:10px; }
+    .btn-small { padding:0.28rem .5rem; font-size:.78rem; border-radius:6px; }
+    table { font-size: .86rem; background: #fff; border-radius:8px; overflow:hidden; }
+    th, td { text-align:center; vertical-align:middle !important; }
+    thead th { background:#fff3cc; color:#2b2b2b; font-weight:700; border-bottom:1px solid rgba(0,0,0,0.08); }
+    tbody tr:hover { background: rgba(0,0,0,0.02); transform: translateY(-1px); transition: all .12s ease; }
+    .status-atendimento { background:#f8d7da; color:#7a161b; padding:6px 8px; border-radius:6px; display:inline-block; min-width:110px; }
+    .status-finalizada { background:#fff3cd; color:#856404; padding:6px 8px; border-radius:6px; display:inline-block; min-width:110px; }
+    .status-assinada { background:#d4edda; color:#155724; padding:6px 8px; border-radius:6px; display:inline-block; min-width:110px; }
+    .icon-button { cursor:pointer; font-size:1.15rem; padding:6px 8px; display:inline-block; border-radius:6px; }
+    .ft-sim { color:#b02a37; }   /* vermelho para "SIM" (solicitação) */
+    .ft-nao { color:#2b8a3e; }   /* verde para "NÃO" */
+    .controls { margin-bottom:12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .top-actions { margin-left:auto; display:flex; gap:8px; }
+    .small-txt { font-size:.82rem; color:#444; }
+    .table-responsive { overflow:auto; max-height:65vh; }
+    .nowrap { white-space:nowrap; }
+    @media (max-width:900px){ .filter-select{width:100%} .top-actions{width:100%; justify-content:flex-start} }
+  </style>
 </head>
 <body>
-<div class="container mt-3">
-  <h2>Sistema de Gestão de Convivência Escolar</h2>
+  <div class="container">
+    <div class="card-layout">
+      <h3 class="mb-3 text-center">Sistema de Gestão de Convivência Escolar</h3>
 
-  <div class="mb-2 text-end">
-    <a href="{{ url_for('relatorio_inicial') }}" class="btn btn-success btn-sm">Gerar Relatórios</a>
-    <a href="{{ url_for('nova') }}" class="btn btn-primary btn-sm">Nova Ocorrência</a>
-  </div>
+      <div class="controls mb-3 align-items-center">
+        <div>
+          <label class="small-txt me-2">Tutor:</label>
+          <form id="filtrosForm" method="get" action="{{ url_for('index') }}" style="display:inline;">
+            <select name="tutor_filtro" class="form-select filter-select" id="filterTutor">
+              {% for t in tutores_disp %}
+                <option value="{{ t }}" {% if filtro_tutor_sel==t %}selected{% endif %}>{{ t }}</option>
+              {% endfor %}
+            </select>
 
-  <div class="table-responsive">
-    <table class="table table-dark table-striped table-bordered text-center align-middle">
-      <thead>
-        <tr>
-          <th>ID</th><th>Data</th><th>Hora</th><th>Aluno</th><th>Sala</th>
-          <th>Professor</th><th>Tutor</th><th>FT</th><th>FC</th><th>FG</th>
-          <th>Status</th><th>Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-      {% for r in registros %}
-        <tr class="{% if r.STATUS=='FINALIZADA' %}table-success text-dark{% elif r.STATUS=='ATENDIMENTO' %}table-warning text-dark{% endif %}">
-          <td>{{ r.ID }}</td>
-          <td>{{ r.DCO }}</td>
-          <td>{{ r.HCO }}</td>
-          <td>{{ r.ALUNO }}</td>
-          <td>{{ r.SALA }}</td>
-          <td>{{ r.PROFESSOR }}</td>
-          <td>{{ r.TUTOR }}</td>
-          
-          <td>{% if r.FT=='SIM' %}<span class="badge badge-pendente">⚠️</span>{% else %}<span class="badge badge-ok">✔️</span>{% endif %}</td>
-          <td>{% if r.FC=='SIM' %}<span class="badge badge-pendente">⚠️</span>{% else %}<span class="badge badge-ok">✔️</span>{% endif %}</td>
-          <td>{% if r.FG=='SIM' %}<span class="badge badge-pendente">⚠️</span>{% else %}<span class="badge badge-ok">✔️</span>{% endif %}</td>
+            <label class="small-txt ms-2 me-2">Status:</label>
+            <select name="status_filtro" class="form-select filter-select" id="filterStatus">
+              {% for s in status_disp %}
+                <option value="{{ s }}" {% if filtro_status_sel==s %}selected{% endif %}>{{ s }}</option>
+              {% endfor %}
+            </select>
 
-          <td>
-            {% if r.STATUS=='ATENDIMENTO' %}
-              <span class="badge bg-warning text-dark">{{ r.STATUS }}</span>
-            {% elif r.STATUS=='ASSINADA' %}
-              <span class="badge bg-info text-dark">{{ r.STATUS }}</span>
+            <button type="submit" class="btn btn-primary btn-small">Filtrar</button>
+            <a href="{{ url_for('index') }}" class="btn btn-success btn-small">Limpar</a>
+          </form>
+        </div>
+
+        <div class="top-actions ms-auto">
+          <a href="{{ url_for('nova') }}" class="btn btn-dark btn-small">+ Nova Ocorrência</a>
+          <a href="{{ url_for('home') }}" class="btn btn-outline-secondary btn-small">Tela Inicial</a>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover">
+          <thead>
+            <tr>
+              <th class="nowrap">ID</th>
+              <th>Data</th>
+              <th>Hora</th>
+              <th>Aluno</th>
+              <th>Sala</th>
+              <th>Professor</th>
+              <th>Tutor</th>
+              <th>FT</th>
+              <th>FC</th>
+              <th>FG</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in registros %}
+              <tr>
+                <td class="nowrap">{{ r.ID }}</td>
+                <td>{{ r.DCO or '' }}</td>
+                <td>{{ r.HCO or '' }}</td>
+                <td style="text-align:left;">{{ r.ALUNO or '' }}</td>
+                <td>{{ r.SALA or '' }}</td>
+                <td>{{ r.PROFESSOR or '' }}</td>
+                <td>{{ r.TUTOR or '' }}</td>
+
+                <!-- FT -->
+                <td>
+                  {% if r.FT == "SIM" %}
+                    <a class="icon-button ft-sim" title="Solicitação de Tutor ativa — abrir atendimento" href="{{ url_for('atendimento', oid=r.ID, tipo_acao='FT') }}">⚠️</a>
+                  {% else %}
+                    <span class="icon-button ft-nao" title="Solicitação atendida">✔️</span>
+                  {% endif %}
+                </td>
+
+                <!-- FC -->
+                <td>
+                  {% if r.FC == "SIM" %}
+                    <a class="icon-button ft-sim" title="Solicitação de Coordenação ativa — abrir atendimento" href="{{ url_for('atendimento', oid=r.ID, tipo_acao='FC') }}">⚠️</a>
+                  {% else %}
+                    <span class="icon-button ft-nao" title="Solicitação atendida">✔️</span>
+                  {% endif %}
+                </td>
+
+                <!-- FG -->
+                <td>
+                  {% if r.FG == "SIM" %}
+                    <a class="icon-button ft-sim" title="Solicitação de Gestão ativa — abrir atendimento" href="{{ url_for('atendimento', oid=r.ID, tipo_acao='FG') }}">⚠️</a>
+                  {% else %}
+                    <span class="icon-button ft-nao" title="Solicitação atendida">✔️</span>
+                  {% endif %}
+                </td>
+
+                <!-- STATUS with colors -->
+                <td>
+                  {% if r.STATUS == "ATENDIMENTO" %}
+                    <span class="status-atendimento">ATENDIMENTO</span>
+                  {% elif r.STATUS == "FINALIZADA" %}
+                    <span class="status-finalizada">FINALIZADA</span>
+                  {% elif r.STATUS == "ASSINADA" %}
+                    <span class="status-assinada">ASSINADA</span>
+                  {% else %}
+                    <span>{{ r.STATUS }}</span>
+                  {% endif %}
+                </td>
+
+                <!-- Ações: Ver / Editar -->
+                <td>
+                  <a href="{{ url_for('editar', oid=r.ID) }}" class="btn btn-info btn-small">Ver</a>
+                  <button class="btn btn-primary btn-small" onclick="editarCompletoPrompt({{ r.ID }})">Editar</button>
+                </td>
+              </tr>
             {% else %}
-              <span class="badge bg-success">{{ r.STATUS }}</span>
-            {% endif %}
-          </td>
-          <td>
-            <!-- Corrigido para incluir oid na rota -->
-            <a href="{{ url_for('editar', oid=r.ID) }}?modo=ver" class="btn btn-info btn-sm btn-action">Ver</a>
-            <a href="#" class="btn btn-primary btn-sm btn-action" data-bs-toggle="modal" data-bs-target="#senhaModal"
-               onclick="setEditarOid({{ r.ID }})">Editar</a>
-          </td>
-        </tr>
-      {% else %}
-        <tr><td colspan="12" class="text-center">Nenhuma ocorrência encontrada.</td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<!-- Modal Senha -->
-<div class="modal fade" id="senhaModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <!-- O action pode apontar para a rota 'editar' sem oid, que será passado pelo hidden -->
-      <form method="post" action="{{ url_for('editar', oid=0) }}" id="senhaForm">
-        <div class="modal-header">
-          <h5 class="modal-title text-dark">Acesso Restrito</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body text-dark">
-          <input type="hidden" name="oid" id="editarOid">
-          <div class="mb-3">
-            <label for="senha" class="form-label">Digite a senha:</label>
-            <input type="password" class="form-control" name="senha" id="senha" required>
-          </div>
-          <div id="senhaErro" class="text-danger" style="display:none;">Senha incorreta!</div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Confirmar</button>
-        </div>
-      </form>
+              <tr><td colspan="12">Nenhum registro encontrado.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
-</div>
 
-
-<script>
-function setEditarOid(oid) { 
-  document.getElementById('editarOid').value = oid; 
-  const form = document.getElementById('senhaForm');
-  form.action = "{{ url_for('editar', oid=0) }}".replace('/0', '/' + oid);
-}
-</script>
-
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Ao clicar em "Editar" solicita senha e envia POST para /editar_completo/<id>
+    function editarCompletoPrompt(id){
+      const senha = prompt("Senha de edição (idrgestao):");
+      if(senha === null) return;
+      // cria form POST dinamicamente
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = `/editar_completo/${id}`;
+      const input = document.createElement('input');
+      input.type = 'hidden'; input.name = 'senha'; input.value = senha;
+      form.appendChild(input);
+      document.body.appendChild(form);
+      form.submit();
+    }
+  </script>
 </body>
 </html>
