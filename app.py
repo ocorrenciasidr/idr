@@ -172,6 +172,11 @@ def home():
     ano = datetime.now(TZ_SAO).year
     return render_template("home.html", ano=ano)
 
+@app.route("/relatorio_inicial")
+def relatorio_inicial():
+    # Aqui você pode renderizar o template do relatório ou apenas retornar um texto temporário
+    return render_template("relatorio_inicial.html")  # crie relatorio.html ou substitua por um retorno de teste
+
 @app.route("/index", methods=["GET"])
 def index():
     filtro_tutor = request.args.get("tutor_filtro")
@@ -354,4 +359,5 @@ if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
 
    
+
 
