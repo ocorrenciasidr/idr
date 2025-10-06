@@ -7,191 +7,199 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    body{background:#f6f7fb; padding:20px; font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto;}
-    .card{padding:18px;border-radius:8px; background:#fff; box-shadow:0 6px 18px rgba(11,22,44,.04);}
-    label{font-weight:600;}
-    .readonly{background:#f4f5f7;}
-    .muted{font-size:.88rem;color:#666;}
-    .btn-small{padding:.28rem .5rem; font-size:.84rem;}
+    :root{--bg:#0f1724;--panel:#071428;--muted:#b6c2d1;}
+    body{background:var(--bg);color:#fff;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto;padding:20px;}
+    .panel{max-width:980px;margin:auto;background:linear-gradient(180deg,#0b1220,#07101a);padding:22px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.6)}
+    label{font-weight:600;color:#e6eef8}
+    .form-control,.form-select,textarea{background:#071428;color:#e6eef8;border:1px solid rgba(255,255,255,0.06)}
+    .readonly{background:#0b1220;color:#cbd5e1}
+    .btn-dark{background:#1f2937;color:#fff;border-radius:8px;border:1px solid rgba(255,255,255,0.04);font-weight:600}
+    .btn-outline-light{color:#fff;border-color:rgba(255,255,255,0.06);border-radius:8px}
+    .muted{color:var(--muted);font-size:.92rem}
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="card mx-auto" style="max-width:980px;">
-      {% set occ = (ocorrencia if (ocorrencia is defined) else (ocorrencias if (ocorrencias is defined) else None)) %}
-      <h3 class="mb-2">Ocorrência — {{ occ.ID if occ else '' }}</h3>
-      <div class="mb-3 muted">Visualização / edição conforme modo</div>
+  <div class="panel">
+    {% set occ = (ocorrencia if (ocorrencia is defined) else (ocorrencias if (ocorrencias is defined) else None)) %}
+    <h3 class="mb-2">Ocorrência - {{ occ.ID if occ else '' }}</h3>
+    <div class="mb-3 muted">Modo: <strong>{{ modo if modo is defined else 'VISUALIZAÇÃO' }}</strong></div>
 
-      {# Determina o modo e action do form #}
-      {% set modo_local = modo if (modo is defined) else '' %}
-      {% set tipo = tipo_acao if (tipo_acao is defined) else '' %}
-      {% if modo_local == 'ATENDIMENTO_INDIVIDUAL' and tipo %}
-        {% set action_url = url_for('atendimento', oid=occ.ID, tipo_acao=tipo) %}
-      {% elif modo_local == 'EDITAR' %}
-        {% set action_url = url_for('editar_completo', oid=occ.ID) %}
-      {% else %}
-        {% set action_url = url_for('editar', oid=occ.ID) %}
-      {% endif %}
+    {% set modo_local = modo if (modo is defined) else '' %}
+    {% set tipo = tipo_acao if (tipo_acao is defined) else '' %}
+    {% if modo_local == 'ATENDIMENTO_INDIVIDUAL' and tipo %}
+      {% set action_url = url_for('atendimento', oid=occ.ID, tipo_acao=tipo) %}
+    {% elif modo_local == 'EDITAR' %}
+      {% set action_url = url_for('editar_completo', oid=occ.ID) %}
+    {% else %}
+      {% set action_url = url_for('editar', oid=occ.ID) %}
+    {% endif %}
 
-      <form method="post" action="{{ action_url }}">
-        <div class="row g-3">
-          <div class="col-md-3">
-            <label>ID</label>
-            <input type="text" class="form-control readonly" value="{{ occ.ID }}" readonly>
-          </div>
-          <div class="col-md-3">
-            <label>Data (DCO)</label>
-            <input type="text" class="form-control readonly" value="{{ occ.DCO or '' }}" readonly>
-          </div>
-          <div class="col-md-3">
-            <label>Hora (HCO)</label>
-            <input type="text" class="form-control readonly" value="{{ occ.HCO or '' }}" readonly>
-          </div>
-          <div class="col-md-3">
-            <label>Status</label>
-            {% if modo_local == 'EDITAR' %}
-              <select name="STATUS" class="form-select">
-                <option value="ATENDIMENTO" {% if occ.STATUS=='ATENDIMENTO' %}selected{% endif %}>ATENDIMENTO</option>
-                <option value="FINALIZADA" {% if occ.STATUS=='FINALIZADA' %}selected{% endif %}>FINALIZADA</option>
-                <option value="ASSINADA" {% if occ.STATUS=='ASSINADA' %}selected{% endif %}>ASSINADA</option>
-              </select>
-            {% else %}
-              <input type="text" class="form-control readonly" value="{{ occ.STATUS }}" readonly>
-            {% endif %}
-          </div>
-
-          <div class="col-md-6">
-            <label>Aluno</label>
-            {% if modo_local == 'EDITAR' %}
-              <input name="ALUNO" class="form-control" value="{{ occ.ALUNO or '' }}">
-            {% else %}
-              <input class="form-control readonly" value="{{ occ.ALUNO or '' }}" readonly>
-            {% endif %}
-          </div>
-
-          <div class="col-md-3">
-            <label>Sala</label>
-            {% if modo_local == 'EDITAR' %}
-              <select name="SALA" class="form-select">
-                {% for s in salas_disp %}<option value="{{ s }}" {% if occ.SALA==s %}selected{% endif %}>{{ s }}</option>{% endfor %}
-              </select>
-            {% else %}
-              <input class="form-control readonly" value="{{ occ.SALA or '' }}" readonly>
-            {% endif %}
-          </div>
-
-          <div class="col-md-3">
-            <label>Professor</label>
-            {% if modo_local == 'EDITAR' %}
-              <select name="PROFESSOR" class="form-select">
-                {% for p in professores_disp %}<option value="{{ p }}" {% if occ.PROFESSOR==p %}selected{% endif %}>{{ p }}</option>{% endfor %}
-              </select>
-            {% else %}
-              <input class="form-control readonly" value="{{ occ.PROFESSOR or '' }}" readonly>
-            {% endif %}
-          </div>
-
-          <div class="col-12">
-            <label>Descrição</label>
-            {% if modo_local == 'EDITAR' %}
-              <textarea name="DESCRICAO" class="form-control" rows="4">{{ occ.DESCRICAO or '' }}</textarea>
-            {% else %}
-              <textarea class="form-control readonly" rows="4" readonly>{{ occ.DESCRICAO or '' }}</textarea>
-            {% endif %}
-          </div>
-
-          <!-- Atendimento fields: ATT, ATC, ATG -->
-          <div class="col-md-4">
-            <label>Atendimento Tutor (ATT)</label>
-            {% if modo_local == 'ATENDIMENTO_INDIVIDUAL' and campo_atendimento == 'ATT' %}
-              <textarea name="ATT" class="form-control" rows="3">{{ occ.ATT or '' }}</textarea>
-            {% elif modo_local == 'EDITAR' %}
-              <textarea name="ATT" class="form-control" rows="3">{{ occ.ATT or '' }}</textarea>
-            {% else %}
-              <textarea class="form-control readonly" rows="3" readonly>{{ occ.ATT or '' }}</textarea>
-            {% endif %}
-          </div>
-
-          <div class="col-md-4">
-            <label>Atendimento Coordenação (ATC)</label>
-            {% if modo_local == 'ATENDIMENTO_INDIVIDUAL' and campo_atendimento == 'ATC' %}
-              <textarea name="ATC" class="form-control" rows="3">{{ occ.ATC or '' }}</textarea>
-            {% elif modo_local == 'EDITAR' %}
-              <textarea name="ATC" class="form-control" rows="3">{{ occ.ATC or '' }}</textarea>
-            {% else %}
-              <textarea class="form-control readonly" rows="3" readonly>{{ occ.ATC or '' }}</textarea>
-            {% endif %}
-          </div>
-
-          <div class="col-md-4">
-            <label>Atendimento Gestão (ATG)</label>
-            {% if modo_local == 'ATENDIMENTO_INDIVIDUAL' and campo_atendimento == 'ATG' %}
-              <textarea name="ATG" class="form-control" rows="3">{{ occ.ATG or '' }}</textarea>
-            {% elif modo_local == 'EDITAR' %}
-              <textarea name="ATG" class="form-control" rows="3">{{ occ.ATG or '' }}</textarea>
-            {% else %}
-              <textarea class="form-control readonly" rows="3" readonly>{{ occ.ATG or '' }}</textarea>
-            {% endif %}
-          </div>
-
-          <!-- FT / FC / FG flags (show as select in EDITAR mode; read-only otherwise) -->
-          <div class="col-md-4">
-            <label>FT</label>
-            {% if modo_local == 'EDITAR' %}
-              <select name="FT" class="form-select">
-                <option value="SIM" {% if occ.FT=='SIM' %}selected{% endif %}>SIM</option>
-                <option value="NÃO" {% if occ.FT=='NÃO' %}selected{% endif %}>NÃO</option>
-              </select>
-            {% else %}
-              <input class="form-control readonly" value="{{ occ.FT or '' }}" readonly>
-            {% endif %}
-          </div>
-
-          <div class="col-md-4">
-            <label>FC</label>
-            {% if modo_local == 'EDITAR' %}
-              <select name="FC" class="form-select">
-                <option value="SIM" {% if occ.FC=='SIM' %}selected{% endif %}>SIM</option>
-                <option value="NÃO" {% if occ.FC=='NÃO' %}selected{% endif %}>NÃO</option>
-              </select>
-            {% else %}
-              <input class="form-control readonly" value="{{ occ.FC or '' }}" readonly>
-            {% endif %}
-          </div>
-
-          <div class="col-md-4">
-            <label>FG</label>
-            {% if modo_local == 'EDITAR' %}
-              <select name="FG" class="form-select">
-                <option value="SIM" {% if occ.FG=='SIM' %}selected{% endif %}>SIM</option>
-                <option value="NÃO" {% if occ.FG=='NÃO' %}selected{% endif %}>NÃO</option>
-              </select>
-            {% else %}
-              <input class="form-control readonly" value="{{ occ.FG or '' }}" readonly>
-            {% endif %}
-          </div>
-
-          <!-- Dados de resposta (DT/DC/DG) - apenas leitura -->
-          <div class="col-md-4"><label>DT</label><input class="form-control readonly" value="{{ occ.DT or '' }}" readonly></div>
-          <div class="col-md-4"><label>DC</label><input class="form-control readonly" value="{{ occ.DC or '' }}" readonly></div>
-          <div class="col-md-4"><label>DG</label><input class="form-control readonly" value="{{ occ.DG or '' }}" readonly></div>
-
-          <div class="col-12 d-flex gap-2 justify-content-end">
-            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-small">Voltar</a>
-
-            {% if modo_local == 'ATENDIMENTO_INDIVIDUAL' and tipo %}
-              <button type="submit" class="btn btn-success btn-small">Salvar Atendimento</button>
-            {% elif modo_local == 'EDITAR' %}
-              <button type="submit" class="btn btn-primary btn-small">Salvar Alterações</button>
-            {% else %}
-              {# visualização apenas #}
-            {% endif %}
-          </div>
-
+    <form method="post" action="{{ action_url }}">
+      <div class="row g-3">
+        <div class="col-md-3">
+          <label>ID</label>
+          <input class="form-control readonly" value="{{ occ.ID }}" readonly>
         </div>
-      </form>
-    </div>
-  </div>
 
+        <div class="col-md-3">
+          <label>Data (DCO)</label>
+          <input class="form-control readonly" value="{{ occ.DCO or '' }}" readonly>
+        </div>
+
+        <div class="col-md-3">
+          <label>Hora (HCO)</label>
+          <input class="form-control readonly" value="{{ occ.HCO or '' }}" readonly>
+        </div>
+
+        <div class="col-md-3">
+          <label>Status</label>
+          {% if modo_local == 'EDITAR' %}
+            <select name="STATUS" class="form-select">
+              <option value="ATENDIMENTO" {% if occ.STATUS=='ATENDIMENTO' %}selected{% endif %}>ATENDIMENTO</option>
+              <option value="FINALIZADA" {% if occ.STATUS=='FINALIZADA' %}selected{% endif %}>FINALIZADA</option>
+              <option value="ASSINADA" {% if occ.STATUS=='ASSINADA' %}selected{% endif %}>ASSINADA</option>
+            </select>
+          {% else %}
+            <input class="form-control readonly" value="{{ occ.STATUS or '' }}" readonly>
+          {% endif %}
+        </div>
+
+        <div class="col-md-6">
+          <label>Aluno</label>
+          {% if modo_local == 'EDITAR' %}
+            <input name="ALUNO" class="form-control" value="{{ occ.ALUNO or '' }}">
+          {% else %}
+            <input class="form-control readonly" value="{{ occ.ALUNO or '' }}" readonly>
+          {% endif %}
+        </div>
+
+        <div class="col-md-3">
+          <label>Sala</label>
+          {% if modo_local == 'EDITAR' %}
+            <select name="SALA" class="form-select">
+              {% for s in salas_disp %}<option value="{{ s }}" {% if occ.SALA==s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+            </select>
+          {% else %}
+            <input class="form-control readonly" value="{{ occ.SALA or '' }}" readonly>
+          {% endif %}
+        </div>
+
+        <div class="col-md-3">
+          <label>Professor</label>
+          {% if modo_local == 'EDITAR' %}
+            <select name="PROFESSOR" class="form-select">
+              {% for p in professores_disp %}<option value="{{ p }}" {% if occ.PROFESSOR==p %}selected{% endif %}>{{ p }}</option>{% endfor %}
+            </select>
+          {% else %}
+            <input class="form-control readonly" value="{{ occ.PROFESSOR or '' }}" readonly>
+          {% endif %}
+        </div>
+
+        <div class="col-12">
+          <label>Descrição</label>
+          {% if modo_local == 'EDITAR' %}
+            <textarea name="DESCRICAO" class="form-control" rows="4">{{ occ.DESCRICAO or '' }}</textarea>
+          {% else %}
+            <textarea class="form-control readonly" rows="4" readonly>{{ occ.DESCRICAO or '' }}</textarea>
+          {% endif %}
+        </div>
+
+        <!-- ATP (Professor) -->
+        <div class="col-12">
+          <label>Atendimento Professor (ATP)</label>
+          {% if modo_local == 'EDITAR' %}
+            <textarea name="ATP" class="form-control" rows="3">{{ occ.ATP or '' }}</textarea>
+          {% else %}
+            <textarea class="form-control readonly" rows="3" readonly>{{ occ.ATP or '' }}</textarea>
+          {% endif %}
+        </div>
+
+        <!-- ATT / ATC / ATG -->
+        <div class="col-md-4">
+          <label>Atendimento Tutor (ATT)</label>
+          {% if modo_local == 'ATENDIMENTO_INDIVIDUAL' and campo_atendimento == 'ATT' %}
+            <textarea name="ATT" class="form-control" rows="3">{{ occ.ATT or '' }}</textarea>
+          {% elif modo_local == 'EDITAR' %}
+            <textarea name="ATT" class="form-control" rows="3">{{ occ.ATT or '' }}</textarea>
+          {% else %}
+            <textarea class="form-control readonly" rows="3" readonly>{{ occ.ATT or '' }}</textarea>
+          {% endif %}
+        </div>
+
+        <div class="col-md-4">
+          <label>Atendimento Coordenação (ATC)</label>
+          {% if modo_local == 'ATENDIMENTO_INDIVIDUAL' and campo_atendimento == 'ATC' %}
+            <textarea name="ATC" class="form-control" rows="3">{{ occ.ATC or '' }}</textarea>
+          {% elif modo_local == 'EDITAR' %}
+            <textarea name="ATC" class="form-control" rows="3">{{ occ.ATC or '' }}</textarea>
+          {% else %}
+            <textarea class="form-control readonly" rows="3" readonly>{{ occ.ATC or '' }}</textarea>
+          {% endif %}
+        </div>
+
+        <div class="col-md-4">
+          <label>Atendimento Gestão (ATG)</label>
+          {% if modo_local == 'ATENDIMENTO_INDIVIDUAL' and campo_atendimento == 'ATG' %}
+            <textarea name="ATG" class="form-control" rows="3">{{ occ.ATG or '' }}</textarea>
+          {% elif modo_local == 'EDITAR' %}
+            <textarea name="ATG" class="form-control" rows="3">{{ occ.ATG or '' }}</textarea>
+          {% else %}
+            <textarea class="form-control readonly" rows="3" readonly>{{ occ.ATG or '' }}</textarea>
+          {% endif %}
+        </div>
+
+        <!-- FT/FC/FG -->
+        <div class="col-md-4">
+          <label>FT</label>
+          {% if modo_local == 'EDITAR' %}
+            <select name="FT" class="form-select">
+              <option value="SIM" {% if occ.FT=='SIM' %}selected{% endif %}>SIM</option>
+              <option value="NÃO" {% if occ.FT=='NÃO' %}selected{% endif %}>NÃO</option>
+            </select>
+          {% else %}
+            <input class="form-control readonly" value="{{ occ.FT or '' }}" readonly>
+          {% endif %}
+        </div>
+
+        <div class="col-md-4">
+          <label>FC</label>
+          {% if modo_local == 'EDITAR' %}
+            <select name="FC" class="form-select">
+              <option value="SIM" {% if occ.FC=='SIM' %}selected{% endif %}>SIM</option>
+              <option value="NÃO" {% if occ.FC=='NÃO' %}selected{% endif %}>NÃO</option>
+            </select>
+          {% else %}
+            <input class="form-control readonly" value="{{ occ.FC or '' }}" readonly>
+          {% endif %}
+        </div>
+
+        <div class="col-md-4">
+          <label>FG</label>
+          {% if modo_local == 'EDITAR' %}
+            <select name="FG" class="form-select">
+              <option value="SIM" {% if occ.FG=='SIM' %}selected{% endif %}>SIM</option>
+              <option value="NÃO" {% if occ.FG=='NÃO' %}selected{% endif %}>NÃO</option>
+            </select>
+          {% else %}
+            <input class="form-control readonly" value="{{ occ.FG or '' }}" readonly>
+          {% endif %}
+        </div>
+
+        <!-- DT / DC / DG -->
+        <div class="col-md-4"><label>DT</label><input class="form-control readonly" value="{{ occ.DT or '' }}" readonly></div>
+        <div class="col-md-4"><label>DC</label><input class="form-control readonly" value="{{ occ.DC or '' }}" readonly></div>
+        <div class="col-md-4"><label>DG</label><input class="form-control readonly" value="{{ occ.DG or '' }}" readonly></div>
+
+        <div class="col-12 d-flex gap-2 justify-content-end mt-3">
+          <a href="{{ url_for('index') }}" class="btn btn-outline-light">Voltar</a>
+          {% if modo_local == 'ATENDIMENTO_INDIVIDUAL' and tipo %}
+            <button type="submit" class="btn btn-dark">Salvar Atendimento</button>
+          {% elif modo_local == 'EDITAR' %}
+            <button type="submit" class="btn btn-dark">Salvar Alterações</button>
+          {% endif %}
+        </div>
+      </div>
+    </form>
+  </div>
 </body>
 </html>
