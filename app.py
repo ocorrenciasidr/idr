@@ -362,10 +362,6 @@ def alunos_por_sala(sala):
 
 # -------------------- Rota de Nova Ocorrência (Corrigida) --------------------
 
-# app.py (Revisão da rota /nova)
-
-# app.py (dentro da função nova)
-
 # app.py (dentro da função nova)
 
 @app.route("/nova", methods=["GET", "POST"])
@@ -434,6 +430,10 @@ def nova():
             print(f"Erro ao registrar ocorrência: {e}") 
             return redirect(url_for("index"))
     
+    # RENDERIZA O FORMULÁRIO (GET)
+    return render_template("nova.html",
+                           professores=carregar_professores(),
+                           salas=carregar_salas())    
     # RENDERIZA O FORMULÁRIO (GET)
     return render_template("nova.html",
                            professores=carregar_professores(),
@@ -773,6 +773,7 @@ if __name__ == "__main__":
     # Comando de execução para Render
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=True, port=port)
+
 
 
 
