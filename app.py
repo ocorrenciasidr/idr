@@ -362,16 +362,16 @@ def alunos_por_sala(sala):
 
 # -------------------- Rota de Nova Ocorrência (Corrigida) --------------------
 
+# app.py (Revisão da rota /nova)
+
 @app.route("/nova", methods=["GET", "POST"])
 def nova():
-    if request.method == "POST":
-        # ... código de inserção (como está hoje)
-        pass # return redirect(url_for("index"))
+    # ... (código de conexão e lógica POST)
     
-    # Se for GET, renderiza o formulário
-    return render_template("novo_registro.html", 
-                           professores=carregar_professores(), 
-                           salas=carregar_salas())
+    # RENDERIZA O FORMULÁRIO (GET)
+    return render_template("nova.html",
+                           professores=carregar_professores(), # Lista de professores
+                           salas=carregar_salas())            # Lista de salas
 
 # -------------------- Rota de Geração de PDF do Aluno --------------------
 # O código do PDF é extenso, garantindo que todas as funções auxiliares e rotas estejam inclusas
@@ -702,4 +702,5 @@ if __name__ == "__main__":
     # Comando de execução para Render
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=True, port=port)
+
 
