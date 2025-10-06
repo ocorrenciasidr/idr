@@ -366,6 +366,8 @@ def alunos_por_sala(sala):
 
 # app.py (dentro da função nova)
 
+# app.py (dentro da função nova)
+
 @app.route("/nova", methods=["GET", "POST"])
 def nova():
     supabase = conectar_supabase()
@@ -376,21 +378,24 @@ def nova():
     if request.method == "POST":
         try:
             # Captura dos campos do formulário
-            professor = request.form.get("professor")
+            professor = request.form.get("professor") # Este é o nome do Professor
             sala = request.form.get("sala")
             aluno = request.form.get("aluno")
             tutor = request.form.get("tutor")
             descricao = request.form.get("descricao")
-            atp = request.form.get("atp") # Conteúdo do Atendimento Professor (Texto)
-            usuario = request.form.get("usuario", "ADMIN")
+            atp = request.form.get("atp") 
 
-            # Captura dos flags FT, FC, FG (Caixa de Seleção SIM/NÃO)
+            # CORREÇÃO CRÍTICA: O usuário logado é o Professor.
+            usuario = professor 
+
+            # Captura dos flags FT, FC, FG
             flag_ft = request.form.get("ft")
             flag_fc = request.form.get("fc")
             flag_fg = request.form.get("fg")
             
             # Data e hora local SP
-            now_local = datetime.now(TZ_SAO)
+            # Certifique-se de que datetime e TZ_SAO estão corretamente importados
+            now_local = datetime.now(TZ_SAO) 
             dco_str = now_local.strftime("%Y-%m-%d %H:%M:%S")
             hco_str = now_local.strftime("%H:%M:%S")
 
@@ -401,18 +406,17 @@ def nova():
                 "TUTOR": tutor,                 
                 "DESCRICAO": descricao,
                 "ATP": atp,                         
-                # ATT, ATC, ATG são os campos que guardam o TEXTO do atendimento.
-                # Eles devem ficar vazios ou com um placeholder inicial, pois são preenchidos na EDIÇÃO.
                 "ATT": "",                         
                 "ATC": "",                  
                 "ATG": "",                  
                 
-                # FT, FC, FG são os flags que indicam se o atendimento é necessário (SIM/NÃO)
                 "FT": flag_ft, 
                 "FC": flag_fc, 
                 "FG": flag_fg,
                 
-                "USUARIO": usuario,
+                # CORREÇÃO FINAL: Chave minúscula (usuario) com valor do Professor
+                "usuario": usuario, 
+                
                 "DCO": dco_str,
                 "HCO": hco_str,
                 "STATUS": "ATENDIMENTO" 
@@ -426,9 +430,14 @@ def nova():
 
         except Exception as e:
             flash(f"Erro ao registrar ocorrência: {e}", "danger")
-            # Log detalhado do erro no servidor
+            # Este print ajuda a debugar no console do Render se necessário
             print(f"Erro ao registrar ocorrência: {e}") 
             return redirect(url_for("index"))
+    
+    # RENDERIZA O FORMULÁRIO (GET)
+    return render_template("nova.html",
+                           professores=carregar_professores(),
+                           salas=carregar_salas())
     
     # RENDERIZA O FORMULÁRIO (GET)
     return render_template("nova.html",
@@ -764,6 +773,7 @@ if __name__ == "__main__":
     # Comando de execução para Render
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=True, port=port)
+
 
 
 
