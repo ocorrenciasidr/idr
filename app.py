@@ -326,36 +326,36 @@ def editar_completo(oid):
     return redirect(url_for("index"))
 
 # --- Criar nova ocorrência ---
+# app (5).py - Corrigindo a lógica da função nova
 @app.route("/nova", methods=["GET", "POST"])
 def nova():
-    supabase = conectar_supabase()
-    professores = carregar_lookup("Professores", column="Professor")
-    salas = carregar_lookup("Salas", column="Sala")
+    # ... (código de conexão e lookup)
 
     if request.method == "GET":
         return render_template("nova.html", professores_disp=professores, salas_disp=salas)
 
-    if not supabase:
-        flash("Erro de conexão com o banco.", "danger")
-        return redirect(url_for("index"))
+    # ... (verifica conexão)
 
     form = request.form
 
-    # Normaliza checkboxes
-    ft = "SIM" if form.get("FT") == "on" else "NÃO"
-    fc = "SIM" if form.get("FC") == "on" else "NÃO"
-    fg = "SIM" if form.get("FG") == "on" else "NÃO"
+    # 1. Lê os campos de Requerimento de Atendimento (FT, FC, FG)
+    # Estes campos vêm do checkbox corrigido no nova.html
+    ft = normalize_checkbox(form.get("FT"))
+    fc = normalize_checkbox(form.get("FC"))
+    fg = normalize_checkbox(form.get("FG"))
 
-    # Calcula PT, PC, PG
-    att = form.get("ATT", "").strip()
-    atc = form.get("ATC", "").strip()
-    atg = form.get("ATG", "").strip()
+    # 2. Inicializa os campos de Texto de Atendimento (ATT, ATC, ATG) como vazios na criação
+    att = ""
+    atc = ""
+    atg = ""
 
+    # 3. Calcula PT, PC, PG (Pendência de Atendimento)
+    # Regra: PENDENTE ('S') se atendimento foi REQUISITADO (FT/FC/FG='SIM') E AINDA NÃO ATENDIDO (ATT/ATC/ATG='')
     pt = "S" if ft == "SIM" and att == "" else "N"
     pc = "S" if fc == "SIM" and atc == "" else "N"
     pg = "S" if fg == "SIM" and atg == "" else "N"
 
-    # Calcula STATUS
+    # 4. Calcula STATUS: ATENDIMENTO se algum PT/PC/PG for 'S'
     if pt == "N" and pc == "N" and pg == "N":
         status = "FINALIZADA"
     else:
@@ -370,15 +370,15 @@ def nova():
         "TUTOR": form.get("TUTOR", ""),
         "DESCRICAO": form.get("DESCRICAO", ""),
         "ATP": form.get("ATP", "") or "",
-        "ATT": att,
-        "ATC": atc,
-        "ATG": atg,
-        "FT": ft,  # só para manter o registro interno
-        "FC": fc,  # só para manter o registro interno
-        "FG": fg,  # só para manter o registro interno
-        "PT": pt,
-        "PC": pc,
-        "PG": pg,
+        "ATT": att,  # Vazio
+        "ATC": atc,  # Vazio
+        "ATG": atg,  # Vazio
+        "FT": ft,    # Requerimento (SIM/NÃO)
+        "FC": fc,    # Requerimento (SIM/NÃO)
+        "FG": fg,    # Requerimento (SIM/NÃO)
+        "PT": pt,    # Status Pendente (S/N)
+        "PC": pc,    # Status Pendente (S/N)
+        "PG": pg,    # Status Pendente (S/N)
         "DT": None,
         "DC": None,
         "DG": None,
@@ -388,16 +388,8 @@ def nova():
 
     try:
         resp = supabase.table("ocorrencias").insert(payload).execute()
-        if resp.error:
-            flash("Erro ao inserir ocorrências.", "danger")
-        else:
-            flash("Ocorrência registrada com sucesso.", "success")
-    except Exception as e:
-        print("Erro ao inserir ocorrências:", e)
-        flash("Erro ao gravar ocorrências.", "danger")
-
-    return redirect(url_for("index"))
-
+        # ... (Restante do bloco try/except e flash messages)
+    # ...
 # --- API: alunos por sala ---
 @app.route("/api/alunos_por_sala/<sala>")
 def api_alunos_por_sala(sala):
@@ -421,6 +413,7 @@ if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
 
    
+
 
 
 
