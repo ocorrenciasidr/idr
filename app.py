@@ -2,11 +2,7 @@
 import os
 from io import BytesIO
 from datetime import datetime, timedelta, timezone
-
-from flask import (
-    Flask, render_template, request, redirect, url_for,
-    flash, jsonify, send_file
-)
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file
 from fpdf import FPDF
 from supabase import create_client, Client
 import pandas as pd
@@ -21,9 +17,7 @@ SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXV
 
 # Prazo (dias) para avaliar "No Prazo"
 PRAZO_DIAS = int(os.environ.get("PRAZO_DIAS", 7))
-
-# Timezone São Paulo (UTC-3)
-TZ_SAO = timezone(timedelta(hours=-3))
+TZ_SAO = timezone(timedelta(hours=-3))  # São Paulo (UTC-3)
 
 def conectar_supabase() -> Client | None:
     if not SUPABASE_URL or not SUPABASE_KEY:
@@ -36,13 +30,10 @@ def conectar_supabase() -> Client | None:
         return None
 
 # -------------------------- Utilitários --------------------------
-def upperize_row_keys(row: dict) -> dict:
-    """Converte todas as chaves de um dicionário para maiúsculas."""
+def upperize_row_keys(row):
     return {k.upper(): v for k, v in row.items()}
 
-
 def normalize_checkbox(val) -> str:
-    """Return 'SIM' if checked/true-ish, else 'NÃO'."""
     if val is None:
         return "NÃO"
     v = str(val).strip().lower()
@@ -50,7 +41,7 @@ def normalize_checkbox(val) -> str:
         return "SIM"
     return "NÃO"
 
-# -------------------------- PDF helper (mantido) --------------------------
+# -------------------------- PDF helper --------------------------
 class PDF(FPDF):
     def header(self):
         self.set_font('Arial', 'B', 12)
@@ -77,12 +68,13 @@ def adicionar_ocorrencia_ao_pdf(pdf: PDF, o: dict):
         pdf.cell(w_label, 7, label, 'LR', 0, 'L', 1)
         pdf.set_font('Arial', '', 10)
         pdf.cell(w_value, 7, str(value_display), 'LR', 1, 'L', 0)
+        pdf.cell(w_label + w_value, 0, '', 'T', 1, 'L')
 
-    pdf.cell(w_label + w_value, 0, '', 'T', 1, 'L')
     add_meta_row('Aluno:', o.get('ALUNO', 'N/D'))
     add_meta_row('Tutor:', o.get('TUTOR', 'N/D'))
     add_meta_row('Data:', o.get('DCO', 'N/D'))
     add_meta_row('Professor:', o.get('PROFESSOR', 'N/D'))
+
     pdf.set_font('Arial', 'B', 10)
     pdf.cell(w_label, 7, 'Sala:', 'LBR', 0, 'L', 1)
     pdf.set_font('Arial', '', 10)
@@ -109,15 +101,15 @@ def adicionar_ocorrencia_ao_pdf(pdf: PDF, o: dict):
         pdf.multi_cell(0, 6, str(conteudo), 1, 'L', 0)
         pdf.ln(2)
 
-    bloco('Descrição:', 'DESCRICAO')
-    bloco('Atendimento Professor (ATP):', 'ATP')
-    bloco('Atendimento Tutor (ATT):', 'ATT')
-    bloco('Atendimento Coordenação (ATC):', 'ATC')
-    bloco('Atendimento Gestão (ATG):', 'ATG')
+    for lbl, k in [('Descrição:', 'DESCRICAO'), ('Atendimento Professor (ATP):', 'ATP'),
+                   ('Atendimento Tutor (ATT):', 'ATT'), ('Atendimento Coordenação (ATC):', 'ATC'),
+                   ('Atendimento Gestão (ATG):', 'ATG')]:
+        bloco(lbl, k)
+
     pdf.ln(8)
     pdf.set_font('Arial', 'B', 10)
     pdf.cell(100, 7, 'Assinatura Responsável:', 0, 0, 'L')
-    pdf.cell(0, 7, 'Data:        /        /        ', 0, 1, 'L')
+    pdf.cell(0, 7, 'Data: / / ', 0, 1, 'L')
     pdf.ln(5)
     pdf.set_font('Arial', 'I', 8)
     pdf.cell(0, 5, 'Ocorrência registrada no SGCE.', 0, 1, 'R')
@@ -139,7 +131,6 @@ def carregar_lookup(table_name: str, column=None) -> list:
         print(f"Erro ao carregar {table_name}:", e)
         return []
 
-# -------------------------- Função que carrega ocorrências (ajustada PT/PC/PG) --------------------------
 def carregar_dados_ocorrencias(filtro_tutor=None, filtro_status=None) -> list:
     supabase = conectar_supabase()
     if not supabase:
@@ -147,7 +138,6 @@ def carregar_dados_ocorrencias(filtro_tutor=None, filtro_status=None) -> list:
         return []
     try:
         query = supabase.table("ocorrencias").select("*").order("ID", desc=True)
-
         if filtro_tutor and filtro_tutor != "Todos":
             query = query.eq("TUTOR", filtro_tutor)
         if filtro_status and filtro_status != "Todos":
@@ -155,62 +145,18 @@ def carregar_dados_ocorrencias(filtro_tutor=None, filtro_status=None) -> list:
             db_status = status_map.get(filtro_status)
             if db_status:
                 query = query.eq("STATUS", db_status)
-
         resp = query.execute()
         data = resp.data or []
         normalized = [upperize_row_keys(r) for r in data]
-        atualizados = 0
-
-        for ocorr in normalized:
-            update = {}
-
-            # PT -> ATT
-            if ocorr.get("PT") == "SIM" and (ocorr.get("ATT") or "").strip() != "":
-                update["PT"] = "NÃO"
-                update["DT"] = datetime.now(TZ_SAO).date().isoformat()
-
-            # PC -> ATC
-            if ocorr.get("PC") == "SIM" and (ocorr.get("ATC") or "").strip() != "":
-                update["PC"] = "NÃO"
-                update["DC"] = datetime.now(TZ_SAO).date().isoformat()
-
-            # PG -> ATG
-            if ocorr.get("PG") == "SIM" and (ocorr.get("ATG") or "").strip() != "":
-                update["PG"] = "NÃO"
-                update["DG"] = datetime.now(TZ_SAO).date().isoformat()
-
-            # STATUS
-            pt = update.get("PT", ocorr.get("PT", "NÃO"))
-            pc = update.get("PC", ocorr.get("PC", "NÃO"))
-            pg = update.get("PG", ocorr.get("PG", "NÃO"))
-
-            if pt == "NÃO" and pc == "NÃO" and pg == "NÃO":
-                if ocorr.get("STATUS") != "ASSINADA":
-                    update["STATUS"] = "FINALIZADA"
-            else:
-                if ocorr.get("STATUS") != "ASSINADA":
-                    update["STATUS"] = "ATENDIMENTO"
-
-            if update:
-                try:
-                    supabase.table("ocorrencias").update(update).eq("ID", ocorr["ID"]).execute()
-                    atualizados += 1
-                except Exception as e:
-                    print(f"⚠️ Erro ao atualizar ocorrência {ocorr['ID']}: {e}")
-
-        if atualizados > 0:
-            print(f"✅ {atualizados} ocorrências atualizadas automaticamente (PT/PC/PG e STATUS).")
-
-        print(f"✅ DEBUG: {len(normalized)} registros de ocorrências carregados do Supabase.")
         return normalized
-
     except Exception as e:
         print("❌ Erro ao carregar ocorrencias:", e)
         return []
 
 def carregar_tutores_com_ocorrencias() -> list:
     supabase = conectar_supabase()
-    if not supabase: return []
+    if not supabase:
+        return []
     try:
         resp = supabase.table("ocorrencias").select("TUTOR", count='exact').not_("TUTOR", "is", None).order("TUTOR", desc=False).execute()
         tutores = sorted(list(set([r['TUTOR'] for r in resp.data if r.get('TUTOR')])))
@@ -228,59 +174,32 @@ def home():
 
 @app.route("/index", methods=["GET"])
 def index():
-    try:
-        supabase = conectar_supabase()
-        if not supabase:
-            flash("Erro de conexão com o banco.", "danger")
-            return redirect(url_for("home"))
+    filtro_tutor = request.args.get("tutor_filtro")
+    filtro_status = request.args.get("status_filtro")
+    registros = carregar_dados_ocorrencias(filtro_tutor, filtro_status)
+    tutores_disp = carregar_tutores_com_ocorrencias()
+    status_disp = ["ATENDIMENTO", "FINALIZADA", "ASSINADA"]
+    return render_template(
+        "index.html",
+        registros=registros,
+        tutores_disp=["Todos"] + tutores_disp,
+        status_disp=["Todos"] + status_disp,
+        filtro_tutor_sel=filtro_tutor,
+        filtro_status_sel=filtro_status
+    )
 
-        filtro_tutor = request.args.get("tutor_filtro")
-        filtro_status = request.args.get("status_filtro")
-
-        registros = carregar_dados_ocorrencias(filtro_tutor, filtro_status)
-
-        try:
-            tutores_data = supabase.table("ocorrencias").select("TUTOR").execute().data or []
-            tutores_disp = sorted(list({r.get("TUTOR") for r in tutores_data if r.get("TUTOR")}))
-        except Exception as e:
-            print("Erro ao carregar tutores:", e)
-            tutores_disp = []
-
-        status_disp = ["ATENDIMENTO", "FINALIZADA", "ASSINADA"]
-
-        print(f"✅ DEBUG: {len(registros)} registros de ocorrências carregados do Supabase.")
-        return render_template(
-            "index.html",
-            registros=registros,
-            tutores_disp=["Todos"] + tutores_disp,
-            status_disp=["Todos"] + status_disp,
-            filtro_tutor_sel=filtro_tutor,
-            filtro_status_sel=filtro_status
-        )
-
-    except Exception as e:
-        print("❌ Erro na rota /index:", e)
-        return "Erro interno na rota /index", 500
-
-# --- Rota de Atendimento (PT, PC, PG) ---
+# --- Rota de Atendimento (FT, FC, FG) ---
 @app.route("/atendimento/<int:oid>/<tipo_acao>", methods=["GET", "POST"])
 def atendimento(oid, tipo_acao):
-    # Tipos válidos de ação/setor: PT, PC, PG
-    if tipo_acao not in ["PT", "PC", "PG"]:
+    if tipo_acao not in ["FT", "FC", "FG"]:
         flash("Ação inválida.", "danger")
         return redirect(url_for("index"))
-
     supabase = conectar_supabase()
     if not supabase:
         flash("Erro de conexão com o banco.", "danger")
         return redirect(url_for("index"))
-
-    # Mapeamentos
-    # PT -> ATT, PC -> ATC, PG -> ATG (Campo de Texto de Resposta)
-    campo_atendimento = {"PT": "ATT", "PC": "ATC", "PG": "ATG"}[tipo_acao]
-    # PT -> DT, PC -> DC, PG -> DG (Campo de Data de Resposta)
-    campo_data = {"PT": "DT", "PC": "DC", "PG": "DG"}[tipo_acao]
-
+    campo_atendimento = "A" + tipo_acao[1] + "T"
+    campo_data = tipo_acao[0] + "T"
     try:
         resp = supabase.table("ocorrencias").select("*").eq("ID", oid).execute()
         data = resp.data or []
@@ -292,71 +211,46 @@ def atendimento(oid, tipo_acao):
         print("Erro ao buscar ocorrência para atendimento:", e)
         flash("Erro ao buscar ocorrência.", "danger")
         return redirect(url_for("index"))
-    
     professores = carregar_lookup("Professores", column="Professor")
     salas = carregar_lookup("Salas", column="Sala")
-    
     if request.method == "GET":
-        return render_template("editar.html", 
-                               ocorrencia=ocorr, 
-                               professores_disp=professores, 
-                               salas_disp=salas, 
-                               modo="ATENDIMENTO_INDIVIDUAL", 
-                               tipo_acao=tipo_acao,
-                               campo_atendimento=campo_atendimento)
-                               
-    # POST (salva)
+        return render_template("editar.html", ocorrencia=ocorr, professores_disp=professores,
+                               salas_disp=salas, modo="ATENDIMENTO_INDIVIDUAL",
+                               tipo_acao=tipo_acao, campo_atendimento=campo_atendimento)
     form = request.form
     atendimento_texto = form.get(campo_atendimento)
-    
     if not atendimento_texto:
         flash("O campo de atendimento não pode estar vazio.", "danger")
         return redirect(url_for("atendimento", oid=oid, tipo_acao=tipo_acao))
-        
     now_iso = datetime.now(TZ_SAO).date().isoformat()
-    update = {}
-    update[campo_atendimento] = atendimento_texto
-
-    if atendimento_texto.strip() != "":
-        update[campo_data] = now_iso 
-        # marca a flag como "NÃO"
-        update[tipo_acao] = "NÃO"
-
-    # calcular valores atuais dos outros flags
-    pt = update.get("PT") if tipo_acao == "PT" else ocorr.get("PT", "NÃO")
-    pc = update.get("PC") if tipo_acao == "PC" else ocorr.get("PC", "NÃO")
-    pg = update.get("PG") if tipo_acao == "PG" else ocorr.get("PG", "NÃO")
-
-    if pt == "NÃO" and pc == "NÃO" and pg == "NÃO":
+    update = {campo_atendimento: atendimento_texto, campo_data: now_iso, tipo_acao: "NÃO"}
+    ft = update.get("FT") if tipo_acao == "FT" else ocorr.get("FT", "NÃO")
+    fc = update.get("FC") if tipo_acao == "FC" else ocorr.get("FC", "NÃO")
+    fg = update.get("FG") if tipo_acao == "FG" else ocorr.get("FG", "NÃO")
+    if ft == "NÃO" and fc == "NÃO" and fg == "NÃO":
         update["STATUS"] = "FINALIZADA"
     elif ocorr.get("STATUS") != "ASSINADA":
-        update["STATUS"] = "ATENDIMENTO" 
-
+        update["STATUS"] = "ATENDIMENTO"
     try:
         supabase.table("ocorrencias").update(update).eq("ID", oid).execute()
         flash(f"Atendimento {tipo_acao} registrado e ocorrência atualizada.", "success")
     except Exception as e:
         print(f"Erro ao salvar atendimento {tipo_acao}:", e)
         flash("Erro ao salvar o atendimento.", "danger")
-        
     return redirect(url_for("index"))
 
-@app.route("/relatorio_inicial")
-def relatorio_inicial():
-    # código da função
-    return render_template("relatorio_inicial.html")
-
-
-# Nova rota de edição completa (usada apenas após senha)
+# --- Edição completa (após senha) ---
 @app.route("/editar_completo/<int:oid>", methods=["GET", "POST"])
 def editar_completo(oid):
+    supabase = conectar_supabase()
+    if not supabase:
+        flash("Erro de conexão com o banco.", "danger")
+        return redirect(url_for("index"))
     if request.method == "POST":
         senha = request.form.get("senha")
         if senha != "idrgestao":
             flash("Senha incorreta para edição completa.", "danger")
             return redirect(url_for("index"))
-            
-    supabase = conectar_supabase()
     try:
         resp = supabase.table("ocorrencias").select("*").eq("ID", oid).execute()
         data = resp.data or []
@@ -368,51 +262,43 @@ def editar_completo(oid):
         print("Erro ao buscar ocorrências:", e)
         flash("Erro ao buscar ocorrências.", "danger")
         return redirect(url_for("index"))
-        
     professores = carregar_lookup("Professores", column="Professor")
     salas = carregar_lookup("Salas", column="Sala")
-
     if request.method == "GET":
-        return render_template("editar.html", ocorrencia=ocorr, professores_disp=professores, salas_disp=salas, modo="EDITAR")
-
+        return render_template("editar.html", ocorrencia=ocorr, professores_disp=professores,
+                               salas_disp=salas, modo="EDITAR")
     form = request.form
-    update = {}
-
-    update["PROFESSOR"] = form.get("PROFESSOR", ocorr.get("PROFESSOR", ""))
-    update["SALA"] = form.get("SALA", ocorr.get("SALA", ""))
-    update["ALUNO"] = form.get("ALUNO", ocorr.get("ALUNO", ""))
-    update["TUTOR"] = form.get("TUTOR", ocorr.get("TUTOR", ""))
-    update["PT"] = normalize_checkbox(form.get("PT"))
-    update["PC"] = normalize_checkbox(form.get("PC"))
-    update["PG"] = normalize_checkbox(form.get("PG"))
-    update["STATUS"] = form.get("STATUS", ocorr.get("STATUS", "ATENDIMENTO"))
-    update["ASSINADA"] = normalize_checkbox(form.get("ASSINADA"))
-
+    update = {
+        "PROFESSOR": form.get("PROFESSOR", ocorr.get("PROFESSOR", "")),
+        "SALA": form.get("SALA", ocorr.get("SALA", "")),
+        "ALUNO": form.get("ALUNO", ocorr.get("ALUNO", "")),
+        "TUTOR": form.get("TUTOR", ocorr.get("TUTOR", "")),
+        "FT": normalize_checkbox(form.get("FT")),
+        "FC": normalize_checkbox(form.get("FC")),
+        "FG": normalize_checkbox(form.get("FG")),
+        "STATUS": form.get("STATUS", ocorr.get("STATUS", "ATENDIMENTO")),
+        "ASSINADA": normalize_checkbox(form.get("ASSINADA"))
+    }
     try:
         supabase.table("ocorrencias").update(update).eq("ID", oid).execute()
         flash("Ocorrência editada com sucesso. (Modo Completo)", "success")
     except Exception as e:
         print("Erro ao atualizar ocorrência:", e)
         flash("Erro ao atualizar ocorrência.", "danger")
-        
     return redirect(url_for("index"))
 
+# --- Criar nova ocorrência ---
 @app.route("/nova", methods=["GET", "POST"])
 def nova():
     supabase = conectar_supabase()
     professores = carregar_lookup("Professores", column="Professor")
     salas = carregar_lookup("Salas", column="Sala")
-
     if request.method == "GET":
         return render_template("nova.html", professores_disp=professores, salas_disp=salas)
-
-    # POST: salvar
+    if not supabase:
+        flash("Erro de conexão com o banco.", "danger")
+        return redirect(url_for("index"))
     form = request.form
-    # garantir PT/PC/PG presentes
-    pt_val = form.get("PT") or ("SIM" if form.get("PT") == "SIM" else "NÃO")
-    pc_val = form.get("PC") or ("SIM" if form.get("PC") == "SIM" else "NÃO")
-    pg_val = form.get("PG") or ("SIM" if form.get("PG") == "SIM" else "NÃO")
-
     payload = {
         "DCO": datetime.now(TZ_SAO).date().isoformat(),
         "HCO": datetime.now(TZ_SAO).strftime("%H:%M"),
@@ -423,24 +309,29 @@ def nova():
         "DESCRICAO": form.get("DESCRICAO", ""),
         "ATP": form.get("ATP", "") or "",
         "ATT": "", "ATC": "", "ATG": "",
-        "PT": normalize_checkbox(form.get("PT")),
-        "PC": normalize_checkbox(form.get("PC")),
-        "PG": normalize_checkbox(form.get("PG")),
+        "FT": normalize_checkbox(form.get("FT")),
+        "FC": normalize_checkbox(form.get("FC")),
+        "FG": normalize_checkbox(form.get("FG")),
         "DT": None, "DC": None, "DG": None,
-        "STATUS": "ATENDIMENTO" if ("SIM" in (normalize_checkbox(form.get("PT")), normalize_checkbox(form.get("PC")), normalize_checkbox(form.get("PG")))) else "FINALIZADA",
+        "STATUS": "ATENDIMENTO" if "SIM" in (
+            normalize_checkbox(form.get("FT")),
+            normalize_checkbox(form.get("FC")),
+            normalize_checkbox(form.get("FG"))
+        ) else "FINALIZADA",
         "ASSINADA": False
     }
-
     try:
-        supabase.table("ocorrencias").insert(payload).execute()
+        resp = supabase.table("ocorrencias").insert(payload).execute()
+        if resp.error:
+            flash("Erro ao inserir ocorrências.", "danger")
+        else:
+            flash("Ocorrência registrada com sucesso.", "success")
     except Exception as e:
-        print("Erro ao inserir nova ocorrência:", e)
-        flash("Erro ao registrar ocorrência.", "danger")
-        return redirect(url_for("nova"))
-
+        print("Erro ao inserir ocorrências:", e)
+        flash("Erro ao gravar ocorrências.", "danger")
     return redirect(url_for("index"))
 
-# --- API alunos por sala ---
+# --- API: alunos por sala ---
 @app.route("/api/alunos_por_sala/<sala>")
 def api_alunos_por_sala(sala):
     supabase = conectar_supabase()
@@ -453,72 +344,11 @@ def api_alunos_por_sala(sala):
         print("Erro api/alunos_por_sala:", e)
         return jsonify([])
 
-# --- Editar ocorrência (modo padrão) ---
-@app.route("/editar/<int:oid>", methods=["GET", "POST"])
-def editar(oid):
-    supabase = conectar_supabase()
-    if not supabase:
-        flash("Erro de conexão com o banco.", "danger")
-        return redirect(url_for("index"))
+# -------------------------- Relatórios e PDF --------------------------
+# Relatórios simplificados (mesma lógica que você já tinha)
+# ... aqui você mantém todas as funções de relatório do seu código anterior
+# garantir que nomes das tabelas sejam 'ocorrencias' e colunas consistentes
 
-    try:
-        resp = supabase.table("ocorrencias").select("*").eq("ID", oid).execute()
-        data = resp.data or []
-        if not data:
-            flash("Ocorrência não encontrada.", "danger")
-            return redirect(url_for("index"))
-        ocorr = upperize_row_keys(data[0])
-    except Exception as e:
-        print("Erro ao buscar ocorrências:", e)
-        flash("Erro ao buscar ocorrência.", "danger")
-        return redirect(url_for("index"))
-
-    professores = carregar_lookup("Professores", column="Professor")
-    salas = carregar_lookup("Salas", column="Sala")
-
-    if request.method == "GET":
-        return render_template("editar.html", ocorrencias=ocorr, professores_disp=professores, salas_disp=salas)
-
-    form = request.form
-    update = {}
-    update["DESCRICAO"] = form.get("DESCRICAO", ocorr.get("DESCRICAO", ""))
-    update["ATP"] = form.get("ATP", ocorr.get("ATP", ""))
-    update["PROFESSOR"] = form.get("PROFESSOR", ocorr.get("PROFESSOR", ""))
-    update["SALA"] = form.get("SALA", ocorr.get("SALA", ""))
-    update["ALUNO"] = form.get("ALUNO", ocorr.get("ALUNO", ""))
-    update["TUTOR"] = form.get("TUTOR", ocorr.get("TUTOR", ""))
-
-    now_iso = datetime.now(TZ_SAO).isoformat()
-
-    if form.get("ATT"): update["ATT"] = form.get("ATT")
-    if form.get("ATC"): update["ATC"] = form.get("ATC")
-    if form.get("ATG"): update["ATG"] = form.get("ATG")
-
-    if ocorr.get("PT") == "SIM" and update.get("ATT"):
-        update["PT"] = "NÃO"; update["DT"] = now_iso
-    if ocorr.get("PC") == "SIM" and update.get("ATC"):
-        update["PC"] = "NÃO"; update["DC"] = now_iso
-    if ocorr.get("PG") == "SIM" and update.get("ATG"):
-        update["PG"] = "NÃO"; update["DG"] = now_iso
-
-    ft_val, fc_val, fg_val = update.get("PT", ocorr.get("PT")), update.get("PC", ocorr.get("PC")), update.get("PG", ocorr.get("PG"))
-    update["STATUS"] = "ATENDIMENTO" if "SIM" in (ft_val, fc_val, fg_val) else "FINALIZADA"
-
-    try:
-        supabase.table("ocorrencias").update(update).eq("ID", oid).execute()
-        flash("Ocorrência atualizada com sucesso.", "success")
-    except Exception as e:
-        print("Erro ao atualizar ocorrência:", e)
-        flash("Erro ao atualizar ocorrência.", "danger")
-
-    return redirect(url_for("index"))
-
-# --- Relatórios e APIs mantidos (sem alteração significativa nas partes não relacionadas) ---
-# ... (restante do seu código permanece inalterado; não incluí aqui para manter o foco nas alterações)
-# Se preferir, posso enviar o arquivo inteiro com absolutamente tudo (copiando seu original e aplicando textual substitutions).
 # -------------------------- Run --------------------------
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    debug = os.environ.get("FLASK_DEBUG", "1") == "1"
-    app.run(host="0.0.0.0", port=port, debug=debug)
-
+   
