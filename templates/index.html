@@ -1,168 +1,190 @@
-<!-- templates/index.html -->
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="utf-8" />
-  <title>SGCE — Ocorrências</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta charset="UTF-8">
+  <title>SGCE - Ocorrências</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
   <style>
-    :root{
-      --bg:#0b0f12;
-      --panel:#0f1720;
-      --card:#0b1114;
-      --muted:#cbd5e1;
-      --accent:#1f2937;
+    body {
+      background-color: #121212;
+      color: #eaeaea;
+      font-size: 0.85rem;
     }
-    body{background:var(--bg); color:#e6eef8; font-family:Inter,system-ui, -apple-system, "Segoe UI", Roboto; padding:18px;}
-    .container-main{max-width:1200px; margin:0 auto;}
-    .header{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
-    h1{flex:1;text-align:center;margin:0;font-weight:700;color:#fff;}
-    .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
-    .filter-select{min-width:220px;}
-    .btn-small{padding:.4rem .7rem;border-radius:8px;font-weight:600;}
-    .panel{background:var(--panel); padding:16px; border-radius:10px; box-shadow:0 8px 30px rgba(0,0,0,.6);}
-    table{background:#f7efd6;border-collapse:collapse;width:100%;}
-    thead th{background:#e9d8a6;color:#111;font-weight:700;padding:10px;border:1px solid rgba(0,0,0,.06);}
-    tbody td{padding:10px;border:1px solid rgba(0,0,0,.04);color:#111;}
-    tbody tr:nth-child(odd){background:#f6ecd0;}
-    .status-atendimento{background:#f8d7da;color:#7a161b;padding:6px 8px;border-radius:6px;display:inline-block}
-    .status-finalizada{background:#fff3cd;color:#856404;padding:6px 8px;border-radius:6px;display:inline-block}
-    .status-assinada{background:#d4edda;color:#155724;padding:6px 8px;border-radius:6px;display:inline-block}
-    .icon-button{cursor:pointer;padding:4px 8px;border-radius:6px;font-size:1.05rem}
-    .ft-sim{color:#b02a37}
-    .ft-nao{color:#2b8a3e}
-    .table-wrap{max-height:62vh;overflow:auto;border-radius:8px;padding:6px;background:transparent;}
-    .muted{color:var(--muted);font-size:.92rem}
-    @media (max-width:900px){ .filter-select{min-width:160px} table{font-size:.9rem} }
+
+    h1 {
+      font-size: 1.2rem;
+      color: #fff;
+      text-align: center;
+      margin: 10px 0;
+      font-weight: 600;
+    }
+
+    .filter-bar {
+      background-color: #1f1f1f;
+      padding: 10px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+    }
+
+    .filter-bar select {
+      background-color: #2c2c2c;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 8px;
+      font-size: 0.8rem;
+    }
+
+    .filter-bar button {
+      font-size: 0.8rem;
+      border-radius: 8px;
+    }
+
+    table {
+      background-color: #1a1a1a;
+      color: #eaeaea;
+      border-radius: 10px;
+      overflow: hidden;
+      font-size: 0.75rem;
+    }
+
+    th {
+      background-color: #2b2b2b;
+      color: #ddd;
+      font-weight: 600;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    td {
+      text-align: center;
+      vertical-align: middle;
+      padding: 4px 6px !important;
+      border-color: #333;
+    }
+
+    .btn-sm {
+      font-size: 0.7rem;
+      padding: 3px 6px;
+      border-radius: 6px;
+    }
+
+    .btn-dark-custom {
+      background-color: #333;
+      color: #fff;
+      border: 1px solid #444;
+      transition: 0.3s;
+    }
+
+    .btn-dark-custom:hover {
+      background-color: #444;
+    }
+
+    .status-finalizada {
+      color: #4caf50;
+      font-weight: bold;
+    }
+
+    .status-atendimento {
+      color: #ffc107;
+      font-weight: bold;
+    }
+
+    .status-assinada {
+      color: #03a9f4;
+      font-weight: bold;
+    }
+
   </style>
 </head>
+
 <body>
-  <div class="container-main">
-    <div class="panel">
-      <div class="header">
-        <h1>Sistema de Gestão de Convivência Escolar</h1>
+  <div class="container-fluid mt-3">
+    <h1>Gestão de Ocorrências</h1>
+
+    <!-- 🔹 FILTROS -->
+    <form method="get" action="{{ url_for('index') }}" class="filter-bar row g-2 align-items-center justify-content-center">
+      <div class="col-auto">
+        <label for="tutor_filtro" class="form-label text-light mb-0">Tutor:</label>
+        <select id="tutor_filtro" name="tutor_filtro" class="form-select form-select-sm">
+          {% for tutor in tutores_disp %}
+            <option value="{{ tutor }}" {% if tutor == filtro_tutor_sel %}selected{% endif %}>{{ tutor }}</option>
+          {% endfor %}
+        </select>
       </div>
-
-      <div class="controls mb-3">
-        <form id="filtrosForm" method="get" action="{{ url_for('index') }}" style="display:flex;align-items:center;gap:8px;">
-          <label class="muted">Tutor:</label>
-          <select name="tutor_filtro" id="filterTutor" class="form-select filter-select">
-            {% for t in tutores_disp %}
-              <option value="{{ t }}" {% if filtro_tutor_sel==t %}selected{% endif %}>{{ t }}</option>
-            {% endfor %}
-          </select>
-
-          <label class="muted">Status:</label>
-          <select name="status_filtro" id="filterStatus" class="form-select filter-select">
-            {% for s in status_disp %}
-              <option value="{{ s }}" {% if filtro_status_sel==s %}selected{% endif %}>{{ s }}</option>
-            {% endfor %}
-          </select>
-
-          <button type="submit" class="btn btn-primary btn-small">Filtrar</button>
-          <a href="{{ url_for('index') }}" class="btn btn-success btn-small">Limpar</a>
-        </form>
-
-        <div style="margin-left:auto; display:flex;gap:8px;">
-          <a href="{{ url_for('nova') }}" class="btn btn-warning btn-small" style="background:#f59e0b;border:none;color:#111">Nova Ocorrência</a>
-          <a href="{{ url_for('home') }}" class="btn btn-outline-light btn-small">Tela Inicial</a>
-        </div>
+      <div class="col-auto">
+        <label for="status_filtro" class="form-label text-light mb-0">Status:</label>
+        <select id="status_filtro" name="status_filtro" class="form-select form-select-sm">
+          {% for s in status_disp %}
+            <option value="{{ s }}" {% if s == filtro_status_sel %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
       </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-dark-custom btn-sm">Filtrar</button>
+        <a href="{{ url_for('nova') }}" class="btn btn-success btn-sm">+ Nova Ocorrência</a>
+      </div>
+    </form>
 
-      <div class="table-wrap">
-        <table>
-          <thead>
+    <!-- 🔹 TABELA -->
+    <div class="table-responsive">
+      <table class="table table-dark table-bordered table-sm align-middle text-nowrap">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Data</th>
+            <th>Aluno</th>
+            <th>Tutor</th>
+            <th>Professor</th>
+            <th>Sala</th>
+            <th>FT</th>
+            <th>FC</th>
+            <th>FG</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if registros %}
+            {% for o in registros %}
+              <tr>
+                <td>{{ o['ID'] }}</td>
+                <td>{{ o['DCO'] }}</td>
+                <td>{{ o['ALUNO'] }}</td>
+                <td>{{ o['TUTOR'] }}</td>
+                <td>{{ o['PROFESSOR'] }}</td>
+                <td>{{ o['SALA'] }}</td>
+                <td>{{ o['FT'] }}</td>
+                <td>{{ o['FC'] }}</td>
+                <td>{{ o['FG'] }}</td>
+                <td>
+                  {% if o['STATUS'] == 'FINALIZADA' %}
+                    <span class="status-finalizada">FINALIZADA</span>
+                  {% elif o['STATUS'] == 'ASSINADA' %}
+                    <span class="status-assinada">ASSINADA</span>
+                  {% else %}
+                    <span class="status-atendimento">ATENDIMENTO</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <div class="d-flex justify-content-center gap-1">
+                    <a href="{{ url_for('editar', oid=o['ID']) }}" class="btn btn-warning btn-sm">Editar</a>
+                    <a href="{{ url_for('atendimento', oid=o['ID'], tipo_acao='FT') }}" class="btn btn-info btn-sm">FT</a>
+                    <a href="{{ url_for('atendimento', oid=o['ID'], tipo_acao='FC') }}" class="btn btn-primary btn-sm">FC</a>
+                    <a href="{{ url_for('atendimento', oid=o['ID'], tipo_acao='FG') }}" class="btn btn-secondary btn-sm">FG</a>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
             <tr>
-              <th>ID</th><th>Data</th><th>Hora</th><th>Aluno</th><th>Sala</th><th>Professor</th><th>Tutor</th>
-              <th>FT</th><th>FC</th><th>FG</th><th>Status</th><th>Ações</th>
+              <td colspan="11" class="text-center text-muted py-3">Nenhuma ocorrência encontrada.</td>
             </tr>
-          </thead>
-          <tbody>
-            {% for r in registros %}
-            <tr>
-              <td>{{ r.ID }}</td>
-              <td>{{ r.DCO or '' }}</td>
-              <td>{{ r.HCO or '' }}</td>
-              <td style="text-align:left">{{ r.ALUNO or '' }}</td>
-              <td>{{ r.SALA or '' }}</td>
-              <td>{{ r.PROFESSOR or '' }}</td>
-              <td>{{ r.TUTOR or '' }}</td>
-
-              <!-- FT -->
-              <td>
-                {% if r.FT == "SIM" %}
-                  <a class="icon-button ft-sim" title="Abrir atendimento Tutor (FT)" href="{{ url_for('atendimento', oid=r.ID, tipo_acao='FT') }}">⚠️</a>
-                {% else %}
-                  <span class="icon-button ft-nao">✔️</span>
-                {% endif %}
-              </td>
-
-              <!-- FC -->
-              <td>
-                {% if r.FC == "SIM" %}
-                  <a class="icon-button ft-sim" title="Abrir atendimento Coordenação (FC)" href="{{ url_for('atendimento', oid=r.ID, tipo_acao='FC') }}">⚠️</a>
-                {% else %}
-                  <span class="icon-button ft-nao">✔️</span>
-                {% endif %}
-              </td>
-
-              <!-- FG -->
-              <td>
-                {% if r.FG == "SIM" %}
-                  <a class="icon-button ft-sim" title="Abrir atendimento Gestão (FG)" href="{{ url_for('atendimento', oid=r.ID, tipo_acao='FG') }}">⚠️</a>
-                {% else %}
-                  <span class="icon-button ft-nao">✔️</span>
-                {% endif %}
-              </td>
-
-              <td>
-                {% if r.STATUS == "ATENDIMENTO" %}
-                  <span class="status-atendimento">ATENDIMENTO</span>
-                {% elif r.STATUS == "FINALIZADA" %}
-                  <span class="status-finalizada">FINALIZADA</span>
-                {% elif r.STATUS == "ASSINADA" %}
-                  <span class="status-assinada">ASSINADA</span>
-                {% else %}
-                  <span>{{ r.STATUS }}</span>
-                {% endif %}
-              </td>
-
-              <td>
-                <a href="{{ url_for('editar', oid=r.ID) }}" class="btn btn-info btn-small">Ver</a>
-                <button class="btn btn-primary btn-small" onclick="editarCompletoPrompt({{ r.ID }})">Editar</button>
-              </td>
-            </tr>
-            {% else %}
-            <tr><td colspan="12" style="text-align:center;color:#666;padding:20px;">Nenhuma ocorrência encontrada.</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+          {% endif %}
+        </tbody>
+      </table>
     </div>
   </div>
-
-<script>
-  // Ao voltar ao foco atualize a página para refletir alterações salvas no servidor
-  window.addEventListener('focus', function(){ 
-    // recarrega apenas se a página veio de outra aba (evita reload constante)
-    if (performance && performance.getEntriesByType('navigation')[0] && performance.getEntriesByType('navigation')[0].type !== 'reload') {
-      location.reload();
-    }
-  });
-
-  function editarCompletoPrompt(id){
-    const senha = prompt("Senha para edição completa:");
-    if(senha === null) return;
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = `/editar_completo/${id}`;
-    const input = document.createElement('input');
-    input.type = 'hidden'; input.name = 'senha'; input.value = senha;
-    form.appendChild(input);
-    document.body.appendChild(form);
-    form.submit();
-  }
-</script>
 </body>
 </html>
