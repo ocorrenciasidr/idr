@@ -94,11 +94,11 @@
               <!-- PT -->
               <td>
                 {% set pt_val = "N" %}
-                {% if r.FT == "SIM" %}
-                  {% if (r.ATT or '')|trim == '' %}
-                    {% set pt_val = "S" %}
-                  {% else %}
+                {% if r.PT == "SIM" %}
+                  {% if (r.ATT or '')|trim != '' %}
                     {% set pt_val = "N" %}
+                  {% else %}
+                    {% set pt_val = "S" %}
                   {% endif %}
                 {% else %}
                   {% set pt_val = "N" %}
@@ -114,11 +114,11 @@
               <!-- PC -->
               <td>
                 {% set pc_val = "N" %}
-                {% if r.FC == "SIM" %}
-                  {% if (r.ATC or '')|trim == '' %}
-                    {% set pc_val = "S" %}
-                  {% else %}
+                {% if r.PC == "SIM" %}
+                  {% if (r.ATC or '')|trim != '' %}
                     {% set pc_val = "N" %}
+                  {% else %}
+                    {% set pc_val = "S" %}
                   {% endif %}
                 {% else %}
                   {% set pc_val = "N" %}
@@ -134,11 +134,11 @@
               <!-- PG -->
               <td>
                 {% set pg_val = "N" %}
-                {% if r.FG == "SIM" %}
-                  {% if (r.ATG or '')|trim == '' %}
-                    {% set pg_val = "S" %}
-                  {% else %}
+                {% if r.PG == "SIM" %}
+                  {% if (r.ATG or '')|trim != '' %}
                     {% set pg_val = "N" %}
+                  {% else %}
+                    {% set pg_val = "S" %}
                   {% endif %}
                 {% else %}
                   {% set pg_val = "N" %}
@@ -151,12 +151,15 @@
                 {% endif %}
               </td>
 
-              <!-- STATUS -->
               <td>
-                {% if pt_val == "N" and pc_val == "N" and pg_val == "N" %}
-                  <span class="status-finalizada">FINALIZADA</span>
-                {% else %}
+                {% if r.STATUS == "ATENDIMENTO" %}
                   <span class="status-atendimento">ATENDIMENTO</span>
+                {% elif r.STATUS == "FINALIZADA" %}
+                  <span class="status-finalizada">FINALIZADA</span>
+                {% elif r.STATUS == "ASSINADA" %}
+                  <span class="status-assinada">ASSINADA</span>
+                {% else %}
+                  <span>{{ r.STATUS }}</span>
                 {% endif %}
               </td>
 
@@ -175,8 +178,34 @@
   </div>
 
 <script>
-  function editarCompletoPrompt(id){
-    const senha = prompt("Senha para edição completa:");
+function promptSenha(message) {
+    return new Promise((resolve) => {
+        const input = document.createElement("input");
+        input.type = "password";
+        input.placeholder = message;
+        input.style.position = "fixed";
+        input.style.top = "50%";
+        input.style.left = "50%";
+        input.style.transform = "translate(-50%, -50%)";
+        input.style.padding = "10px";
+        input.style.zIndex = "9999";
+        document.body.appendChild(input);
+        input.focus();
+
+        input.addEventListener("keydown", function(e) {
+            if (e.key === "Enter") {
+                resolve(input.value);
+                document.body.removeChild(input);
+            } else if (e.key === "Escape") {
+                resolve(null);
+                document.body.removeChild(input);
+            }
+        });
+    });
+}
+
+async function editarCompletoPrompt(id){
+    const senha = await promptSenha("Senha para edição completa:");
     if(senha === null) return;
     if(senha !== "idrgestao"){ alert("Senha incorreta."); return; }
     const form = document.createElement('form');
@@ -187,14 +216,14 @@
     form.appendChild(input);
     document.body.appendChild(form);
     form.submit();
-  }
+}
 
-  function abrirPG(id){
-    const senha = prompt("Senha necessária para abrir Atendimento Gestão (PG):");
+async function abrirPG(id){
+    const senha = await promptSenha("Senha necessária para abrir Atendimento Gestão (PG):");
     if(senha === null) return;
     if(senha !== "idrgestao"){ alert("Senha incorreta."); return; }
     window.location.href = `/atendimento/${id}/PG`;
-  }
+}
 </script>
 </body>
 </html>
